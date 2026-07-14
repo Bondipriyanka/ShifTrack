@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Lyam Biometric Gate",
+    "slug": "lyam-biometric-gate",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow Lyam Biometric Gate to capture photos of candidates for face recognition attendance check-ins.",
+        "NSLocationWhenInUseUsageDescription": "Allow Lyam Biometric Gate to verify supervisor location coordinates during biometric entry."
+      }
+    },
+    "android": {
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ]
+    }
+  }
+}

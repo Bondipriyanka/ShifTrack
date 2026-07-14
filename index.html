@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Attendance - Real-Time Face Recognition PoC</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <div class="dashboard-wrapper">
+    
+    <!-- HEADER -->
+    <header>
+      <div class="logo-section">
+        <h1>BIOMETRIC GATEWAY</h1>
+        <span>Biometric Attendance System</span>
+      </div>
+      <div class="system-status">
+        <div class="status-indicator">
+          <span class="dot pulse"></span>
+          <span>Core Gateway: <strong>Connected</strong></span>
+        </div>
+        <div class="status-indicator">
+          <span>API Latency: <strong>42ms</strong></span>
+        </div>
+        <div class="status-indicator">
+          <span>Version: <strong>v2.1.0-PoC</strong></span>
+        </div>
+      </div>
+    </header>
+
+    <!-- LEFT COLUMN: SUPERVISOR SMARTPHONE SIMULATOR -->
+    <section class="simulator-container">
+      
+      <!-- Physical Phone Housing -->
+      <div class="phone-frame">
+        <div class="phone-inner">
+          
+          <!-- Hardware Notch -->
+          <div class="phone-notch">
+            <div class="notch-speaker"></div>
+            <div class="notch-camera"></div>
+            <div class="notch-sensor"></div>
+          </div>
+          
+          <!-- OS Status Bar -->
+          <div class="phone-status-bar">
+            <div class="status-left" id="phone-time">08:30</div>
+            <div class="status-right">
+              <span class="camera-indicator" id="status-cam-dot"></span>
+              <svg class="svg-icon sm" viewBox="0 0 24 24"><path d="M12 20h.01M8.5 16.5a5 5 0 0 1 7 0M5 13a9 9 0 0 1 14 0M1.5 9.5a14 14 0 0 1 21 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+              <span id="phone-cellular">5G</span>
+              <svg class="svg-icon sm" viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"/><line x1="22" y1="11" x2="22" y2="13" stroke="currentColor" stroke-width="3"/></svg>
+            </div>
+          </div>
+
+          <!-- Simulated Supervisor Login Page -->
+          <div class="login-screen" id="app-login-screen">
+            <div class="login-logo">GATEENTRY HUB</div>
+            <div class="login-subtitle">Supervisor Authorization</div>
+            <div class="login-form">
+              <div class="select-group">
+                <label for="login-pin">Enter Supervisor Pin</label>
+                <input type="password" id="login-pin" placeholder="••••" maxlength="4" style="text-align: center; letter-spacing: 4px; font-size: 1.2rem;">
+              </div>
+              <button class="login-btn" id="login-submit-btn">Authorize Access</button>
+              <div class="login-hint">Passcode Hint: <strong>1234</strong></div>
+            </div>
+          </div>
+
+          <!-- Application Interface -->
+          <div class="phone-app-content">
+            
+            <!-- VIEW A: GATE ENTRY SCANNER -->
+            <div id="app-scan-view" class="app-page-view" style="flex:1; display:flex; flex-direction:column;">
+              <div class="app-header">
+                <div class="app-title">
+                  <h2>Smart GateEntry</h2>
+                  <p>Site Attendance Scan</p>
+                </div>
+                <div class="app-network-pill" id="app-network-status">ONLINE</div>
+              </div>
+
+              <!-- Camera Viewport Screen -->
+              <div class="camera-viewport" id="viewport-container">
+                
+                <!-- Video stream element -->
+                <video id="camera-stream" autoplay playsinline muted></video>
+                
+                <!-- Graphic Overlay Canvas for Face Boxes -->
+                <canvas id="camera-canvas" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index: 12; pointer-events: none;"></canvas>
+
+                <!-- Camera Fallback when webcam is off or blocked -->
+                <div class="camera-fallback" id="camera-fallback">
+                  <svg class="svg-icon" style="width:48px; height:48px;" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                  <h3>Webcam Feed Inactive</h3>
+                  <p style="font-size: 0.8rem; margin: 8px 0; color: var(--color-text-muted);">Please enable camera, or click below to simulate a live camera feed.</p>
+                  <button id="btn-camera-sim">Use Simulator Feed</button>
+                </div>
+
+
+                <!-- Static Guide brackets -->
+                <div class="scanner-overlay" id="scanner-overlay">
+                  <div class="scan-boundary">
+                    <div class="scanning-laser"></div>
+                  </div>
+                </div>
+
+                <!-- Floating face bounding box overlay -->
+                <div class="face-box-overlay" id="simulated-face-box">
+                  <span class="face-box-label" id="face-box-name">DETECTING FACE...</span>
+                </div>
+
+                <!-- Slide-up verification access card -->
+                <div class="verification-card" id="verification-card">
+                  <div class="verification-icon" id="verif-icon-box">
+                    <!-- Dynamic SVG insertion -->
+                  </div>
+                  <div class="verification-info">
+                    <h4 id="verif-name">John Doe</h4>
+                    <p id="verif-status">Access Approved</p>
+                  </div>
+                  <div class="verification-timestamp">
+                    <div id="verif-time">08:30:15</div>
+                    <div id="verif-loc" style="font-size: 0.6rem; color: var(--color-text-muted);">TATA MOTORS</div>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Controller Panel within App -->
+              <div class="app-controls">
+                
+                <div class="select-group">
+                  <label for="location-select">Client Deployment Location</label>
+                  <select id="location-select">
+                    <option value="Tata Motors - Gate 1">Tata Motors (Gate 1)</option>
+                    <option value="Tata Motors - Assembly Line B">Tata Motors (Assembly B)</option>
+                    <option value="Reliance Industries - Plant A">Reliance Industries (Plant A)</option>
+                    <option value="Adani Port - Cargo Yard">Adani Port (Cargo Yard)</option>
+                    <option value="L&T Construction Site #4">L&T Site #4</option>
+                  </select>
+                </div>
+
+                <button class="scan-btn" id="scan-toggle">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                  <span id="scan-btn-text">Open Attendance Gate</span>
+                </button>
+
+                <div class="gps-badge-row">
+                  <span>GPS Location Lock:</span>
+                  <span class="gps-pill" id="gps-coords">19.0760° N, 72.8777° E</span>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- VIEW B: CANDIDATE BIOMETRIC REGISTRATION -->
+            <div id="app-register-view" class="app-page-view hidden" style="flex:1; display:flex; flex-direction:column;">
+              <div class="app-header">
+                <div class="app-title">
+                  <h2>Biometric Enrollment</h2>
+                  <p>Register Candidate Biometrics</p>
+                </div>
+              </div>
+              
+              <div class="register-screen">
+                <div class="register-form">
+                  <div class="select-group">
+                    <label for="reg-name">Candidate Full Name</label>
+                    <input type="text" id="reg-name" placeholder="E.g., Priya Patel">
+                  </div>
+                  <div class="select-group">
+                    <label for="reg-shift">Roster Shift Assignment</label>
+                    <select id="reg-shift">
+                      <option value="Morning Shift (A)">Morning Shift (A) [06:00 - 14:00]</option>
+                      <option value="General Shift (G)">General Shift (G) [09:00 - 17:00]</option>
+                      <option value="Evening Shift (B)">Evening Shift (B) [14:00 - 22:00]</option>
+                      <option value="Night Shift (C)">Night Shift (C) [22:00 - 06:00]</option>
+                    </select>
+                  </div>
+                  <div class="select-group">
+                    <label>Biometric Camera Capture</label>
+                    <div class="photo-capture-box">
+                      <video id="reg-camera-stream" autoplay playsinline muted></video>
+                      <img id="reg-snapshot-preview" class="snapshot-preview-img" alt="Captured Face">
+                      <div id="reg-camera-placeholder" style="color:var(--color-text-muted); text-align:center; font-size:0.8rem; padding: 20px;">
+                        Camera active. Center your face in the box and snap.
+                      </div>
+                      <button class="capture-btn" id="reg-btn-capture">
+                        <svg class="svg-icon sm" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                        Take Snapshot
+                      </button>
+                    </div>
+                  </div>
+                  <button class="save-reg-btn" id="reg-btn-save">Save & Register Candidate</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Bottom Navigation Bar inside mobile device UI -->
+          <div class="phone-nav-bar hidden" id="app-bottom-navbar">
+            <div class="nav-item active" id="nav-scan-tab">
+              <svg class="svg-icon sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+              <span>Scan Gate</span>
+            </div>
+            <div class="nav-item" id="nav-register-tab">
+              <svg class="svg-icon sm" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2" fill="none"/><line x1="19" y1="8" x2="19" y2="14" stroke="currentColor" stroke-width="2"/><line x1="22" y1="11" x2="16" y2="11" stroke="currentColor" stroke-width="2"/></svg>
+              <span>Enroll Face</span>
+            </div>
+            <div class="nav-item" id="nav-logout-tab">
+              <svg class="svg-icon sm" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="16 17 21 12 16 7" stroke="currentColor" stroke-width="2" fill="none"/><line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="2"/></svg>
+              <span>Lock Hub</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- External Hardware Control Panel for PoC Testing -->
+      <div class="simulator-external-controls">
+        <h4 class="db-title-sm">Gate Walk-Up Simulator</h4>
+        
+        <div class="sim-switch-group">
+          <div class="sim-switch-label">
+            <span>Offline Operations Mode</span>
+            <small>Simulates network drop at site gate</small>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="offline-switch">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- Walk-up Candidate Status HUD -->
+        <div class="gate-status-card" style="background: rgba(30, 41, 59, 0.05); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; margin: 10px 0;">
+          <span style="font-size: 0.7rem; text-transform: uppercase; color: var(--color-primary); font-weight: bold; display: block; margin-bottom: 4px;">Walk-Up Subject Status</span>
+          <div id="sim-walk-up-info" style="font-size: 0.85rem; font-weight: 600;">
+            Vikram Sharma (ID: LYAM-7088)
+          </div>
+          <small style="font-size: 0.65rem; color: var(--color-text-muted); display: block; margin-top: 4px;">Tip: Click any candidate card in 'Registered Biometrics' list to change the approaching person.</small>
+        </div>
+
+        <div class="external-sim-triggers" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <button class="sim-trigger-btn" id="trigger-scan-btn" style="grid-column: span 2;">Simulate Face Scan</button>
+          <button class="sim-trigger-btn" id="trigger-stranger-btn" style="background: #ef4444; color: #fff; border-color: #ef4444;">Simulate Stranger</button>
+          <button class="sim-trigger-btn" id="trigger-spoof-btn" style="background: #eab308; color: #000; border-color: #eab308;">Simulate Spoof</button>
+          <button class="sim-trigger-btn" id="trigger-sync-btn" style="grid-column: span 2; margin-top: 4px;">Force Sync Offline Queue</button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT COLUMN: INTERACTIVE ARCHITECTURE & ADMIN BLUEPRINT -->
+    <section class="admin-blueprint-container">
+      
+      <!-- Panel 1: Interactive System Architecture Blueprint -->
+      <article class="admin-panel">
+        <div class="panel-header">
+          <h3>
+            <svg class="svg-icon" viewBox="0 0 24 24"><polygon points="6 2 18 2 18 6 6 6 6 2" stroke="currentColor" stroke-width="2" fill="none"/><rect x="3" y="6" width="18" height="16" rx="2" stroke="currentColor" stroke-width="2" fill="none"/><line x1="10" y1="12" x2="14" y2="12" stroke="currentColor" stroke-width="2"/><line x1="10" y1="16" x2="14" y2="16" stroke="currentColor" stroke-width="2"/></svg>
+            System Architecture Explorer
+          </h3>
+          <span style="font-size:0.75rem; color:var(--color-primary);">Click nodes to view technical specs</span>
+        </div>
+
+        <div class="flow-diagram">
+          <div class="flow-node active" id="node-mobile" data-node="mobile">Supervisor App</div>
+          <div class="flow-arrow">➔</div>
+          <div class="flow-node" id="node-detection" data-node="detection">Face Detection</div>
+          <div class="flow-arrow">➔</div>
+          <div class="flow-node" id="node-recognition" data-node="recognition">Face Matching</div>
+          <div class="flow-arrow">➔</div>
+          <div class="flow-node" id="node-verification" data-node="verification">Verification Engine</div>
+          <div class="flow-arrow">➔</div>
+          <div class="flow-node" id="node-zynghr" data-node="zynghr">ZyngHR Sync</div>
+        </div>
+
+        <!-- Node Specification detail box -->
+        <div class="node-spec-panel" id="node-spec-panel">
+          <div class="spec-title-row">
+            <h4 id="spec-name">Supervisor Mobile Application</h4>
+            <span class="spec-badge" id="spec-tech">React Native / Flutter</span>
+          </div>
+          <div class="spec-content">
+            <p id="spec-desc">The mobile app operates in the supervisor's hand at the client plant gate. Designed for simple interaction: one click starts scan mode. It captures faces, checks GPS limits, and caches attendance locally when offline.</p>
+            
+            <div class="spec-details-grid">
+              <div class="spec-detail-box">
+                <h5>Key Features</h5>
+                <ul id="spec-features">
+                  <li>Runs local SQLite/Realm database</li>
+                  <li>Encrypts local attendance payloads</li>
+                  <li>Captures geo-coordinates on check-in</li>
+                  <li>Background syncing worker</li>
+                </ul>
+              </div>
+              <div class="spec-detail-box">
+                <h5>Biometric Security</h5>
+                <ul id="spec-security">
+                  <li>Extracts vector points; deletes images</li>
+                  <li>Device binding: 1 supervisor per phone</li>
+                  <li>AES-256 local template encryption</li>
+                </ul>
+              </div>
+              <div class="spec-code-box">
+                <h5>REST Endpoint / Schema</h5>
+                <pre id="spec-code">Loading API payload design...</pre>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </article>
+
+      <!-- Panel 2: Live ZyngHR Admin Console & DB View -->
+      <article class="admin-panel">
+        <div class="panel-header">
+          <h3>
+            <svg class="svg-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" stroke="currentColor" stroke-width="2" fill="none"/><rect x="14" y="3" width="7" height="5" stroke="currentColor" stroke-width="2" fill="none"/><rect x="14" y="12" width="7" height="9" stroke="currentColor" stroke-width="2" fill="none"/><rect x="3" y="16" width="7" height="5" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+            ZyngHR Live Attendance Sync Database
+          </h3>
+          <div style="font-size: 0.75rem; color: var(--color-text-secondary);">
+            Sync Queue Status: <span id="queue-count-pill" style="font-family: var(--font-mono); color: var(--color-success); font-weight: bold;">0 Pending</span>
+          </div>
+        </div>
+
+        <!-- Dashboard Summary Indicators -->
+        <div class="stats-summary-row">
+          <div class="stat-box">
+            <div class="stat-label">Total Logs Today</div>
+            <div class="stat-value" id="stat-total-scans">0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Approved Scans</div>
+            <div class="stat-value green" id="stat-approved">0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Access Denied</div>
+            <div class="stat-value" id="stat-denied" style="color:var(--color-error)">0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Offline Queued</div>
+            <div class="stat-value amber" id="stat-offline">0</div>
+          </div>
+        </div>
+
+        <!-- Bulk Spreadsheet Importer Section -->
+        <div class="bulk-import-card" style="background: rgba(30, 41, 59, 0.2); border: 2px dashed var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 20px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: all 0.3s;">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+            <span style="font-size: 24px;">📊</span>
+            <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--color-primary); text-transform: uppercase; letter-spacing: 0.5px;">Bulk Employee Roster Database Import</h4>
+          </div>
+          <p style="color: var(--color-text-secondary); margin: 0 0 15px 0; font-size: 0.8rem; max-width: 650px; line-height: 1.4;">
+            Supervisors can upload an Excel CSV sheet or JSON roster document to automatically sync 100+ employees. Duplicate check will automatically skip already registered candidates.
+          </p>
+          <input type="file" id="bulk-roster-import" accept=".csv,.json" style="display: none;">
+          <button class="sim-trigger-btn" onclick="document.getElementById('bulk-roster-import').click()" style="background: var(--color-primary); color: #000; font-weight: 700; font-size: 0.85rem; padding: 10px 24px; border-radius: 8px; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); display: inline-block;">
+            Upload Roster Spreadsheet / CSV
+          </button>
+        </div>
+
+        <div class="db-dashboard-grid">
+          
+          <!-- Registered Employee Roster -->
+          <div class="employee-db-list">
+            <h4 class="db-title-sm">Registered Biometrics</h4>
+            <div id="roster-list-container">
+              <!-- Rendered dynamically in app.js -->
+            </div>
+          </div>
+
+          <!-- Attendance table records -->
+          <div class="table-container">
+            <table class="records-table">
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Timestamp</th>
+                  <th>Client Location</th>
+                  <th>Geotag</th>
+                  <th>Verification</th>
+                  <th>ZyngHR Sync</th>
+                </tr>
+              </thead>
+              <tbody id="attendance-tbody">
+                <!-- Records populated dynamically -->
+                <tr id="empty-table-row">
+                  <td colspan="6" style="text-align: center; color: var(--color-text-muted); padding: 40px 0;">
+                    No attendance records captured for this session yet. Activate scan mode in the mobile emulator to check in candidates.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </article>
+
+      <!-- Panel 3: Live Developer logs & API payload stream -->
+      <article class="admin-panel">
+        <div class="panel-header">
+          <h3>
+            <svg class="svg-icon" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5" stroke="currentColor" stroke-width="2" fill="none"/><line x1="12" y1="19" x2="20" y2="19" stroke="currentColor" stroke-width="2"/></svg>
+            System API & Terminal Log Stream
+          </h3>
+          <button id="clear-logs-btn" style="background:transparent; border:1px solid var(--border-color); color:var(--color-text-secondary); padding:2px 8px; font-size:0.7rem; border-radius:4px; cursor:pointer;">Clear Logs</button>
+        </div>
+        <div class="stream-logs" id="terminal-logs">
+          <!-- Populated dynamically via logging functions -->
+        </div>
+      </article>
+
+    </section>
+
+  </div>
+
+  <script src="app.js?v=1.0.6"></script>
+</body>
+</html>
