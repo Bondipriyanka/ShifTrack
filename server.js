@@ -1,6 +1,41 @@
 const http = require('http');
+const https = require('https');
+const selfsigned = require('selfsigned');
 const fs = require('fs');
 const path = require('path');
+const { Pool } = require('pg');
+
+// PostgreSQL Connection Pool Setup
+const pool = new Pool({
+  host: process.env.PGHOST || 'localhost',
+  user: process.env.PGUSER || 'postgres',
+  password: process.env.PGPASSWORD || 'system',
+  database: process.env.PGDATABASE || 'attendance_db',
+  port: parseInt(process.env.PGPORT || '5432'),
+});
+
+// Automatically create logs table if it does not exist
+async function initDatabase() {
+  const createTableQuery = `
+    CREATE TABLE IF NOT EXISTS attendance_logs (
+      id SERIAL PRIMARY KEY,
+      emp_id VARCHAR(50) NOT NULL,
+      name VARCHAR(100) NOT NULL,
+      timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
+      location VARCHAR(150) NOT NULL,
+      gps VARCHAR(100) NOT NULL,
+      verified BOOLEAN DEFAULT TRUE,
+      sync_status VARCHAR(50) DEFAULT 'Synced'
+    );
+  `;
+  try {
+    await pool.query(createTableQuery);
+    print("PostgreSQL Database: Table 'attendance_logs' initialized successfully.");
+  } catch (err) {
+    print("PostgreSQL Setup Warning: Could not initialize database table. Logs will fall back to db.json. Error:", err.message);
+  }
+}
+initDatabase();
 
 const PORT = 3000;
 const DB_FILE = path.join(__dirname, 'db.json');
@@ -110,7 +145,7 @@ function postToAIServer(path, payload, callback) {
   req.end();
 }
 
-const server = http.createServer((req, res) => {
+const requestHandler = async (req, res) => {
   // Add CORS headers so mobile app can connect
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -254,9 +289,11 @@ const server = http.createServer((req, res) => {
   switch (extname) {
     case '.js': contentType = 'text/javascript'; break;
     case '.css': contentType = 'text/css'; break;
-    case '.json': contentType = 'application/json'; break;
+    case '.json':
+    case '.webmanifest': contentType = 'application/manifest+json'; break;
     case '.png': contentType = 'image/png'; break;
     case '.jpg': contentType = 'image/jpg'; break;
+    case '.svg': contentType = 'image/svg+xml'; break;
   }
 
   fs.readFile(filePath, (err, content) => {
@@ -273,9 +310,45 @@ const server = http.createServer((req, res) => {
       res.end(content, 'utf-8');
     }
   });
+};
+
+// Start HTTP Server
+const httpServer = http.createServer(requestHandler);
+httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log(`LYAM Attendance HTTP API Server running on port ${PORT}`);
+  console.log(`Open http://localhost:${PORT}/ in your browser.`);
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`LYAM Attendance API Server running on port ${PORT}`);
-  console.log(`Open http://localhost:${PORT}/ in your browser to view the web app.`);
-});
+// Start HTTPS Server for mobile camera support (bypasses browser HTTP camera restrictions)
+(async () => {
+  try {
+    let sslOptions;
+    const certFile = path.join(__dirname, 'cert.pem');
+    const keyFile = path.join(__dirname, 'key.pem');
+
+    if (fs.existsSync(certFile) && fs.existsSync(keyFile)) {
+      sslOptions = {
+        key: fs.readFileSync(keyFile),
+        cert: fs.readFileSync(certFile)
+      };
+    } else {
+      const pems = await selfsigned.generate([{ name: 'commonName', value: 'biometric-gate.local' }], { days: 365 });
+      fs.writeFileSync(keyFile, pems.private);
+      fs.writeFileSync(certFile, pems.cert);
+      sslOptions = {
+        key: pems.private,
+        cert: pems.cert
+      };
+      console.log("HTTPS Setup: Generated self-signed SSL certificates for mobile camera support.");
+    }
+
+    const HTTPS_PORT = 3443;
+    const httpsServer = https.createServer(sslOptions, requestHandler);
+    httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
+      console.log(`LYAM Attendance HTTPS Server running on port ${HTTPS_PORT}`);
+      console.log(`Open https://<YOUR-IP>:${HTTPS_PORT}/ on Android Chrome for live mobile camera access!`);
+    });
+  } catch (sslErr) {
+    console.warn("HTTPS Setup warning:", sslErr.message);
+  }
+})();

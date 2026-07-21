@@ -1,0 +1,14 @@
+{
+  "appId": "com.lyam.biometricgate",
+  "appName": "Biometric Gate",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true
+  }
+}

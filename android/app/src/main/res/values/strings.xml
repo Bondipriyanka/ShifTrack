@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Biometric Gate</string>
+    <string name="title_activity_main">Biometric Gate</string>
+    <string name="package_name">com.lyam.biometricgate</string>
+    <string name="custom_url_scheme">com.lyam.biometricgate</string>
+</resources>
