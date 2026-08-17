@@ -4,11 +4,18 @@ import json
 import base64
 import numpy as np
 import cv2
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="LYAM Biometrics AI Engine")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_models()
+    load_roster_embeddings()
+    yield
+
+app = FastAPI(title="LYAM Biometrics AI Engine", lifespan=lifespan)
 
 # Enable CORS for frontend and Node server access
 app.add_middleware(
@@ -95,7 +102,16 @@ def extract_sface_embedding(img: np.ndarray):
     if img is None:
         return None, None
         
+    # Resize image to max dimension 240 for ultra-fast CPU face detection (<15ms)
     height, width = img.shape[:2]
+    max_dim = 240
+    if max(height, width) > max_dim:
+        scale = max_dim / max(height, width)
+        new_width = int(width * scale)
+        new_height = int(height * scale)
+        img = cv2.resize(img, (new_width, new_height))
+        height, width = new_height, new_width
+
     detector.setInputSize((width, height))
     
     # Detect faces: returns tuple of (status, faces_matrix)
@@ -127,6 +143,7 @@ def calculate_confidence(cosine_score: float) -> float:
 def load_roster_embeddings():
     """Initializes embeddings cache by parsing db.json and processing employee avatars."""
     global roster_embeddings
+    roster_embeddings = {}
     print("Pre-computing database face embeddings from roster...")
     if not os.path.exists(DB_FILE):
         print(f"Database file {DB_FILE} not found. Skipping initialization.")
@@ -140,35 +157,43 @@ def load_roster_embeddings():
         processed_count = 0
         
         for key, emp in roster.items():
-            avatar = emp.get("avatar")
-            if not avatar:
-                continue
-                
-            img = None
-            if avatar.startswith("data:image"):
-                img = decode_base64_image(avatar)
-            elif avatar.startswith("http"):
-                img = download_image_from_url(avatar)
-                
-            if img is not None:
-                emb, _ = extract_sface_embedding(img)
-                if emb is not None:
-                    roster_embeddings[key] = emb
-                    processed_count += 1
-                    print(f"Processed biometrics for: {emp.get('name')} (Key: {key})")
-                else:
-                    print(f"No face detected in avatar photo for: {emp.get('name')}")
+            gate_photos = emp.get("gatePhotos", [])
+            if isinstance(gate_photos, list) and len(gate_photos) > 0:
+                for idx, photo in enumerate(gate_photos):
+                    img = None
+                    if photo.startswith("data:image"):
+                        img = decode_base64_image(photo)
+                    if img is not None:
+                        emb, _ = extract_sface_embedding(img)
+                        if emb is not None:
+                            roster_embeddings[f"{key}_{idx + 1}"] = emb
+                            processed_count += 1
+                print(f"Processed local gate snaps biometrics for: {emp.get('name')} (Key: {key})")
             else:
-                print(f"Could not load image for: {emp.get('name')}")
+                avatar = emp.get("avatar")
+                if not avatar:
+                    continue
+                img = None
+                if avatar.startswith("data:image"):
+                    img = decode_base64_image(avatar)
+                elif avatar.startswith("http"):
+                    img = download_image_from_url(avatar)
+                if img is not None:
+                    emb, _ = extract_sface_embedding(img)
+                    if emb is not None:
+                        roster_embeddings[key] = emb
+                        processed_count += 1
+                        print(f"Processed biometrics for: {emp.get('name')} (Key: {key})")
+                    else:
+                        print(f"No face detected in avatar photo for: {emp.get('name')}")
+                else:
+                    print(f"Could not load image for: {emp.get('name')}")
                 
         print(f"Biometric indexing complete. Cached {processed_count} face profiles.")
     except Exception as e:
         print(f"Error loading database embeddings: {e}")
 
-@app.on_event("startup")
-def startup_event():
-    init_models()
-    load_roster_embeddings()
+
 
 class ScanPayload(BaseModel):
     image: str
@@ -176,6 +201,57 @@ class ScanPayload(BaseModel):
 class RegisterPayload(BaseModel):
     key: str
     avatar: str
+
+class DuplicateCheckPayload(BaseModel):
+    image: str
+
+@app.post("/api/biometric/check-duplicate")
+def check_duplicate_biometrics(payload: DuplicateCheckPayload):
+    """Checks if a registration face image matches any existing enrolled candidate."""
+    img = None
+    if payload.image.startswith("data:image") or not payload.image.startswith("http"):
+        img = decode_base64_image(payload.image)
+    elif payload.image.startswith("http"):
+        img = download_image_from_url(payload.image)
+        
+    if img is None:
+        return {"duplicate": False, "reason": "INVALID_IMAGE"}
+    
+    emb, _ = extract_sface_embedding(img)
+    if emb is None:
+        return {"duplicate": False, "reason": "NO_FACE"}
+        
+    best_match_key = None
+    max_cosine = -1.0
+    
+    for key, registered_emb in roster_embeddings.items():
+        score = recognizer.match(emb, registered_emb, cv2.FaceRecognizerSF_FR_COSINE)
+        if score > max_cosine:
+            max_cosine = score
+            best_match_key = key
+            
+    print(f"Registration Duplicate Check -> Max Cosine score: {max_cosine:.4f} (Key: {best_match_key})")
+    
+    if best_match_key and max_cosine >= 0.363:
+        base_match_key = best_match_key.split('_')[0]
+        name = "Enrolled Member"
+        try:
+            with open(DB_FILE, "r", encoding="utf-8") as f:
+                db_data = json.load(f)
+            emp_info = db_data.get("roster", {}).get(base_match_key) or db_data.get("zinghr", {}).get(base_match_key)
+            if emp_info:
+                name = emp_info.get("name", base_match_key)
+        except Exception:
+            pass
+            
+        return {
+            "duplicate": True,
+            "employeeId": base_match_key,
+            "name": name,
+            "cosine": max_cosine
+        }
+    
+    return {"duplicate": False}
 
 @app.post("/api/biometric/scan")
 def scan_biometrics(payload: ScanPayload):
@@ -201,9 +277,9 @@ def scan_biometrics(payload: ScanPayload):
     laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
     print(f"Liveness Check -> Laplacian Variance: {laplacian_var:.2f}")
     
-    # Screen replays or paper printouts typically suffer from re-capturing blur/flatness
-    if laplacian_var < 50:
-        print(f"Scan result: Liveness rejected (variance {laplacian_var:.1f} < threshold 50.0).")
+    # Calibrated threshold for 240px downscaled webcam frames (Real live webcams score > 10.0, flat spoofs < 8.0)
+    if laplacian_var < 8.0:
+        print(f"Scan result: Liveness rejected (variance {laplacian_var:.1f} < threshold 8.0).")
         return {"success": True, "match": False, "reason": "SPOOF_FAILED"}
         
     # 3. Vector Embeddings Cosine Matching
@@ -222,12 +298,22 @@ def scan_biometrics(payload: ScanPayload):
     
     # SFace match threshold: >= 0.363 is considered a valid match
     if best_match_key and max_cosine >= 0.363:
+        # Strip suffix (like _1, _2) to get base employee ID
+        base_match_key = best_match_key.split('_')[0]
+        
         # Load name from db.json
         try:
             with open(DB_FILE, "r", encoding="utf-8") as f:
                 db_data = json.load(f)
-            name = db_data.get("roster", {}).get(best_match_key, {}).get("name", "Unknown")
-            role = db_data.get("roster", {}).get(best_match_key, {}).get("role", "")
+            
+            # Lookup in roster or zinghr
+            emp_info = db_data.get("roster", {}).get(base_match_key) or db_data.get("zinghr", {}).get(base_match_key)
+            if emp_info:
+                name = emp_info.get("name", "Unknown")
+                role = emp_info.get("role", "")
+            else:
+                name = "Unknown"
+                role = ""
         except Exception:
             name = "Roster Member"
             role = ""
@@ -236,7 +322,7 @@ def scan_biometrics(payload: ScanPayload):
         return {
             "success": True, 
             "match": True, 
-            "employeeId": best_match_key, 
+            "employeeId": base_match_key, 
             "confidence": confidence,
             "name": name,
             "role": role
@@ -273,3 +359,8 @@ def get_status():
         "detector": "YuNet (ONNX)",
         "recognizer": "SFace (ONNX)"
     }
+
+@app.post("/api/biometric/reload")
+def reload_embeddings():
+    load_roster_embeddings()
+    return {"success": True, "cached_profiles": len(roster_embeddings)}

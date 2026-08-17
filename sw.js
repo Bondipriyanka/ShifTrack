@@ -1,5 +1,5 @@
 // Biometric Gate - Service Worker (sw.js)
-const CACHE_NAME = 'biometric-gate-v1';
+const CACHE_NAME = 'biometric-gate-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

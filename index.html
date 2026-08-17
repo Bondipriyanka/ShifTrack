@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Smart Attendance - Real-Time Face Recognition PoC</title>
+  <title>Shift Track - Real-Time Biometric Face Attendance</title>
   <!-- PWA & Mobile App Settings -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#09090b">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="BiometricGate">
+  <meta name="apple-mobile-web-app-title" content="ShiftTrack">
   <link rel="stylesheet" href="styles-v3.css">
 </head>
 <body>
@@ -19,8 +19,8 @@
     <!-- HEADER -->
     <header>
       <div class="logo-section">
-        <h1>BIOMETRIC GATEWAY</h1>
-        <span>Biometric Attendance System</span>
+        <h1>SHIFT TRACK</h1>
+        <span>Smart HR Attendance Gateway</span>
       </div>
       <div class="system-status">
         <div class="status-indicator">
@@ -64,7 +64,7 @@
           <!-- Simulated Supervisor Login Page -->
           <div class="login-screen" id="app-login-screen">
             <div style="display:flex; justify-content:space-between; align-items:center; width:100%; padding: 0 20px;">
-              <div class="login-logo" style="margin:0;">GATEENTRY HUB</div>
+              <div class="login-logo" style="margin:0;">SHIFT TRACK</div>
               <button id="mobile-settings-btn" style="background:transparent; border:none; color:#fff; cursor:pointer; padding:6px; display:flex; align-items:center; justify-content:center;">
                 <svg class="svg-icon" viewBox="0 0 24 24" style="width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
               </button>
@@ -72,8 +72,8 @@
             <div class="login-subtitle">Supervisor Authorization</div>
             <div class="login-form">
               <div class="select-group">
-                <label for="login-pin">Enter Supervisor Pin</label>
-                <input type="password" id="login-pin" placeholder="••••" maxlength="4" style="text-align: center; letter-spacing: 4px; font-size: 1.2rem;">
+                <label for="login-pin" style="margin-bottom: 10px; display: block; font-weight: 600; letter-spacing: 0.8px;">Enter Supervisor Pin</label>
+                <input type="password" id="login-pin" placeholder="PIN" maxlength="4" style="text-align: center; letter-spacing: 4px; font-size: 1.2rem; margin-top: 4px;">
               </div>
               <button class="login-btn" id="login-submit-btn">Authorize Access</button>
               <div class="login-hint">Passcode Hint: <strong>1234</strong></div>
@@ -84,18 +84,18 @@
           <div class="phone-app-content">
             
             <!-- VIEW A: GATE ENTRY SCANNER -->
-            <div id="app-scan-view" class="app-page-view hidden" style="flex:1; display:flex; flex-direction:column;">
+            <div id="app-scan-view" class="app-page-view hidden" style="height:100%; overflow:hidden; display:flex; flex-direction:column;">
               <div class="app-header" style="display:flex; align-items:center; gap:10px;">
-                <button class="app-back-btn" id="mobile-scan-back-btn" style="background:transparent; border:none; color:#fff; cursor:pointer; padding:6px; display:flex; align-items:center; justify-content:center;">
+                <button class="app-back-btn" id="mobile-scan-back-btn" style="background:transparent; border:none; color:var(--color-text-primary); cursor:pointer; padding:6px; display:flex; align-items:center; justify-content:center;">
                   <svg class="svg-icon" viewBox="0 0 24 24" style="width:20px; height:20px;"><line x1="19" y1="12" x2="5" y2="12" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="12 19 5 12 12 5" stroke="currentColor" stroke-width="2" fill="none"/></svg>
                 </button>
                 <div class="app-title" style="flex:1;">
-                  <h2>Biometric Gate</h2>
+                  <h2>Shift Track</h2>
                   <p>Site Attendance Scan</p>
                 </div>
                 <div style="display:flex; align-items:center; gap:6px;">
                   <div class="app-network-pill" id="app-network-status">ONLINE</div>
-                  <button id="mobile-scan-settings-btn" style="background:transparent; border:none; color:#fff; cursor:pointer; padding:4px; display:flex; align-items:center; justify-content:center;">
+                  <button id="mobile-scan-settings-btn" style="background:transparent; border:none; color:var(--color-text-primary); cursor:pointer; padding:4px; display:flex; align-items:center; justify-content:center;">
                     <svg class="svg-icon" viewBox="0 0 24 24" style="width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                   </button>
                 </div>
@@ -120,7 +120,7 @@
                       <svg class="svg-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="2" fill="none"/></svg>
                       Take Real Mobile Face Snap
                     </button>
-                    <button id="btn-camera-sim" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #ccc;">Use Simulator Feed</button>
+                    <button id="btn-camera-sim" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #b7b6b6;">Use Simulator Feed</button>
                   </div>
                   <input type="file" id="mobile-camera-snap-input" accept="image/*" capture="user" style="display: none;">
                 </div>
@@ -185,26 +185,58 @@
             </div>
 
             <!-- VIEW B: CANDIDATE BIOMETRIC REGISTRATION -->
-            <div id="app-register-view" class="app-page-view hidden" style="flex:1; display:flex; flex-direction:column;">
+            <div id="app-register-view" class="app-page-view hidden" style="height:100%; overflow:hidden; display:flex; flex-direction:column;">
               <div class="app-header" style="display:flex; align-items:center; gap:10px;">
-                <button class="app-back-btn" id="mobile-reg-back-btn" style="background:transparent; border:none; color:#fff; cursor:pointer; padding:6px; display:flex; align-items:center; justify-content:center;">
+                <button class="app-back-btn" id="mobile-reg-back-btn" style="background:transparent; border:none; color:var(--color-text-primary); cursor:pointer; padding:6px; display:flex; align-items:center; justify-content:center;">
                   <svg class="svg-icon" viewBox="0 0 24 24" style="width:20px; height:20px;"><line x1="19" y1="12" x2="5" y2="12" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="12 19 5 12 12 5" stroke="currentColor" stroke-width="2" fill="none"/></svg>
                 </button>
                 <div class="app-title" style="flex:1;">
                   <h2>Biometric Enrollment</h2>
                   <p>Register Candidate Biometrics</p>
                 </div>
+                <button id="mobile-reg-settings-btn" style="background:transparent; border:none; color:var(--color-text-primary); cursor:pointer; padding:4px; display:flex; align-items:center; justify-content:center;">
+                  <svg class="svg-icon" viewBox="0 0 24 24" style="width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                </button>
               </div>
               
               <div class="register-screen">
                 <div class="register-form">
                   <div class="select-group">
+                    <label for="reg-emp-id">Zing HR Employee ID</label>
+                    <div style="display: flex; gap: 8px;">
+                      <input type="text" id="reg-emp-id" placeholder="E.g., EMP001" style="flex: 1; text-transform: uppercase;">
+                      <button id="reg-btn-search" class="sim-trigger-btn" style="background: var(--color-primary); color: #000; font-weight: bold; border: none; padding: 0 16px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                        <svg class="svg-icon sm" viewBox="0 0 24 24" style="width: 14px; height: 14px;"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2.5" fill="none"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="2.5"/></svg>
+                        Search
+                      </button>
+                    </div>
+                    <div style="text-align: right; margin-top: 4px;">
+                      <a href="#" id="reg-lnk-create-zinghr" style="font-size: 0.68rem; color: var(--color-primary); text-decoration: none; font-weight: bold; transition: opacity 0.2s;">+ Create New Employee Profile</a>
+                    </div>
+                  </div>
+                  
+                  <!-- Zing HR Employee Details Card (Hidden initially) -->
+                  <div id="reg-employee-details" class="hidden" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                      <img id="reg-emp-avatar" src="" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid var(--color-primary); background: #1e293b;">
+                      <div style="flex: 1;">
+                        <h4 id="reg-emp-name" style="margin: 0; color: #fff; font-size: 0.9rem; font-weight: bold;">Priyanka M</h4>
+                        <p id="reg-emp-meta" style="margin: 2px 0 0 0; font-size: 0.75rem; color: var(--color-text-muted);">Contract Staff | Morning Shift (A)</p>
+                      </div>
+                    </div>
+                    <div style="margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; font-size: 0.7rem; color: var(--color-text-secondary); line-height: 1.3;">
+                      <div><strong>Address:</strong> <span id="reg-emp-address">Pune Plant</span></div>
+                      <div><strong>Contact:</strong> <span id="reg-emp-contact">+91 9876543210</span></div>
+                    </div>
+                  </div>
+
+                  <div class="select-group">
                     <label for="reg-name">Candidate Full Name</label>
-                    <input type="text" id="reg-name" placeholder="E.g., Priya Patel">
+                    <input type="text" id="reg-name" placeholder="Name will populate from search" readonly style="background: rgba(255,255,255,0.03); color: var(--color-text-muted);">
                   </div>
                   <div class="select-group">
                     <label for="reg-shift">Roster Shift Assignment</label>
-                    <select id="reg-shift">
+                    <select id="reg-shift" disabled style="background: rgba(255,255,255,0.03); color: var(--color-text-muted);">
                       <option value="Morning Shift (A)">Morning Shift (A) [06:00 - 14:00]</option>
                       <option value="General Shift (G)">General Shift (G) [09:00 - 17:00]</option>
                       <option value="Evening Shift (B)">Evening Shift (B) [14:00 - 22:00]</option>
@@ -213,14 +245,14 @@
                   </div>
                   <div class="select-group">
                     <label>Biometric Camera Capture</label>
-                    <div class="photo-capture-box">
+                    <div class="photo-capture-box" style="margin-bottom: 8px;">
                       <video id="reg-camera-stream" autoplay playsinline muted></video>
                       <img id="reg-snapshot-preview" class="snapshot-preview-img" alt="Captured Face">
                       <div id="reg-camera-placeholder" style="color:var(--color-text-muted); text-align:center; font-size:0.8rem; padding: 20px;">
                         Camera active. Center your face in the box and snap.
                       </div>                       <button class="capture-btn" id="reg-btn-capture">
                          <svg class="svg-icon sm" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="2" fill="none"/></svg>
-                         Take Snapshot
+                         Take Snapshot 1
                        </button>
                        <!-- Mobile Snap for Registration -->
                        <button class="capture-btn" id="reg-btn-mobile-snap-permanent" style="display:none; background: #22c55e; border-color: #22c55e; font-weight: bold; margin-top: 6px;">
@@ -228,20 +260,34 @@
                          Take Mobile Selfie Snap
                        </button>
                        <input type="file" id="reg-mobile-camera-snap-input" accept="image/*" capture="user" style="display: none;"></div>
+                       
+                    <!-- Gate Photos Counter and Preview Row -->
+                    <div style="margin-top: 10px;">
+                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-size: 0.75rem; color: var(--color-text-secondary); font-weight: 600;">Gate Registration Photos (Take 3):</span>
+                        <span id="reg-photos-count" style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-primary); font-weight: bold;">0 / 3 Snapped</span>
+                      </div>
+                      <div id="reg-photos-preview-container" style="display: flex; gap: 8px; min-height: 58px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 6px; overflow-x: auto; box-sizing: border-box;">
+                        <span style="color: var(--color-text-muted); font-size: 0.7rem; margin: auto;">No gate snaps captured yet.</span>
+                      </div>
+                    </div>
                   </div>
-                  <button class="save-reg-btn" id="reg-btn-save">Save & Register Candidate</button>
+                  <button class="save-reg-btn" id="reg-btn-save" style="margin-top:12px;">Save & Register Candidate</button>
                 </div>
               </div>
             </div>            <!-- VIEW C: SYSTEM LOGS & DATABASE ROSTER -->
-            <div id="app-logs-view" class="app-page-view hidden" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+            <div id="app-logs-view" class="app-page-view hidden" style="height:100%; overflow:hidden; display:flex; flex-direction:column;">
               <div class="app-header" style="display:flex; align-items:center; gap:10px;">
-                <button class="app-back-btn" id="mobile-logs-back-btn" style="background:transparent; border:none; cursor:pointer; padding:6px; display:flex; align-items:center; justify-content:center;">
+                <button class="app-back-btn" id="mobile-logs-back-btn" style="background:transparent; border:none; color:var(--color-text-primary); cursor:pointer; padding:6px; display:flex; align-items:center; justify-content:center;">
                   <svg class="svg-icon" viewBox="0 0 24 24" style="width:20px; height:20px;"><line x1="19" y1="12" x2="5" y2="12" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="12 19 5 12 12 5" stroke="currentColor" stroke-width="2" fill="none"/></svg>
                 </button>
                 <div class="app-title" style="flex:1;">
                   <h2>Roster & Logs</h2>
                   <p>Database Records</p>
                 </div>
+                <button id="mobile-logs-settings-btn" style="background:transparent; border:none; color:var(--color-text-primary); cursor:pointer; padding:4px; display:flex; align-items:center; justify-content:center;">
+                  <svg class="svg-icon" viewBox="0 0 24 24" style="width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                </button>
               </div>
               
               <div class="logs-screen" style="flex:1; padding: 16px; overflow-y: auto; background: var(--bg-body);">
@@ -271,6 +317,96 @@
               </div>
             </div>
 
+            <!-- VIEW D: ZINGHR DATABASE DIRECTORY & REPORTS -->
+            <div id="app-zinghr-view" class="app-page-view hidden" style="height:100%; overflow:hidden; display:flex; flex-direction:column;">
+              <div class="app-header" style="display:flex; align-items:center; gap:10px;">
+                <button class="app-back-btn" id="mobile-zinghr-back-btn" style="background:transparent; border:none; color:var(--color-text-primary); cursor:pointer; padding:6px; display:flex; align-items:center; justify-content:center;">
+                  <svg class="svg-icon" viewBox="0 0 24 24" style="width:20px; height:20px;"><line x1="19" y1="12" x2="5" y2="12" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="12 19 5 12 12 5" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                </button>
+                <div class="app-title" style="flex:1;">
+                  <h2>ZingHR Portal</h2>
+                  <p>Database & Reports</p>
+                </div>
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <button id="mobile-zinghr-create-btn" style="background:var(--color-primary); border:none; color:#000; font-size:0.65rem; font-weight:bold; padding:4px 8px; border-radius:4px; cursor:pointer;">+ Add Profile</button>
+                  <button id="mobile-zinghr-settings-btn" style="background:transparent; border:none; color:var(--color-text-primary); cursor:pointer; padding:4px; display:flex; align-items:center; justify-content:center;">
+                    <svg class="svg-icon" viewBox="0 0 24 24" style="width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                  </button>
+                </div>
+              </div>
+              
+              <div class="zinghr-screen" style="flex:1; padding: 12px; overflow-y: auto; background: var(--bg-body); display:flex; flex-direction:column; gap:10px;">
+                <!-- Main directory list -->
+                <div id="mobile-zinghr-main-sect" style="display:flex; flex-direction:column; gap:10px; height:100%;">
+                  <div style="background: var(--bg-card); border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 6px; font-size: 0.72rem; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: var(--color-text-muted);">ZingHR Company Roster:</span>
+                    <strong id="mobile-zinghr-count" style="color: var(--color-primary); font-size:0.85rem;">6 Employees</strong>
+                  </div>
+                  <div id="mobile-zinghr-list-container" style="display: flex; flex-direction: column; gap: 8px;">
+                    <!-- Loaded dynamically -->
+                  </div>
+                </div>
+
+                <!-- Dossier / Reports section -->
+                <div id="mobile-zinghr-dossier-sect" class="hidden" style="display:flex; flex-direction:column; gap:10px;">
+                  <button id="mobile-zinghr-dossier-back" style="display:flex; align-items:center; gap:4px; background:transparent; border:none; color:var(--color-primary); font-size:0.75rem; font-weight:bold; cursor:pointer; padding:0; margin-bottom:4px;">
+                    &larr; Back to Directory
+                  </button>
+                  <!-- Header details card -->
+                  <div style="display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.03); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <img id="mobile-dossier-avatar" src="" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--color-primary);">
+                    <div>
+                      <h4 id="mobile-dossier-name" style="margin: 0; font-size: 0.88rem; color: var(--color-text-primary);">Employee Name</h4>
+                      <p id="mobile-dossier-id" style="margin: 2px 0 0 0; font-size: 0.72rem; color: var(--color-primary); font-weight: bold;">ID: -</p>
+                    </div>
+                  </div>
+                  <!-- HR Fields Grid -->
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.7rem; color: #94a3b8; background: var(--bg-card); border:1px solid var(--border-color); padding:10px; border-radius:8px;">
+                    <div>
+                      <span style="display: block; font-size: 0.6rem; color: #64748b;">JOB ROLE</span>
+                      <strong id="mobile-dossier-role" style="color: var(--color-text-primary);">-</strong>
+                    </div>
+                    <div>
+                      <span style="display: block; font-size: 0.6rem; color: #64748b;">SHIFT</span>
+                      <strong id="mobile-dossier-shift" style="color: var(--color-text-primary);">-</strong>
+                    </div>
+                    <div style="grid-column: span 2;">
+                      <span style="display: block; font-size: 0.6rem; color: #64748b;">EMAIL</span>
+                      <strong id="mobile-dossier-email" style="color: var(--color-text-primary); word-break: break-all;">-</strong>
+                    </div>
+                    <div>
+                      <span style="display: block; font-size: 0.6rem; color: #64748b;">CONTACT</span>
+                      <strong id="mobile-dossier-phone" style="color: var(--color-text-primary);">-</strong>
+                    </div>
+                    <div>
+                      <span style="display: block; font-size: 0.6rem; color: #64748b;">GATE REGISTERED</span>
+                      <strong id="mobile-dossier-reg" style="color: var(--color-text-primary);">-</strong>
+                    </div>
+                  </div>
+                  <!-- Calendar Reports Grid -->
+                  <div style="background: var(--bg-card); border: 1px solid var(--border-color); padding: 10px; border-radius: 8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:6px;">
+                      <h4 id="mobile-dossier-cal-title" style="margin:0; font-size:0.75rem; color: var(--color-text-primary); font-weight:bold;">Attendance - July 2026</h4>
+                      <select id="mobile-dossier-month-select" style="background:transparent; border:1px solid var(--border-color); border-radius:4px; color:var(--color-primary); font-size:0.65rem; font-weight:bold; padding:2px 4px; outline:none; cursor:pointer;">
+                        <option value="2026-07" style="background:var(--bg-card); color:var(--color-text-primary);">July 2026</option>
+                        <option value="2026-08" style="background:var(--bg-card); color:var(--color-text-primary);">August 2026</option>
+                      </select>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.65rem; font-weight: bold; color: var(--color-primary); margin-bottom: 4px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:4px;">
+                      <div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div><div>S</div>
+                    </div>
+                    <div id="mobile-dossier-cal-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); grid-gap: 4px;">
+                      <!-- Populated dynamically -->
+                    </div>
+                    <div style="display: flex; gap: 8px; justify-content: center; font-size: 0.6rem; margin-top: 8px; color: #94a3b8;">
+                      <span style="display:flex; align-items:center; gap:2px;"><span style="width:6px; height:6px; background:#10b981; border-radius:50%;"></span> Present</span>
+                      <span style="display:flex; align-items:center; gap:2px;"><span style="width:6px; height:6px; background:rgba(255,255,255,0.05); border-radius:50%; border:1px solid rgba(255,255,255,0.1);"></span> Absent</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
 
           <!-- Bottom Navigation Bar inside mobile device UI -->
@@ -281,11 +417,15 @@
             </div>
             <div class="nav-item" id="nav-register-tab">
               <svg class="svg-icon sm" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2" fill="none"/><line x1="19" y1="8" x2="19" y2="14" stroke="currentColor" stroke-width="2"/><line x1="22" y1="11" x2="16" y2="11" stroke="currentColor" stroke-width="2"/></svg>
-              <span>Enroll Face</span>
+              <span>Register Face</span>
             </div>
             <div class="nav-item" id="nav-logs-tab">
               <svg class="svg-icon sm" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2" fill="none"/><line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2"/><line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2"/><polyline points="10 9 9 9 8 9" stroke="currentColor" stroke-width="2"/></svg>
               <span>Roster & Logs</span>
+            </div>
+            <div class="nav-item" id="nav-zinghr-tab">
+              <svg class="svg-icon sm" viewBox="0 0 24 24" style="fill:none; stroke:currentColor; stroke-width:2;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span>ZingHR</span>
             </div>
             <div class="nav-item" id="nav-logout-tab">
               <svg class="svg-icon sm" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="16 17 21 12 16 7" stroke="currentColor" stroke-width="2" fill="none"/><line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="2"/></svg>
@@ -293,26 +433,177 @@
             </div>
           </div>
 
+          <!-- NEW: CREATE ZING HR EMPLOYEE MODAL / DRAWER -->
+          <div class="settings-drawer hidden" id="app-create-zinghr-drawer" style="position: absolute; bottom: 0; left: 0; width: 100%; height: 90%; background: #0f172a; border-top: 2px solid var(--color-primary); border-radius: 16px 16px 0 0; z-index: 1800; padding: 18px; transition: transform 0.3s ease-in-out; box-sizing: border-box; color: #fff; overflow-y: auto;">
+            <div class="drawer-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:6px;">
+              <h3 style="margin:0; font-size:1.0rem; color:var(--color-primary);">Create Zing HR Profile</h3>
+              <button id="close-create-zinghr-btn" style="background:transparent; border:none; color:#fff; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            <div class="drawer-content" style="display: flex; flex-direction: column; gap: 10px;">
+              <div class="select-group">
+                <label for="new-emp-id" style="font-size:0.75rem; color:#94a3b8; display:block; margin-bottom:2px;">Employee ID</label>
+                <input type="text" id="new-emp-id" placeholder="E.g., EMP006" style="width:100%; box-sizing:border-box; padding:8px; background:#1e293b; border:1px solid #334155; border-radius:6px; color:#fff; font-size:0.85rem; text-transform: uppercase;">
+              </div>
+              <div class="select-group">
+                <label for="new-emp-name" style="font-size:0.75rem; color:#94a3b8; display:block; margin-bottom:2px;">Full Name</label>
+                <input type="text" id="new-emp-name" placeholder="E.g., John Doe" style="width:100%; box-sizing:border-box; padding:8px; background:#1e293b; border:1px solid #334155; border-radius:6px; color:#fff; font-size:0.85rem;">
+              </div>
+              <div class="select-group">
+                <label for="new-emp-role" style="font-size:0.75rem; color:#94a3b8; display:block; margin-bottom:2px;">Job Role / Designation</label>
+                <input type="text" id="new-emp-role" placeholder="E.g., Logistics Staff" style="width:100%; box-sizing:border-box; padding:8px; background:#1e293b; border:1px solid #334155; border-radius:6px; color:#fff; font-size:0.85rem;">
+              </div>
+              <div class="select-group">
+                <label for="new-emp-shift" style="font-size:0.75rem; color:#94a3b8; display:block; margin-bottom:2px;">Shift Assignment</label>
+                <select id="new-emp-shift" style="width:100%; box-sizing:border-box; padding:8px; background:#1e293b; border:1px solid #334155; border-radius:6px; color:#fff; font-size:0.85rem;">
+                  <option value="Morning Shift (A)">Morning Shift (A) [06:00 - 14:00]</option>
+                  <option value="General Shift (G)">General Shift (G) [09:00 - 17:00]</option>
+                  <option value="Evening Shift (B)">Evening Shift (B) [14:00 - 22:00]</option>
+                  <option value="Night Shift (C)">Night Shift (C) [22:00 - 06:00]</option>
+                </select>
+              </div>
+              <div class="select-group">
+                <label for="new-emp-address" style="font-size:0.75rem; color:#94a3b8; display:block; margin-bottom:2px;">Address / Plant Location</label>
+                <input type="text" id="new-emp-address" placeholder="E.g., Sector 4, Pune, MH" style="width:100%; box-sizing:border-box; padding:8px; background:#1e293b; border:1px solid #334155; border-radius:6px; color:#fff; font-size:0.85rem;">
+              </div>
+              <div class="select-group">
+                <label for="new-emp-contact" style="font-size:0.75rem; color:#94a3b8; display:block; margin-bottom:2px;">Contact Number</label>
+                <input type="text" id="new-emp-contact" placeholder="E.g., +91 99999 88888" style="width:100%; box-sizing:border-box; padding:8px; background:#1e293b; border:1px solid #334155; border-radius:6px; color:#fff; font-size:0.85rem;">
+              </div>
+              <button class="save-reg-btn" id="new-emp-save-btn" style="margin-top:8px; width:100%; font-weight:bold; background:var(--color-primary); color:#000; border:none; padding:10px; border-radius:6px; cursor:pointer;">Save to Zing HR Database</button>
+            </div>
+          </div>
+
+          <!-- NEW: EMPLOYEE PROFILE DETAILS & ADDITIONAL PHOTO DRAWER -->
+          <div class="settings-drawer hidden" id="app-employee-profile-drawer" style="position: absolute; bottom: 0; left: 0; width: 100%; height: 90%; background: #0f172a; border-top: 2px solid var(--color-primary); border-radius: 16px 16px 0 0; z-index: 1750; padding: 18px; transition: transform 0.3s ease-in-out; box-sizing: border-box; color: #fff; display: flex; flex-direction: column;">
+            <div class="drawer-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:6px;">
+              <h3 style="margin:0; font-size:1.0rem; color:var(--color-primary);">Biometric Profile</h3>
+              <button id="close-profile-drawer-btn" style="background:transparent; border:none; color:#fff; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            <div class="drawer-content" style="display: flex; flex-direction: column; gap: 12px; flex: 1; overflow-y: auto;">
+              <div style="display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                <img id="profile-drawer-avatar" src="" style="width: 46px; height: 46px; border-radius: 50%; object-fit: cover; border: 2px solid var(--color-primary);">
+                <div>
+                  <h4 id="profile-drawer-name" style="margin: 0; font-size: 0.95rem; color: #fff;">Employee Name</h4>
+                  <p id="profile-drawer-id" style="margin: 2px 0 0 0; font-size: 0.75rem; color: var(--color-primary); font-weight: bold;">ID: -</p>
+                </div>
+              </div>
+              
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.75rem; color: #94a3b8;">
+                <div>
+                  <span style="display: block; font-size: 0.65rem; color: #64748b;">JOB ROLE</span>
+                  <strong id="profile-drawer-role" style="color: #fff;">-</strong>
+                </div>
+                <div>
+                  <span style="display: block; font-size: 0.65rem; color: #64748b;">SHIFT</span>
+                  <strong id="profile-drawer-shift" style="color: #fff;">-</strong>
+                </div>
+              </div>
+              
+              <!-- Photograph update section -->
+              <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px; margin-top: 5px;">
+                <span style="font-size: 0.75rem; color: var(--color-primary); font-weight: bold; display: block; margin-bottom: 6px;">Facial Feature Update (Additional Photo)</span>
+                <p style="font-size: 0.65rem; color: #94a3b8; margin: 0 0 10px 0; line-height: 1.3;">
+                  If the employee's facial features have changed, capture an additional photo. It will be saved as a secondary biometric vector under their ZingHR ID.
+                </p>
+                
+                <div id="profile-drawer-photo-preview" style="width: 100%; height: 110px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px dashed rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 8px; position: relative;">
+                  <span id="profile-drawer-placeholder-text" style="font-size: 0.7rem; color: #64748b;">No new snap captured yet</span>
+                  <img id="profile-drawer-new-img" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                </div>
+                
+                <div style="display: flex; gap: 8px;">
+                  <button class="scan-btn" id="profile-drawer-capture-btn" style="flex: 1; padding: 8px; font-size: 0.75rem; background: transparent; border: 1px solid var(--color-primary); color: var(--color-primary);">
+                    📸 Snap Photo
+                  </button>
+                  <button class="save-reg-btn" id="profile-drawer-save-btn" disabled style="flex: 1; padding: 8px; font-size: 0.75rem; background: var(--color-primary); color: #000; border: none; font-weight: bold; cursor: not-allowed; opacity: 0.5;">
+                    Sync Photo to DB
+                  </button>
+                </div>
+                
+                <input type="file" id="profile-drawer-file-input" accept="image/*" capture="user" style="display: none;">
+              </div>
+            </div>
+          </div>
+
           <!-- SERVER SETTINGS MODAL / SLIDE-UP DRAWER -->
-          <div class="settings-drawer hidden" id="app-settings-drawer" style="position: absolute; bottom: 0; left: 0; width: 100%; background: #0f172a; border-top: 2px solid var(--color-primary); border-radius: 16px 16px 0 0; z-index: 2000; padding: 18px; transition: transform 0.3s ease-in-out; box-sizing: border-box; color: #fff;">
+          <div class="settings-drawer hidden" id="app-settings-drawer" style="position: absolute; bottom: 0; left: 0; width: 100%; height: 90%; background: #0f172a; border-top: 2px solid var(--color-primary); border-radius: 16px 16px 0 0; z-index: 2000; padding: 18px; transition: transform 0.3s ease-in-out; box-sizing: border-box; color: #fff;">
             <div class="drawer-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:6px;">
-              <h3 style="margin:0; font-size:1.1rem; color:var(--color-primary);">Connection Settings</h3>
+              <h3 style="margin:0; font-size:1.1rem; color:var(--color-primary);">Settings Console</h3>
               <button id="close-settings-btn" style="background:transparent; border:none; color:#fff; font-size:1.5rem; cursor:pointer;">&times;</button>
             </div>
-            <div class="drawer-content">
-              <div class="select-group" style="margin-bottom:12px;">
-                <label for="settings-ip-input" style="font-size:0.8rem; color:#94a3b8; display:block; margin-bottom:4px;">Backend Server Host IP</label>
-                <input type="text" id="settings-ip-input" placeholder="e.g. 192.168.1.8:3000" style="width:100%; box-sizing:border-box; padding:8px 10px; background:#1e293b; border:1px solid #334155; border-radius:6px; color:#fff; font-size:0.9rem;">
-                <small style="color:#64748b; font-size:0.65rem; margin-top:4px; display:block;">Enter your computer's local network IP address (run <code>ipconfig</code> in Command Prompt to find it).</small>
+            <div class="drawer-content" style="max-height: 380px; overflow-y: auto;">
+              <!-- Tab selector -->
+              <div style="display: flex; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 12px;">
+                <button id="settings-tab-network" style="flex:1; background:transparent; border:none; border-bottom:2px solid var(--color-primary); color:#fff; padding:6px; cursor:pointer; font-weight:bold; font-size:0.8rem;">Network</button>
+                <button id="settings-tab-zinghr" style="flex:1; background:transparent; border:none; border-bottom:2px solid transparent; color:#94a3b8; padding:6px; cursor:pointer; font-weight:bold; font-size:0.8rem;">ZingHR API</button>
               </div>
-              <button class="save-reg-btn" id="settings-save-btn" style="margin-top:12px; width:100%; font-weight:bold; background:var(--color-primary); color:#000; border:none; padding:10px; border-radius:6px; cursor:pointer;">Save & Apply Settings</button>
-              
-              <div class="connection-status-panel" style="margin-top:16px; padding:10px; border-radius:6px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05);">
-                <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:6px;">
-                  <span>Link Status:</span>
-                  <span id="settings-link-status" style="font-weight:bold; color:var(--color-warning);">TESTING...</span>
+
+              <!-- Section 1: Network Settings -->
+              <div id="settings-sect-network">
+                <div class="select-group" style="margin-bottom:12px;">
+                  <label for="settings-ip-input" style="font-size:0.8rem; color:#94a3b8; display:block; margin-bottom:4px;">Backend Server Host IP</label>
+                  <input type="text" id="settings-ip-input" placeholder="e.g. 192.168.1.8:3000" style="width:100%; box-sizing:border-box; padding:8px 10px; background:#1e293b; border:1px solid #334155; border-radius:6px; color:#fff; font-size:0.9rem;">
+                  <small style="color:#64748b; font-size:0.65rem; margin-top:4px; display:block;">Enter your computer's local network IP address (run <code>ipconfig</code> in Command Prompt to find it).</small>
                 </div>
-                <button class="scan-btn" id="settings-test-btn" style="padding:6px 12px; font-size:0.75rem; border:1px solid rgba(255,255,255,0.1); background:transparent; color:#fff; border-radius:4px; cursor:pointer; width:100%;">Test Ping Server</button>
+                
+                <div style="margin-top: 16px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px; margin-bottom: 12px;">
+                  <h4 style="margin: 0 0 10px 0; font-size: 0.8rem; color: var(--color-primary); text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Biometric Gate Policies</h4>
+                  
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <span style="font-size:0.75rem; color:#e2e8f0;">Continuous Queue Scanner</span>
+                    <label class="switch">
+                      <input type="checkbox" id="settings-continuous-scan">
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                  
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <span style="font-size:0.75rem; color:#e2e8f0;">Enforce Shift Roster Rule</span>
+                    <label class="switch">
+                      <input type="checkbox" id="settings-roster-rule">
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                </div>
+
+                <button class="save-reg-btn" id="settings-save-btn" style="width:100%; font-weight:bold; background:var(--color-primary); color:#000; border:none; padding:10px; border-radius:6px; cursor:pointer;">Save & Apply Settings</button>
+                
+                <div class="connection-status-panel" style="margin-top:16px; padding:10px; border-radius:6px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05);">
+                  <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:6px;">
+                    <span>Link Status:</span>
+                    <span id="settings-link-status" style="font-weight:bold; color:var(--color-warning);">TESTING...</span>
+                  </div>
+                  <button class="scan-btn" id="settings-test-btn" style="padding:6px 12px; font-size:0.75rem; border:1px solid rgba(255,255,255,0.1); background:transparent; color:#fff; border-radius:4px; cursor:pointer; width:100%;">Test Ping Server</button>
+                </div>
+              </div>
+
+              <!-- Section 2: ZingHR API settings -->
+              <div id="settings-sect-zinghr" class="hidden">
+                <div class="select-group" style="margin-bottom:8px;">
+                  <label for="settings-zing-endpoint" style="font-size:0.75rem; color:#94a3b8; display:block; margin-bottom:2px;">ZingHR Gateway API Endpoint</label>
+                  <input type="text" id="settings-zing-endpoint" value="https://api.zinghr.com/api/v1" style="width:100%; box-sizing:border-box; padding:6px 8px; background:#1e293b; border:1px solid #334155; border-radius:6px; color:#fff; font-size:0.85rem;">
+                </div>
+                <div class="select-group" style="margin-bottom:8px;">
+                  <label for="settings-zing-tenant" style="font-size:0.75rem; color:#94a3b8; display:block; margin-bottom:2px;">Company ID / Tenant</label>
+                  <input type="text" id="settings-zing-tenant" value="LYAMENTERPRISE" style="width:100%; box-sizing:border-box; padding:6px 8px; background:#1e293b; border:1px solid #334155; border-radius:6px; color:#fff; font-size:0.85rem;">
+                </div>
+                <div class="select-group" style="margin-bottom:8px;">
+                  <label for="settings-zing-clientid" style="font-size:0.75rem; color:#94a3b8; display:block; margin-bottom:2px;">Client ID</label>
+                  <input type="text" id="settings-zing-clientid" value="client_lyam_prod_8829" style="width:100%; box-sizing:border-box; padding:6px 8px; background:#1e293b; border:1px solid #334155; border-radius:6px; color:#fff; font-size:0.85rem;">
+                </div>
+                <div class="select-group" style="margin-bottom:8px;">
+                  <label for="settings-zing-clientsecret" style="font-size:0.75rem; color:#94a3b8; display:block; margin-bottom:2px;">Client Secret Key</label>
+                  <input type="password" id="settings-zing-clientsecret" value="password123" style="width:100%; box-sizing:border-box; padding:6px 8px; background:#1e293b; border:1px solid #334155; border-radius:6px; color:#fff; font-size:0.85rem;">
+                </div>
+                <button class="save-reg-btn" id="settings-zing-save-btn" style="margin-top:8px; width:100%; font-weight:bold; background:#10b981; color:#000; border:none; padding:8px; border-radius:6px; cursor:pointer;">Save API Credentials</button>
+                
+                <div class="connection-status-panel" style="margin-top:12px; padding:8px; border-radius:6px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05);">
+                  <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:6px;">
+                    <span>Sync Status:</span>
+                    <span id="settings-zing-status" style="font-weight:bold; color:#10b981;">CONNECTED (MOCK)</span>
+                  </div>
+                  <button class="scan-btn" id="settings-zing-test-btn" style="padding:6px; font-size:0.7rem; border:1px solid rgba(255,255,255,0.1); background:transparent; color:#fff; border-radius:4px; cursor:pointer; width:100%;">Test Real-time Handshake</button>
+                </div>
               </div>
             </div>
           </div>
@@ -416,86 +707,189 @@
       </article>
 
       <!-- Panel 2: Live ZyngHR Admin Console & DB View -->
-      <article class="admin-panel">
-        <div class="panel-header">
-          <h3>
-            <svg class="svg-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" stroke="currentColor" stroke-width="2" fill="none"/><rect x="14" y="3" width="7" height="5" stroke="currentColor" stroke-width="2" fill="none"/><rect x="14" y="12" width="7" height="9" stroke="currentColor" stroke-width="2" fill="none"/><rect x="3" y="16" width="7" height="5" stroke="currentColor" stroke-width="2" fill="none"/></svg>
-            ZyngHR Live Attendance Sync Database
-          </h3>
-          <div style="font-size: 0.75rem; color: var(--color-text-secondary);">
-            Sync Queue Status: <span id="queue-count-pill" style="font-family: var(--font-mono); color: var(--color-success); font-weight: bold;">0 Pending</span>
+      <article class="admin-panel" style="display: flex; flex-direction: column;">
+        <div class="panel-header" style="flex-direction: column; align-items: stretch; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+              <svg class="svg-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" stroke="currentColor" stroke-width="2" fill="none"/><rect x="14" y="3" width="7" height="5" stroke="currentColor" stroke-width="2" fill="none"/><rect x="14" y="12" width="7" height="9" stroke="currentColor" stroke-width="2" fill="none"/><rect x="3" y="16" width="7" height="5" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+              Zing HR Live Portal & Reports
+            </h3>
+            <div style="font-size: 0.75rem; color: var(--color-text-secondary);">
+              Sync Status: <span id="queue-count-pill" style="font-family: var(--font-mono); color: var(--color-success); font-weight: bold;">0 Pending</span>
+            </div>
           </div>
-        </div>
-
-        <!-- Dashboard Summary Indicators -->
-        <div class="stats-summary-row">
-          <div class="stat-box">
-            <div class="stat-label">Total Logs Today</div>
-            <div class="stat-value" id="stat-total-scans">0</div>
-          </div>
-          <div class="stat-box">
-            <div class="stat-label">Approved Scans</div>
-            <div class="stat-value green" id="stat-approved">0</div>
-          </div>
-          <div class="stat-box">
-            <div class="stat-label">Access Denied</div>
-            <div class="stat-value" id="stat-denied" style="color:var(--color-error)">0</div>
-          </div>
-          <div class="stat-box">
-            <div class="stat-label">Offline Queued</div>
-            <div class="stat-value amber" id="stat-offline">0</div>
-          </div>
-        </div>
-
-        <!-- Bulk Spreadsheet Importer Section -->
-        <div class="bulk-import-card" style="background: rgba(30, 41, 59, 0.2); border: 2px dashed var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 20px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: all 0.3s;">
-          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
-            <span style="font-size: 24px;">📊</span>
-            <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--color-primary); text-transform: uppercase; letter-spacing: 0.5px;">Bulk Employee Roster Database Import</h4>
-          </div>
-          <p style="color: var(--color-text-secondary); margin: 0 0 15px 0; font-size: 0.8rem; max-width: 650px; line-height: 1.4;">
-            Supervisors can upload an Excel CSV sheet or JSON roster document to automatically sync 100+ employees. Duplicate check will automatically skip already registered candidates.
-          </p>
-          <input type="file" id="bulk-roster-import" accept=".csv,.json" style="display: none;">
-          <button class="sim-trigger-btn" onclick="document.getElementById('bulk-roster-import').click()" style="background: var(--color-primary); color: #000; font-weight: 700; font-size: 0.85rem; padding: 10px 24px; border-radius: 8px; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); display: inline-block;">
-            Upload Roster Spreadsheet / CSV
-          </button>
-        </div>
-
-        <div class="db-dashboard-grid">
           
-          <!-- Registered Employee Roster -->
-          <div class="employee-db-list">
-            <h4 class="db-title-sm">Registered Biometrics</h4>
-            <div id="roster-list-container">
-              <!-- Rendered dynamically in app.js -->
+          <!-- Admin Tabs -->
+          <div class="admin-tabs" style="display: flex; gap: 4px; margin-top: 4px;">
+            <button id="admin-tab-live" class="admin-tab active" style="background: transparent; border: none; border-bottom: 2px solid var(--color-primary); color: #fff; padding: 6px 12px; cursor: pointer; font-weight: 700; font-size: 0.8rem; transition: all 0.2s;">
+              Live Roster & Logs
+            </button>
+            <button id="admin-tab-reports" class="admin-tab" style="background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--color-text-muted); padding: 6px 12px; cursor: pointer; font-weight: 700; font-size: 0.8rem; transition: all 0.2s;">
+              Zing HR Monthly Reports
+            </button>
+          </div>
+        </div>
+
+        <!-- VIEW 1: Live Logs View -->
+        <div id="admin-view-live" style="display: flex; flex-direction: column; flex: 1;">
+          <!-- Dashboard Summary Indicators -->
+          <div class="stats-summary-row" style="margin-top: 15px;">
+            <div class="stat-box">
+              <div class="stat-label">Total Logs Today</div>
+              <div class="stat-value" id="stat-total-scans">0</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Approved Scans</div>
+              <div class="stat-value green" id="stat-approved">0</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Access Denied</div>
+              <div class="stat-value" id="stat-denied" style="color:var(--color-error)">0</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Offline Queued</div>
+              <div class="stat-value amber" id="stat-offline">0</div>
             </div>
           </div>
 
-          <!-- Attendance table records -->
-          <div class="table-container">
-            <table class="records-table">
-              <thead>
-                <tr>
-                  <th>Employee</th>
-                  <th>Timestamp</th>
-                  <th>Client Location</th>
-                  <th>Geotag</th>
-                  <th>Verification</th>
-                  <th>ZyngHR Sync</th>
-                </tr>
-              </thead>
-              <tbody id="attendance-tbody">
-                <!-- Records populated dynamically -->
-                <tr id="empty-table-row">
-                  <td colspan="6" style="text-align: center; color: var(--color-text-muted); padding: 40px 0;">
-                    No attendance records captured for this session yet. Activate scan mode in the mobile emulator to check in candidates.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <!-- Bulk Spreadsheet Importer Section -->
+          <div class="bulk-import-card" style="background: rgba(30, 41, 59, 0.2); border: 2px dashed var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 20px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: all 0.3s; margin-top: 10px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+              <span style="font-size: 24px;">📊</span>
+              <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--color-primary); text-transform: uppercase; letter-spacing: 0.5px;">Bulk Employee Roster Database Import</h4>
+            </div>
+            <p style="color: var(--color-text-secondary); margin: 0 0 15px 0; font-size: 0.8rem; max-width: 650px; line-height: 1.4;">
+              Supervisors can upload an Excel CSV sheet or JSON roster document to automatically sync 100+ employees. Duplicate check will automatically skip already registered candidates.
+            </p>
+            <input type="file" id="bulk-roster-import" accept=".csv,.json" style="display: none;">
+            <button class="sim-trigger-btn" onclick="document.getElementById('bulk-roster-import').click()" style="background: var(--color-primary); color: #000; font-weight: 700; font-size: 0.85rem; padding: 10px 24px; border-radius: 8px; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); display: inline-block;">
+              Upload Roster Spreadsheet / CSV
+            </button>
           </div>
 
+          <div class="db-dashboard-grid">
+            
+            <!-- Registered Employee Roster & Plant Summary -->
+            <div class="employee-db-list" style="display: flex; flex-direction: column; gap: 20px;">
+              <div>
+                <h4 class="db-title-sm" style="margin-top: 0;">Registered Biometrics</h4>
+                <div id="roster-list-container">
+                  <!-- Rendered dynamically in app.js -->
+                </div>
+              </div>
+              
+              <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;">
+                <h4 class="db-title-sm" style="margin-top: 0; color: var(--color-primary);">Plant-wise Attendance Summary</h4>
+                <div id="plant-summary-container" style="display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto; padding-right: 4px;">
+                  <!-- Rendered dynamically in app.js -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Attendance table records -->
+            <div class="table-container">
+              <table class="records-table">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Timestamp</th>
+                    <th>Client Location</th>
+                    <th>Geotag & Region</th>
+                    <th>Verification</th>
+                    <th>ZyngHR Sync</th>
+                  </tr>
+                </thead>
+                <tbody id="attendance-tbody">
+                  <!-- Records populated dynamically -->
+                  <tr id="empty-table-row">
+                    <td colspan="6" style="text-align: center; color: var(--color-text-muted); padding: 40px 0;">
+                      No attendance records captured for this session yet. Activate scan mode in the mobile emulator to check in candidates.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- VIEW 2: Zing HR Monthly Reports View (Hidden initially) -->
+        <div id="admin-view-reports" class="hidden" style="display: flex; flex-direction: column; flex: 1; margin-top: 15px;">
+          <!-- Report Header -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; background: #ffffff; padding: 12px 18px; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);">
+            <div>
+              <h4 style="margin: 0; font-size: 0.95rem; color: #0f172a; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 6px #10b981;"></span>
+                Zing HR Monthly Attendance Portal
+              </h4>
+              <p style="margin: 3px 0 0 0; font-size: 0.72rem; color: #64748b; font-weight: 500;">Corporate attendance reporting and validation console</p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <label for="report-month-select" style="font-size: 0.75rem; color: #334155; font-weight: 600;">Month:</label>
+              <select id="report-month-select" style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; color: #0284c7; padding: 5px 12px; font-size: 0.75rem; font-weight: 700; outline: none; cursor: pointer;">
+                <option value="2026-07">July 2026</option>
+                <option value="2026-08">August 2026</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="db-dashboard-grid" style="display: grid; grid-template-columns: 1.2fr 1.1fr; gap: 16px;">
+            <!-- Left side: Employee Roster summary list -->
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; height: 360px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);">
+              <h4 class="db-title-sm" style="margin-top: 0; margin-bottom: 12px; color: #0f172a; font-weight: 800; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                <span>Zing HR Employees</span>
+                <span style="font-size: 0.7rem; color: #0284c7; font-weight: 600;">Select to view details</span>
+              </h4>
+              <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;" id="report-employee-list">
+                <!-- Loaded dynamically -->
+              </div>
+            </div>
+
+            <!-- Right side: Monthly Calendar visualizer -->
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; height: 360px; display: flex; flex-direction: column; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);" id="report-calendar-card">
+              <div id="report-calendar-placeholder" style="margin: auto; text-align: center; color: #64748b; display: flex; flex-direction: column; align-items: center; gap: 12px;">
+                <div style="width: 54px; height: 54px; border-radius: 50%; background: #e0f2fe; border: 1px solid #bae6fd; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; color: #0284c7;">📅</div>
+                <p style="font-size: 0.78rem; max-width: 240px; line-height: 1.5; margin: 0; color: #475569; font-weight: 500;">Select an employee from the list to view their detailed monthly check-in calendar grid.</p>
+              </div>
+              <div id="report-calendar-content" class="hidden" style="height: 100%; display: flex; flex-direction: column;">
+                <!-- Dark Blue Accent Banner for Selected Employee Header -->
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px; background: linear-gradient(135deg, #1e293b, #0f172a); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.2); box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);">
+                  <img id="cal-emp-avatar" src="" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid #10b981; background: #0f172a; box-shadow: 0 0 8px rgba(16, 185, 129, 0.35);">
+                  <div>
+                    <h4 id="cal-emp-name" style="margin: 0; color: #ffffff; font-size: 0.92rem; font-weight: 800; letter-spacing: 0.2px;">Priyanka M</h4>
+                    <p id="cal-emp-meta" style="margin: 3px 0 0 0; font-size: 0.74rem; color: #38bdf8; font-weight: 700;">EMP001 | 22 Days Attended</p>
+                  </div>
+                </div>
+                <!-- Employee Profile Info Grid -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 6px; font-size: 0.68rem; color: #334155; box-shadow: inset 0 1px 3px rgba(0,0,0,0.02);">
+                  <div><strong style="color: #64748b;">Role:</strong> <span id="cal-emp-role" style="font-weight: 700; color: #0f172a;">Contract Staff</span></div>
+                  <div><strong style="color: #64748b;">Shift:</strong> <span id="cal-emp-shift" style="font-weight: 700; color: #0f172a;">Morning Shift (A)</span></div>
+                  <div><strong style="color: #64748b;">Email:</strong> <span id="cal-emp-email" style="font-weight: 700; color: #0f172a;">priyanka.m@layam.com</span></div>
+                  <div><strong style="color: #64748b;">Contact:</strong> <span id="cal-emp-phone" style="font-weight: 700; color: #0f172a;">+91 98765 43210</span></div>
+                </div>
+                <!-- Calendar grid mapping -->
+                <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                  <div style="display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.72rem; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px; padding: 5px 0; background: #f1f5f9; border-radius: 6px; border: 1px solid #cbd5e1;">
+                    <div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div><div>S</div>
+                  </div>
+                  <div id="cal-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); grid-gap: 6px; flex: 1; align-content: start;">
+                    <!-- Calendar days loaded dynamically -->
+                  </div>
+                  <!-- Calendar Legend -->
+                  <div style="display: flex; justify-content: center; gap: 16px; margin-top: 8px; font-size: 0.72rem; border-top: 1px solid #e2e8f0; padding-top: 8px; background: #f8fafc; border-radius: 6px; border: 1px solid #f1f5f9;">
+                    <div style="display: flex; align-items: center; gap: 6px; color: #0f172a; font-weight: 700;">
+                      <span style="width: 10px; height: 10px; border-radius: 3px; background: #10b981; border: 1px solid #059669; box-shadow: 0 0 4px rgba(16, 185, 129, 0.4);"></span>
+                      Present
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px; color: #64748b; font-weight: 600;">
+                      <span style="width: 10px; height: 10px; border-radius: 3px; background: #f8fafc; border: 1px solid #cbd5e1;"></span>
+                      Absent / Off
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </article>
 

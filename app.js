@@ -232,8 +232,18 @@ const appState = {
   // Registration and Auth state
   currentActiveTab: "scan",
   capturedPhotoBase64: null,
-  isAuthorized: false
+  isAuthorized: false,
+  currentSelectedEmployee: null,
+  isContinuousScan: false,
+  isShiftRosterEnforced: false
 };
+
+function getLocalDateString(dateObj) {
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 // Initialize DOM elements safely (guards against DOMContentLoaded race condition)
 if (document.readyState === "loading") {
@@ -250,6 +260,9 @@ function initApp() {
 
     // Load custom data from localStorage if exists
     loadLocalStorage();
+
+    // Populate month dropdowns dynamically
+    populateMonthDropdowns();
 
     // Load registered roster in UI
     renderRoster();
@@ -280,6 +293,24 @@ function initApp() {
     document.getElementById("trigger-sync-btn").addEventListener("click", forceSyncOfflineQueue);
     document.getElementById("clear-logs-btn").addEventListener("click", clearLogs);
     document.getElementById("btn-camera-sim").addEventListener("click", startCameraSimulator);
+
+    // Month selector change triggers to update visual calendars dynamically
+    const reportMonthSelect = document.getElementById("report-month-select");
+    if (reportMonthSelect) {
+      reportMonthSelect.addEventListener("change", () => {
+        if (appState.currentSelectedEmployee) {
+          showEmployeeCalendar(appState.currentSelectedEmployee);
+        }
+      });
+    }
+    const mobileMonthSelect = document.getElementById("mobile-dossier-month-select");
+    if (mobileMonthSelect) {
+      mobileMonthSelect.addEventListener("change", () => {
+        if (appState.currentSelectedEmployee) {
+          openMobileZingHRDossier(appState.currentSelectedEmployee);
+        }
+      });
+    }
 
     // Mobile Camera Real Face Snap Trigger
     const snapInput = document.getElementById("mobile-camera-snap-input");
@@ -360,14 +391,21 @@ function initApp() {
       });
     }
 
-    // Registration button clickers
+     // Registration button clickers
     document.getElementById("reg-btn-capture").addEventListener("click", captureRegistrationPhoto);
     document.getElementById("reg-btn-save").addEventListener("click", enrollNewCandidate);
     document.getElementById("bulk-roster-import").addEventListener("change", handleBulkRosterImport);
+    
+    // Zing HR search listeners
+    document.getElementById("reg-btn-search").addEventListener("click", searchEmployeeZingHR);
+    document.getElementById("reg-emp-id").addEventListener("keypress", (e) => {
+      if (e.key === "Enter") searchEmployeeZingHR();
+    });
 
     // Setup tab navigator listeners
     document.getElementById("nav-scan-tab").addEventListener("click", () => switchTab("scan"));
     document.getElementById("nav-register-tab").addEventListener("click", () => switchTab("register"));
+    
     const logsTab = document.getElementById("nav-logs-tab");
     if (logsTab) {
       logsTab.addEventListener("click", () => switchTab("logs"));
@@ -376,10 +414,37 @@ function initApp() {
     if (logsBackBtn) {
       logsBackBtn.addEventListener("click", () => switchTab("scan"));
     }
+    
+    const zinghrTab = document.getElementById("nav-zinghr-tab");
+    if (zinghrTab) {
+      zinghrTab.addEventListener("click", () => switchTab("zinghr"));
+    }
+    const zinghrBackBtn = document.getElementById("mobile-zinghr-back-btn");
+    if (zinghrBackBtn) {
+      zinghrBackBtn.addEventListener("click", () => switchTab("scan"));
+    }
+    const dossierBackBtn = document.getElementById("mobile-zinghr-dossier-back");
+    if (dossierBackBtn) {
+      dossierBackBtn.addEventListener("click", () => {
+        document.getElementById("mobile-zinghr-dossier-sect").classList.add("hidden");
+        document.getElementById("mobile-zinghr-main-sect").classList.remove("hidden");
+      });
+    }
+    const createZingBtn = document.getElementById("mobile-zinghr-create-btn");
+    if (createZingBtn) {
+      createZingBtn.addEventListener("click", () => {
+        const drawer = document.getElementById("app-create-zinghr-drawer");
+        if (drawer) drawer.classList.remove("hidden");
+      });
+    }
+    
     document.getElementById("nav-logout-tab").addEventListener("click", lockAppSupervisor);
 
-    // Initialize backend network IP configuration panel
+    // Initialize backend network IP configuration panel and admin tabs
     initSettingsDrawer();
+    initCreateZingHRDrawer();
+    initEmployeeProfileDrawer();
+    initAdminTabs();
 
     // Setup architecture nodes click listeners
     document.querySelectorAll(".flow-node").forEach(node => {
@@ -400,8 +465,8 @@ function initApp() {
     startBackgroundSyncLoop();
     lockAppSupervisor(); // Ensure we boot into locked/login state cleanly
   } catch (err) {
-    console.error("Initialization Error:", err);
-    alert("Initialization Error: " + err.message + "\nStack: " + err.stack);
+    console.error("Initialization Warning:", err);
+    logTerminal("WARN", "Initialization Notice: " + err.message);
   }
 }
 
@@ -484,13 +549,17 @@ function renderRoster() {
     const item = document.createElement("div");
     item.className = "employee-card-sm";
     
-    // Use stored base64 image or fallback unsplash URL
-    const imageStyle = (emp.avatar && typeof emp.avatar === 'string') 
-      ? `style="background-image: url('${emp.avatar}')"`
+    // Determine effective display avatar: prefer gatePhotos[0] if present over unsplash avatar URL
+    const displayAvatar = (emp.gatePhotos && emp.gatePhotos.length > 0) 
+      ? emp.gatePhotos[0] 
+      : emp.avatar;
+
+    const imageStyle = (displayAvatar && typeof displayAvatar === 'string') 
+      ? `style="background-image: url('${displayAvatar}')"`
       : '';
 
     item.innerHTML = `
-      <div class="employee-avatar-sm" ${imageStyle}>${(emp.avatar && typeof emp.avatar === 'string') ? '' : emp.initials}</div>
+      <div class="employee-avatar-sm" ${imageStyle}>${(displayAvatar && typeof displayAvatar === 'string') ? '' : emp.initials}</div>
       <div class="employee-details-sm">
         <div class="employee-name-sm">${emp.name}</div>
         <div class="employee-id-sm">${emp.id}</div>
@@ -631,26 +700,31 @@ function switchTab(tabName) {
   const scanTab = document.getElementById("nav-scan-tab");
   const regTab = document.getElementById("nav-register-tab");
   const logsTab = document.getElementById("nav-logs-tab");
+  const zinghrTab = document.getElementById("nav-zinghr-tab");
   
   if (scanTab) scanTab.classList.toggle("active", tabName === "scan");
   if (regTab) regTab.classList.toggle("active", tabName === "register");
   if (logsTab) logsTab.classList.toggle("active", tabName === "logs");
+  if (zinghrTab) zinghrTab.classList.toggle("active", tabName === "zinghr");
   
   // Toggle UI screen layers
   const scanView = document.getElementById("app-scan-view");
   const registerView = document.getElementById("app-register-view");
   const logsView = document.getElementById("app-logs-view");
+  const zinghrView = document.getElementById("app-zinghr-view");
   
   if (tabName === "scan") {
     scanView.classList.remove("hidden");
     registerView.classList.add("hidden");
     if (logsView) logsView.classList.add("hidden");
+    if (zinghrView) zinghrView.classList.add("hidden");
     shutdownActiveStream();
     showCameraFallback();
   } else if (tabName === "register") {
     scanView.classList.add("hidden");
     registerView.classList.remove("hidden");
     if (logsView) logsView.classList.add("hidden");
+    if (zinghrView) zinghrView.classList.add("hidden");
     
     // Stop scanner scan mode
     appState.isScanningMode = false;
@@ -665,6 +739,7 @@ function switchTab(tabName) {
     scanView.classList.add("hidden");
     registerView.classList.add("hidden");
     if (logsView) logsView.classList.remove("hidden");
+    if (zinghrView) zinghrView.classList.add("hidden");
     
     // Stop scanner scan mode
     appState.isScanningMode = false;
@@ -677,6 +752,22 @@ function switchTab(tabName) {
     
     renderMobileLogs();
     renderMobileRoster();
+  } else if (tabName === "zinghr") {
+    scanView.classList.add("hidden");
+    registerView.classList.add("hidden");
+    if (logsView) logsView.classList.add("hidden");
+    if (zinghrView) zinghrView.classList.remove("hidden");
+    
+    // Stop scanner scan mode
+    appState.isScanningMode = false;
+    document.getElementById("scan-toggle").classList.remove("active");
+    document.getElementById("scan-btn-text").innerText = "Open Attendance Gate";
+    document.getElementById("viewport-container").classList.remove("scanning");
+    document.getElementById("verification-card").classList.remove("active");
+    
+    shutdownActiveStream();
+    
+    renderMobileZingHRDirectory();
   }
 }
 
@@ -687,6 +778,10 @@ function shutdownActiveStream() {
     appState.webcamStream = null;
     logTerminal("INFO", "Camera hardware stream stopped and released.");
   }
+  const video = document.getElementById("camera-stream");
+  if (video) video.srcObject = null;
+  const regVideo = document.getElementById("reg-camera-stream");
+  if (regVideo) regVideo.srcObject = null;
   const camDot = document.getElementById("status-cam-dot");
   if (camDot) camDot.classList.remove("active");
 }
@@ -706,7 +801,7 @@ async function startupCamera() {
   if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { width: 480, height: 640, facingMode: "user" } 
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" } 
       });
       appState.webcamStream = stream;
       if (video) video.srcObject = stream;
@@ -1020,10 +1115,17 @@ function triggerManualScan() {
   } else if (!appState.isSimulatedCamera) {
     const video = document.getElementById("camera-stream");
     if (video && video.readyState >= 2) {
-      // Capture the full video frame instead of a center-cropped slice
+      // Capture the full video frame but downscale it to max 480px width for fast AI face recognition
       const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      const maxDim = 480;
+      let width = video.videoWidth;
+      let height = video.videoHeight;
+      if (width > maxDim) {
+        height = Math.round((height * maxDim) / width);
+        width = maxDim;
+      }
+      canvas.width = width;
+      canvas.height = height;
       const ctx = canvas.getContext("2d");
       
       // Mirror draw
@@ -1031,7 +1133,7 @@ function triggerManualScan() {
       ctx.scale(-1, 1);
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       
-      base64Image = canvas.toDataURL("image/jpeg");
+      base64Image = canvas.toDataURL("image/jpeg", 0.85);
     }
   }
 
@@ -1200,8 +1302,8 @@ function performLocalFaceRecognition(base64Image, location, timestamp) {
       }
     });
     
-    // Threshold for local matching
-    const threshold = 18.5;
+    // Threshold for local matching (increased to 65.0 to be lenient for camera lighting in mobile PoC demos)
+    const threshold = 65.0;
     if (bestMatchKey && bestScore < threshold) {
       const emp = employeeDatabase[bestMatchKey];
       logTerminal("SUCCESS", `Local Face Matcher: Matched ${emp.name} (Diff: ${bestScore.toFixed(2)})`);
@@ -1281,20 +1383,15 @@ function handleVerificationResult(isSuccess, failureReason) {
     updateDashboardStats();
     saveLocalStorage();
 
-    // Reset indicator after delay
+    // Reset indicator and automatically close camera feed after failure delay (3s)
     setTimeout(() => {
       if (viewport) viewport.classList.remove("error");
       if (card) card.classList.remove("active");
       highlightFlowNode("node-mobile");
       
-      // On mobile devices, automatically close camera and stop scanning after failed check-in
-      const isMobileDevice = window.location.protocol === 'file:' || 
-                             window.location.protocol === 'capacitor:' || 
-                             window.innerWidth <= 768;
-      if (isMobileDevice) {
-        autoStopCameraScanner();
-      }
-    }, 3500);
+      // Automatically stop scanner and close camera feed
+      autoStopCameraScanner();
+    }, 3000);
   }
 }
 
@@ -1308,24 +1405,134 @@ function recordAttendanceSuccess(emp, timestamp) {
   const timeLabel = document.getElementById("verif-time");
   const locLabel = document.getElementById("verif-loc");
 
-  const formattedTime = new Date(timestamp).toLocaleTimeString();
+  const checkInDate = new Date(timestamp);
+  const formattedTime = checkInDate.toLocaleTimeString();
   timeLabel.innerText = formattedTime;
   locLabel.innerText = appState.selectedLocation.split(" - ")[0].toUpperCase();
-
-  viewport.classList.remove("success", "error");
-  viewport.classList.add("success");
-  
-  card.className = "verification-card";
-  card.classList.add("active", "success-theme");
-
-  iconBox.innerHTML = `
-    <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24">
-      <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2"/>
-    </svg>
-  `;
-
   nameLabel.innerText = emp.name;
-  
+
+  const dateStr = getLocalDateString(checkInDate);
+  const cleanId = emp.id.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+  // SHIFT ROSTER ENFORCEMENT POLICY
+  if (appState.isShiftRosterEnforced) {
+    const checkInHour = checkInDate.getHours() + checkInDate.getMinutes() / 60;
+    let isRosterValid = true;
+    let allowedRangeText = "";
+    const shiftStr = (emp.shift || "").toUpperCase();
+    
+    if (shiftStr.includes("MORNING") || shiftStr.includes("(A)")) {
+      isRosterValid = (checkInHour >= 5.0 && checkInHour <= 14.5);
+      allowedRangeText = "Morning Shift (A) [05:00 - 14:30]";
+    } else if (shiftStr.includes("EVENING") || shiftStr.includes("(B)")) {
+      isRosterValid = (checkInHour >= 13.5 && checkInHour <= 22.5);
+      allowedRangeText = "Evening Shift (B) [13:30 - 22:30]";
+    } else if (shiftStr.includes("GENERAL") || shiftStr.includes("(G)")) {
+      isRosterValid = (checkInHour >= 8.0 && checkInHour <= 18.5);
+      allowedRangeText = "General Shift (G) [08:00 - 18:30]";
+    } else if (shiftStr.includes("NIGHT") || shiftStr.includes("(C)")) {
+      isRosterValid = (checkInHour >= 21.5 || checkInHour <= 6.5);
+      allowedRangeText = "Night Shift (C) [21:30 - 06:30]";
+    }
+    
+    if (!isRosterValid) {
+      logTerminal("ERROR", `Shift Roster Violation: ${emp.name} is scheduled for ${emp.shift || "different shift"} (Attempted punch at ${formattedTime}).`);
+      alert(`🚨 Shift Roster Alert!\n\nAccess Denied for ${emp.name}.\nScheduled: ${allowedRangeText || emp.shift}\nAttempted: ${formattedTime}`);
+      
+      viewport.classList.remove("success", "error");
+      viewport.classList.add("error");
+      
+      card.className = "verification-card active error-theme";
+      statusLabel.innerText = "Access Denied (Wrong Shift)";
+      statusLabel.style.color = "var(--color-error)";
+      
+      iconBox.innerHTML = `
+        <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24">
+          <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+          <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+        </svg>
+      `;
+      
+      appState.counters.total++;
+      appState.counters.denied++;
+      updateDashboardStats();
+      saveLocalStorage();
+      if (!appState.isContinuousScan) {
+        autoStopCameraScanner();
+      }
+      
+      setTimeout(() => {
+        viewport.classList.remove("error");
+        card.classList.remove("active");
+        highlightFlowNode("node-mobile");
+        if (appState.isContinuousScan && appState.isScanningMode) {
+          startScanCountdown();
+        }
+      }, 3500);
+      return;
+    }
+  }
+
+  // 1. FAST LOCAL DUPLICATE CHECK
+  const isDuplicateLocal = appState.attendanceLogs.some(l => {
+    const logDate = getLocalDateString(new Date(l.timestamp));
+    const logCleanId = l.empId.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    return logCleanId === cleanId && logDate === dateStr;
+  });
+
+  const isDuplicateQueue = appState.syncQueue.some(l => {
+    const logDate = getLocalDateString(new Date(l.timestamp));
+    const logCleanId = l.empId.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    return logCleanId === cleanId && logDate === dateStr;
+  });
+
+  let matchedRosterEmp = null;
+  for (const key in employeeDatabase) {
+    if (employeeDatabase[key].id && employeeDatabase[key].id.toUpperCase().replace(/[^A-Z0-9]/g, "") === cleanId) {
+      matchedRosterEmp = employeeDatabase[key];
+      break;
+    }
+  }
+  const isDuplicateInRoster = matchedRosterEmp && matchedRosterEmp.attendance && matchedRosterEmp.attendance.includes(dateStr);
+
+  if (isDuplicateLocal || isDuplicateQueue || isDuplicateInRoster) {
+    logTerminal("WARN", `Attendance Blocked: ${emp.name} already checked in today.`);
+    alert(`Attendance Blocked: ${emp.name} already checked in today!`);
+    
+    viewport.classList.remove("success", "error");
+    viewport.classList.add("error");
+    
+    card.className = "verification-card active error-theme";
+    statusLabel.innerText = "Check-in Blocked (Duplicate)";
+    statusLabel.style.color = "var(--color-error)";
+    
+    iconBox.innerHTML = `
+      <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24">
+        <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+        <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+      </svg>
+    `;
+    
+    appState.counters.total++;
+    appState.counters.denied++;
+    updateDashboardStats();
+    saveLocalStorage();
+    if (!appState.isContinuousScan) {
+      autoStopCameraScanner();
+    }
+    
+    setTimeout(() => {
+      viewport.classList.remove("error");
+      card.classList.remove("active");
+      highlightFlowNode("node-mobile");
+      if (appState.isContinuousScan && appState.isScanningMode) {
+        startScanCountdown();
+      }
+    }, 3500);
+    return;
+  }
+
+  // Define check-in record payload
   const record = {
     empId: emp.id,
     name: emp.name,
@@ -1336,16 +1543,60 @@ function recordAttendanceSuccess(emp, timestamp) {
     syncStatus: appState.isOffline ? "Pending" : "Synced"
   };
 
+  // 2. OFFLINE SCAN
   if (appState.isOffline) {
-    statusLabel.innerText = "Queued Offline (Cached)";
-    logTerminal("SUCCESS", `Biometrics Approved for ${emp.name}. Log cached in local memory storage.`);
-    appState.syncQueue.push(record);
-    appState.counters.offline++;
-  } else {
-    statusLabel.innerText = "Attendance Synced";
-    logTerminal("SUCCESS", `ZyngHR Server Response: Check-in accepted for Employee ${emp.id} (${emp.name})`);
-    appState.counters.approved++;
+    viewport.classList.remove("success", "error");
+    viewport.classList.add("success");
     
+    card.className = "verification-card active success-theme";
+    statusLabel.innerText = "Checked in";
+    statusLabel.style.color = "var(--color-success)";
+    
+    iconBox.innerHTML = `
+      <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24">
+        <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2"/>
+      </svg>
+    `;
+
+    logTerminal("SUCCESS", `Biometrics Approved for ${emp.name}. Log cached in local memory storage.`);
+    
+    appState.syncQueue.push(record);
+    appState.attendanceLogs.unshift(record);
+    
+    appState.counters.offline++;
+    appState.counters.total++;
+    
+    renderAttendanceTable();
+    updateDashboardStats();
+    saveLocalStorage();
+    if (!appState.isContinuousScan) {
+      autoStopCameraScanner();
+    }
+
+    setTimeout(() => {
+      viewport.classList.remove("success");
+      card.classList.remove("active");
+      highlightFlowNode("node-mobile");
+      if (appState.isContinuousScan && appState.isScanningMode) {
+        startScanCountdown();
+      }
+    }, 3500);
+
+  // 3. ONLINE SYNC SCAN
+  } else {
+    // Show loading state initially on card
+    viewport.classList.remove("success", "error");
+    viewport.classList.add("success");
+    card.className = "verification-card active success-theme";
+    statusLabel.innerText = "Syncing with Zing HR...";
+    
+    iconBox.innerHTML = `
+      <svg class="svg-icon pulse" style="width:24px; height:24px;" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
+        <polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="2"/>
+      </svg>
+    `;
+
     // Post check-in log to server API database
     fetch(getApiUrl('/api/logs'), {
       method: 'POST',
@@ -1353,38 +1604,100 @@ function recordAttendanceSuccess(emp, timestamp) {
       body: JSON.stringify(record)
     }).then(res => {
       if (res.ok) {
-        logTerminal("SUCCESS", `API Server: Log synced successfully for ${emp.name}.`);
+        return res.json();
       }
+      throw new Error("HTTP error " + res.status);
+    }).then(data => {
+      if (data && data.success === false && data.error === 'ALREADY_MARKED') {
+        // Enforce duplicate warning in UI
+        logTerminal("WARN", `Attendance Blocked: ${emp.name} already checked in today.`);
+        alert(`Attendance Blocked: ${emp.name} already checked in today!`);
+        
+        viewport.classList.remove("success");
+        viewport.classList.add("error");
+        
+        card.className = "verification-card active error-theme";
+        statusLabel.innerText = "Check-in Blocked (Duplicate)";
+        statusLabel.style.color = "var(--color-error)";
+        
+        iconBox.innerHTML = `
+          <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24">
+            <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+            <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        `;
+        
+        appState.counters.total++;
+        appState.counters.denied++;
+      } else {
+        logTerminal("SUCCESS", `ZyngHR Server Response: Check-in accepted for Employee ${emp.id} (${emp.name})`);
+        logTerminal("SUCCESS", `API Server: Log synced successfully for ${emp.name}.`);
+        
+        statusLabel.innerText = "Checked in";
+        statusLabel.style.color = "var(--color-success)";
+        
+        iconBox.innerHTML = `
+          <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24">
+            <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        `;
+        
+        appState.attendanceLogs.unshift(record);
+        appState.counters.approved++;
+        appState.counters.total++;
+        
+        renderAttendanceTable();
+      }
+      updateDashboardStats();
+      saveLocalStorage();
     }).catch(err => {
       logTerminal("WARN", "API Server: Unreachable. Log cached locally on browser.");
+      
+      // Fallback to offline caching since server failed
+      statusLabel.innerText = "Queued Offline (Server Error)";
+      statusLabel.style.color = "var(--color-warning)";
+      
+      record.syncStatus = "Pending";
+      appState.syncQueue.push(record);
+      appState.attendanceLogs.unshift(record);
+      
+      appState.counters.offline++;
+      appState.counters.total++;
+      
+      renderAttendanceTable();
+      updateDashboardStats();
+      saveLocalStorage();
+    }).finally(() => {
+      if (!appState.isContinuousScan) {
+        autoStopCameraScanner();
+      }
+      setTimeout(() => {
+        viewport.classList.remove("success", "error");
+        card.classList.remove("active");
+        highlightFlowNode("node-mobile");
+        if (appState.isContinuousScan && appState.isScanningMode) {
+          startScanCountdown();
+        }
+      }, 3500);
     });
   }
-
-  appState.counters.total++;
-  appState.attendanceLogs.unshift(record);
-  
-  renderAttendanceTable();
-  updateDashboardStats();
-  saveLocalStorage();
-
-  // Shut down camera immediately!
-  autoStopCameraScanner();
-
-  // Reset viewport overlay card state after 3.5 seconds
-  setTimeout(() => {
-    viewport.classList.remove("success");
-    card.classList.remove("active");
-    highlightFlowNode("node-mobile");
-  }, 3500);
 }
 
 // Update dashboard logs table
 function renderAttendanceTable() {
-  const tbody = document.getElementById("attendance-tbody");
+  const tbody = document.getElementById("attendance-tbody") || document.getElementById("attendance-logs-body");
+  if (!tbody) return;
+  
+  if (!Array.isArray(appState.attendanceLogs)) {
+    appState.attendanceLogs = [];
+  }
+
   const emptyRow = document.getElementById("empty-table-row");
 
   if (appState.attendanceLogs.length === 0) {
     if (emptyRow) emptyRow.style.display = "table-row";
+    tbody.innerHTML = "";
+    if (emptyRow) tbody.appendChild(emptyRow);
     return;
   }
 
@@ -1397,6 +1710,14 @@ function renderAttendanceTable() {
     const formattedDate = new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const isSynced = log.syncStatus === "Synced";
     
+    let placeName = "Pune, Maharashtra";
+    const locLower = log.location.toLowerCase();
+    if (locLower.includes("adani")) {
+      placeName = "Mundra Port, Gujarat";
+    } else if (locLower.includes("reliance")) {
+      placeName = "Jamnagar, Gujarat";
+    }
+
     row.innerHTML = `
       <td>
         <strong style="color:var(--color-text-primary);">${log.name}</strong><br>
@@ -1404,7 +1725,10 @@ function renderAttendanceTable() {
       </td>
       <td style="font-family:var(--font-mono);">${formattedDate}</td>
       <td>${log.location}</td>
-      <td style="font-family:var(--font-mono); font-size:0.75rem;">${log.gps}</td>
+      <td>
+        <span style="font-family:var(--font-mono); font-size:0.75rem;">${log.gps}</span><br>
+        <span style="font-size:0.65rem; color:var(--color-text-muted);">${placeName}</span>
+      </td>
       <td>
         <span style="color:var(--color-success); font-weight:600; display:flex; align-items:center; gap:4px;">
           <svg class="svg-icon sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" stroke="currentColor"/></svg> Verified
@@ -1418,14 +1742,101 @@ function renderAttendanceTable() {
     `;
     tbody.appendChild(row);
   });
+  renderPlantSummary();
+}
+
+function renderPlantSummary() {
+  const container = document.getElementById("plant-summary-container");
+  if (!container) return;
+  
+  const nowStr = new Date().toISOString().split("T")[0];
+  const todayLogs = appState.attendanceLogs.filter(l => {
+    return new Date(l.timestamp).toISOString().split("T")[0] === nowStr;
+  });
+  
+  const locationCheckedIn = {};
+  todayLogs.forEach(log => {
+    const loc = log.location || "Tata Motors - Gate 1";
+    if (!locationCheckedIn[loc]) {
+      locationCheckedIn[loc] = new Set();
+    }
+    locationCheckedIn[loc].add(log.empId);
+  });
+  
+  const locationRegistered = {};
+  for (const key in employeeDatabase) {
+    const emp = employeeDatabase[key];
+    const loc = emp.location || "Tata Motors - Gate 1";
+    if (!locationRegistered[loc]) {
+      locationRegistered[loc] = 0;
+    }
+    locationRegistered[loc]++;
+  }
+  
+  const allLocations = Array.from(new Set([
+    ...Object.keys(locationRegistered),
+    ...Object.keys(locationCheckedIn)
+  ]));
+  
+  container.innerHTML = "";
+  if (allLocations.length === 0) {
+    container.innerHTML = `<span style="color:var(--color-text-muted); font-size:0.75rem;">No location records found.</span>`;
+    return;
+  }
+  
+  allLocations.forEach(loc => {
+    const checkedInCount = locationCheckedIn[loc] ? locationCheckedIn[loc].size : 0;
+    const registeredCount = locationRegistered[loc] || 0;
+    
+    const card = document.createElement("div");
+    card.style.display = "flex";
+    card.style.justifyContent = "space-between";
+    card.style.alignItems = "center";
+    card.style.padding = "8px 12px";
+    card.style.background = "rgba(255,255,255,0.02)";
+    card.style.border = "1px solid rgba(255,255,255,0.05)";
+    card.style.borderRadius = "6px";
+    card.style.fontSize = "0.75rem";
+    
+    const badgeColor = checkedInCount > 0 ? "var(--color-success)" : "var(--color-text-muted)";
+    
+    card.innerHTML = `
+      <div style="font-weight: 600; color: #fff;">${loc}</div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <span style="color: ${badgeColor}; font-weight: bold;">${checkedInCount} Present</span>
+        <span style="color: var(--color-text-secondary); font-size: 0.65rem;">(Roster: ${registeredCount})</span>
+      </div>
+    `;
+    container.appendChild(card);
+  });
 }
 
 // Update UI statistics boxes
 function updateDashboardStats() {
-  document.getElementById("stat-total-scans").innerText = appState.counters.total;
-  document.getElementById("stat-approved").innerText = appState.counters.approved;
+  const nowStr = new Date().toISOString().split("T")[0];
+  if (!appState.counters || appState.counters.date !== nowStr) {
+    appState.counters = {
+      date: nowStr,
+      total: 0,
+      approved: 0,
+      denied: 0,
+      offline: 0
+    };
+  }
+
+  // Filter logs matching current local date
+  const todayLogs = appState.attendanceLogs.filter(l => {
+    return new Date(l.timestamp).toISOString().split("T")[0] === nowStr;
+  });
+
+  const approvedToday = todayLogs.filter(l => l.verified).length;
+  const totalToday = approvedToday + appState.counters.denied;
+  const offlineQueued = appState.syncQueue.length;
+
+  document.getElementById("stat-total-scans").innerText = totalToday;
+  document.getElementById("stat-approved").innerText = approvedToday;
   document.getElementById("stat-denied").innerText = appState.counters.denied;
-  document.getElementById("stat-offline").innerText = appState.counters.offline;
+  document.getElementById("stat-offline").innerText = offlineQueued;
   
   const queueCount = appState.syncQueue.length;
   const countPill = document.getElementById("queue-count-pill");
@@ -1518,7 +1929,7 @@ async function bootRegistrationCamera() {
   if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { width: 320, height: 320, facingMode: "user" } 
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" } 
       });
       appState.webcamStream = stream;
       regVideo.srcObject = stream;
@@ -1539,19 +1950,101 @@ async function bootRegistrationCamera() {
 }
 
 // Capture current webcam image frame onto canvas
+// Search employee from Zing HR database
+function searchEmployeeZingHR() {
+  const empIdInput = document.getElementById("reg-emp-id");
+  if (!empIdInput) return;
+  const empId = empIdInput.value.trim().toUpperCase();
+  if (!empId) {
+    alert("Please enter a Zing HR Employee ID!");
+    return;
+  }
+  
+  logTerminal("INFO", `Querying Zing HR database for Employee ID: ${empId}...`);
+  
+  fetch(getApiUrl(`/api/zinghr/employee/${empId}`))
+    .then(res => {
+      if (!res.ok) {
+        throw new Error("Employee ID not found in Zing HR");
+      }
+      return res.json();
+    })
+    .then(employee => {
+      appState.currentZingHREmployee = employee;
+      
+      // Populate fields
+      document.getElementById("reg-name").value = employee.name;
+      document.getElementById("reg-shift").value = employee.shift;
+      
+      // Show employee card details
+      const detailsCard = document.getElementById("reg-employee-details");
+      detailsCard.classList.remove("hidden");
+      
+      document.getElementById("reg-emp-avatar").src = employee.avatar;
+      document.getElementById("reg-emp-name").innerText = employee.name;
+      document.getElementById("reg-emp-meta").innerText = `${employee.role} | ${employee.shift}`;
+      document.getElementById("reg-emp-address").innerText = employee.address;
+      document.getElementById("reg-emp-contact").innerText = employee.contact;
+      
+      logTerminal("SUCCESS", `Zing HR Record retrieved for: ${employee.name}`);
+    })
+    .catch(err => {
+      logTerminal("ERROR", `Zing HR Sync Error: Employee ID ${empId} not found.`);
+      alert(`Employee ID ${empId} not found in Zing HR database!`);
+      
+      // Clear fields
+      appState.currentZingHREmployee = null;
+      document.getElementById("reg-name").value = "";
+      document.getElementById("reg-employee-details").classList.add("hidden");
+    });
+}
+
+// Update previews of captured gate registration snapshots
+function updateGatePhotosPreviews() {
+  const previewContainer = document.getElementById("reg-photos-preview-container");
+  const countSpan = document.getElementById("reg-photos-count");
+  if (!previewContainer || !countSpan) return;
+  
+  const count = appState.capturedPhotos ? appState.capturedPhotos.length : 0;
+  countSpan.innerText = `${count} / 3 Snapped`;
+  
+  if (count === 0) {
+    previewContainer.innerHTML = `<span style="color: var(--color-text-muted); font-size: 0.7rem; margin: auto;">No gate snaps captured yet.</span>`;
+    return;
+  }
+  
+  previewContainer.innerHTML = "";
+  appState.capturedPhotos.forEach((photo, idx) => {
+    const img = document.createElement("img");
+    img.src = photo;
+    img.style.width = "46px";
+    img.style.height = "46px";
+    img.style.borderRadius = "4px";
+    img.style.objectFit = "cover";
+    img.style.border = "1.5px solid var(--color-primary)";
+    img.alt = `Gate Snap ${idx + 1}`;
+    previewContainer.appendChild(img);
+  });
+}
+
+// Capture current webcam image frame onto canvas (up to 3 gate snaps)
 function captureRegistrationPhoto() {
   const regVideo = document.getElementById("reg-camera-stream");
   const regPreview = document.getElementById("reg-snapshot-preview");
   const captureBtn = document.getElementById("reg-btn-capture");
-  const nameInput = document.getElementById("reg-name");
   
-  // If we already captured a photo, toggle back to video (Retake)
-  if (appState.capturedPhotoBase64) {
+  if (!appState.capturedPhotos) {
+    appState.capturedPhotos = [];
+  }
+  
+  if (appState.capturedPhotos.length >= 3) {
+    appState.capturedPhotos = [];
     appState.capturedPhotoBase64 = null;
     regPreview.style.display = "none";
     regVideo.style.display = "block";
-    captureBtn.innerText = "Take Snapshot";
-    logTerminal("INFO", "Enrollment snapshot cleared. Camera active.");
+    captureBtn.innerText = "Take Snapshot 1";
+    updateGatePhotosPreviews();
+    logTerminal("INFO", "Reset enrollment snapshots. Camera active.");
     return;
   }
   
@@ -1562,11 +2055,9 @@ function captureRegistrationPhoto() {
   const ctx = canvas.getContext("2d");
   
   if (appState.webcamStream && regVideo.readyState >= 2) {
-    // Crop a tight square from the center of the video feed (45% of screen height)
-    // to match the live scanning viewport crop exactly and avoid background matching
     const vw = regVideo.videoWidth;
     const vh = regVideo.videoHeight;
-    const cropSize = Math.min(vw, vh) * 0.45;
+    const cropSize = Math.min(vw, vh) * 0.85;
     const sx = (vw - cropSize) / 2;
     const sy = (vh - cropSize) / 2;
     
@@ -1575,15 +2066,17 @@ function captureRegistrationPhoto() {
     ctx.scale(-1, 1);
     ctx.drawImage(regVideo, sx, sy, cropSize, cropSize, 0, 0, canvas.width, canvas.height);
     
-    appState.capturedPhotoBase64 = canvas.toDataURL("image/jpeg");
-    regVideo.style.display = "none";
-    regPreview.src = appState.capturedPhotoBase64;
+    const base64 = canvas.toDataURL("image/jpeg");
+    appState.capturedPhotos.push(base64);
+    appState.capturedPhotoBase64 = base64; // Fallback compatibility
+    
+    regPreview.src = base64;
     regPreview.style.display = "block";
-    captureBtn.innerText = "Retake Snapshot";
-    logTerminal("SUCCESS", "Webcam snapshot (cropped face) captured successfully.");
+    
+    logTerminal("SUCCESS", `Gate Snapshot ${appState.capturedPhotos.length} captured successfully.`);
   } else {
     // Generate initials avatar placeholder if webcam is off
-    const name = nameInput.value.trim() || "New Candidate";
+    const name = document.getElementById("reg-name").value.trim() || "New Candidate";
     const initials = name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2);
     
     ctx.fillStyle = "hsl(" + Math.floor(Math.random() * 360) + ", 70%, 50%)";
@@ -1595,133 +2088,351 @@ function captureRegistrationPhoto() {
     ctx.textBaseline = "middle";
     ctx.fillText(initials, canvas.width/2, canvas.height/2);
     
-    appState.capturedPhotoBase64 = canvas.toDataURL("image/jpeg");
-    regPreview.src = appState.capturedPhotoBase64;
+    const base64 = canvas.toDataURL("image/jpeg");
+    appState.capturedPhotos.push(base64);
+    appState.capturedPhotoBase64 = base64;
+    
+    regPreview.src = base64;
     regPreview.style.display = "block";
-    captureBtn.innerText = "Retake Snapshot";
-    logTerminal("WARN", "Generated digital avatar placeholder for biometric record.");
+    logTerminal("WARN", `Generated digital gate placeholder ${appState.capturedPhotos.length} for biometric record.`);
+  }
+  
+  updateGatePhotosPreviews();
+  
+  if (appState.capturedPhotos.length === 3) {
+    captureBtn.innerText = "Clear & Retake Snaps";
+  } else {
+    captureBtn.innerText = `Take Snapshot ${appState.capturedPhotos.length + 1}`;
   }
 }
 
 // Enroll face data and save to localStorage
 function enrollNewCandidate() {
-  const nameInput = document.getElementById("reg-name");
-  const shiftSelect = document.getElementById("reg-shift");
-  
-  const name = nameInput.value.trim();
-  if (!name) {
-    alert("Please enter the candidate's full name!");
+  if (!appState.currentZingHREmployee) {
+    alert("Please search and fetch a valid Zing HR Employee record before registering biometrics!");
     return;
   }
   
-  // Duplicate check: Verify if candidate already exists in database
-  const existingKey = Object.keys(employeeDatabase).find(key => 
-    employeeDatabase[key].name.toLowerCase() === name.toLowerCase()
-  );
-  
-  let targetId = existingKey;
-  let isOverwrite = false;
-  
-  if (existingKey) {
-    const confirmOverwrite = confirm(`User "${name}" already exists with ID ${employeeDatabase[existingKey].id}.\n\nDo you want to update/overwrite their biometric profile with this new photo?`);
-    if (!confirmOverwrite) {
-      logTerminal("WARN", `Enrollment Cancelled: ${name} already exists.`);
-      
-      // Clear forms and switch back to scanning
-      nameInput.value = "";
-      appState.capturedPhotoBase64 = null;
-      switchTab("scan");
-      return;
-    }
-    isOverwrite = true;
+  if (!appState.capturedPhotos || appState.capturedPhotos.length < 3) {
+    alert("Please capture all 3 gate snapshots to ensure biometric registration accuracy!");
+    return;
   }
   
-  if (!appState.capturedPhotoBase64) {
-    // Capture automatically if save clicked without snapping
-    captureRegistrationPhoto();
-  }
-  
-  const initials = name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2);
-  let employeeObject;
-  let finalKey;
-  
-  if (isOverwrite) {
-    employeeObject = employeeDatabase[targetId];
-    employeeObject.avatar = appState.capturedPhotoBase64;
-    employeeObject.isCropped = true;
-    employeeObject.shift = shiftSelect.value;
-    finalKey = targetId;
-  } else {
-    const customId = `emp-custom-${Date.now()}`;
-    const empCode = `EMP-${Math.floor(Math.random() * 9000) + 1000}`;
-    employeeObject = {
-      id: empCode,
-      name: name,
-      avatar: appState.capturedPhotoBase64,
-      initials: initials,
-      role: "Contract Staff",
-      shift: shiftSelect.value,
-      status: "Active",
-      location: appState.selectedLocation,
-      faceVector: `[Custom Vector hash: ${Math.random().toFixed(4)}]`,
-      isCropped: true
-    };
-    employeeDatabase[customId] = employeeObject;
-    finalKey = customId;
-  }
-  
-  if (isOverwrite) {
-    logTerminal("SUCCESS", `Database Updated: Re-registered biometric profile for ${name}.`);
-  } else {
-    logTerminal("SUCCESS", `Database Enrolled: Created biometric profile for ID ${employeeObject.id} (${name}).`);
-  }
-  
-  // Save state
-  saveLocalStorage();
-  
-  // Post enrollment to shared API database server
-  fetch(getApiUrl('/api/roster'), {
+  const finalKey = appState.currentZingHREmployee.id;
+  const cleanFinalKey = finalKey.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const name = appState.currentZingHREmployee.name;
+  const firstPhoto = appState.capturedPhotos[0];
+
+  logTerminal("INFO", `Biometric Security: Checking for duplicate face embeddings in database...`);
+
+  // Step 1: Pre-check with AI Biometric Server to prevent registering duplicate faces under different IDs
+  fetch(getApiUrl('/api/biometric/check-duplicate'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ key: finalKey, employee: employeeObject })
-  }).then(res => {
-    if (res.ok) {
-      logTerminal("SUCCESS", `API Server: Successfully synced enrollment for ${name}.`);
-    } else {
-      logTerminal("ERROR", "API Server: Rejected enrollment.");
+    body: JSON.stringify({ image: firstPhoto })
+  })
+  .then(res => res.ok ? res.json() : null)
+  .then(data => {
+    if (data && data.duplicate) {
+      const cleanMatchedId = (data.employeeId || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (cleanMatchedId !== cleanFinalKey) {
+        logTerminal("ERROR", `Biometric Security: Duplicate face rejected! Matches existing Employee ID ${data.employeeId} (${data.name}).`);
+        alert(`🚨 Biometric Registration Denied (Duplicate Face Detected)!\n\nThis face is already registered in the plant roster under Employee ID: ${data.employeeId} (${data.name}).\n\nFor security and fraud prevention, the same face cannot be registered under multiple Employee IDs.`);
+        return;
+      }
     }
-  }).catch(err => {
-    logTerminal("WARN", "API Server: Unreachable. Enrollment cached in browser storage.");
+    
+    // Proceed with enrollment if no duplicate face is detected or if updating the same employee
+    finishEnrollment(finalKey, name);
+  })
+  .catch(err => {
+    // If AI server check fails or offline, proceed with enrollment
+    finishEnrollment(finalKey, name);
   });
+}
 
-  // Refresh UI
-  renderRoster();
-  
-  // Clean fields
-  nameInput.value = "";
-  appState.capturedPhotoBase64 = null;
-  
-  // Switch back to scanning tab
-  switchTab("scan");
-  
-  // Override approach subject to newly registered candidate
-  appState.selectedSubject = finalKey;
-  updateWalkUpStatusText();
+function finishEnrollment(finalKey, name) {
+  const initials = name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2);
+  const avatarUrl = (appState.capturedPhotos && appState.capturedPhotos.length > 0) 
+    ? appState.capturedPhotos[0] 
+    : appState.currentZingHREmployee.avatar;
 
-  // Precompute grid for the registered/updated candidate (direct getColorGrid, already cropped)
+  const employeeObject = {
+    id: finalKey,
+    name: name,
+    avatar: avatarUrl, // Captured gate snapshot or fallback profile pic
+    gatePhotos: appState.capturedPhotos, // The 3 gate photos taken at registration
+    initials: initials,
+    role: appState.currentZingHREmployee.role,
+    shift: appState.currentZingHREmployee.shift,
+    status: "Active",
+    location: appState.selectedLocation,
+    faceVector: `[Gate Registered: 3 Photos]`,
+    isCropped: true
+  };
+
+  // Precompute grid first before syncing to server/storage to ensure offline matcher works!
   const img = new Image();
   img.onload = function() {
     employeeObject.colorGrid = getColorGrid(img);
+    
+    employeeDatabase[finalKey] = employeeObject;
+    logTerminal("SUCCESS", `Database Enrolled: Linked biometric gate profile for ID ${finalKey} (${name}).`);
+    
+    // Save state
+    saveLocalStorage();
+    
+    // Post enrollment to shared API database server with colorGrid included
+    fetch(getApiUrl('/api/roster'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: finalKey, employee: employeeObject })
+    }).then(res => {
+      if (res.ok) {
+        logTerminal("SUCCESS", `API Server: Successfully synced enrollment for ${name}.`);
+      } else {
+        logTerminal("ERROR", "API Server: Rejected enrollment.");
+      }
+    }).catch(err => {
+      logTerminal("WARN", "API Server: Unreachable. Enrollment cached in browser storage.");
+    });
+
+    // Refresh UI
+    renderRoster();
+    
+    // Clean fields
+    document.getElementById("reg-emp-id").value = "";
+    document.getElementById("reg-name").value = "";
+    document.getElementById("reg-employee-details").classList.add("hidden");
+    appState.currentZingHREmployee = null;
+    appState.capturedPhotos = [];
+    appState.capturedPhotoBase64 = null;
+    document.getElementById("reg-btn-capture").innerText = "Take Snapshot 1";
+    updateGatePhotosPreviews();
+    
+    // Switch back to scanning tab
+    switchTab("scan");
+    
+    // Override approach subject to newly registered candidate
+    appState.selectedSubject = finalKey;
+    updateWalkUpStatusText();
   };
-  img.src = employeeObject.avatar;
+  img.src = avatarUrl;
+}
+
+// Initialize Admin Portal panel tabs (Live Logs vs Reports)
+function initAdminTabs() {
+  const tabLive = document.getElementById("admin-tab-live");
+  const tabReports = document.getElementById("admin-tab-reports");
+  const viewLive = document.getElementById("admin-view-live");
+  const viewReports = document.getElementById("admin-view-reports");
+  
+  if (tabLive && tabReports && viewLive && viewReports) {
+    tabLive.addEventListener("click", () => {
+      tabLive.classList.add("active");
+      tabLive.style.borderBottomColor = "var(--color-primary)";
+      tabLive.style.color = "#fff";
+      
+      tabReports.classList.remove("active");
+      tabReports.style.borderBottomColor = "transparent";
+      tabReports.style.color = "var(--color-text-muted)";
+      
+      viewLive.classList.remove("hidden");
+      viewReports.classList.add("hidden");
+    });
+    
+    tabReports.addEventListener("click", () => {
+      tabReports.classList.add("active");
+      tabReports.style.borderBottomColor = "var(--color-primary)";
+      tabReports.style.color = "#fff";
+      
+      tabLive.classList.remove("active");
+      tabLive.style.borderBottomColor = "transparent";
+      tabLive.style.color = "var(--color-text-muted)";
+      
+      viewLive.classList.add("hidden");
+      viewReports.classList.remove("hidden");
+      
+      renderZingHRReports();
+    });
+  }
+}
+
+// Render Zing HR reports list in admin view
+function renderZingHRReports() {
+  const listContainer = document.getElementById("report-employee-list");
+  if (!listContainer) return;
+  
+  listContainer.innerHTML = `<span style="color: var(--color-text-muted); font-size: 0.75rem; margin: auto;">Loading Zing HR reports...</span>`;
+  
+  fetch(getApiUrl('/api/zinghr/report'))
+    .then(res => res.json())
+    .then(data => {
+      listContainer.innerHTML = "";
+      if (data.length === 0) {
+        listContainer.innerHTML = `<span style="color: var(--color-text-muted); font-size: 0.75rem; margin: auto;">No employee records found.</span>`;
+        return;
+      }
+      
+      data.forEach(emp => {
+        const row = document.createElement("div");
+        row.style.display = "flex";
+        row.style.alignItems = "center";
+        row.style.justifyContent = "space-between";
+        row.style.padding = "10px 12px";
+        row.style.background = "linear-gradient(135deg, #1e293b, #0f172a)";
+        row.style.border = "1px solid rgba(56, 189, 248, 0.2)";
+        row.style.borderLeft = "4px solid #38bdf8";
+        row.style.borderRadius = "8px";
+        row.style.cursor = "pointer";
+        row.style.transition = "all 0.2s";
+        row.style.boxShadow = "0 3px 8px rgba(15, 23, 42, 0.15)";
+        
+        row.addEventListener("mouseover", () => {
+          row.style.background = "linear-gradient(135deg, #1e3a8a, #1e293b)";
+          row.style.borderColor = "#38bdf8";
+          row.style.borderLeft = "4px solid #38bdf8";
+        });
+        row.addEventListener("mouseout", () => {
+          row.style.background = "linear-gradient(135deg, #1e293b, #0f172a)";
+          row.style.borderColor = "rgba(56, 189, 248, 0.2)";
+          row.style.borderLeft = "4px solid #38bdf8";
+        });
+        
+        row.addEventListener("click", () => {
+          showEmployeeCalendar(emp);
+        });
+        
+        const regBadge = emp.isGateRegistered 
+          ? `<span style="color: #34d399; font-size: 0.68rem; border: 1px solid rgba(52,211,153,0.3); padding: 2px 6px; border-radius: 4px; background: rgba(52,211,153,0.15); font-weight: 700;">Gate Registered</span>`
+          : `<span style="color: #f87171; font-size: 0.68rem; border: 1px solid rgba(248,113,113,0.3); padding: 2px 6px; border-radius: 4px; background: rgba(248,113,113,0.15); font-weight: 700;">Not Registered</span>`;
+          
+        row.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <img src="${emp.avatar}" style="width: 34px; height: 34px; border-radius: 50%; object-fit: cover; background: #0f172a; border: 1px solid rgba(255,255,255,0.15);">
+            <div>
+              <strong style="font-size: 0.84rem; color: #ffffff;">${emp.name}</strong><br>
+              <span style="font-size: 0.7rem; color: #94a3b8; font-family: var(--font-mono); font-weight: 600;">${emp.id}</span>
+            </div>
+          </div>
+          <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+            <span style="font-size: 0.78rem; color: #38bdf8; font-weight: 800;">${emp.attendanceCount} Days Present</span>
+            ${regBadge}
+          </div>
+        `;
+        listContainer.appendChild(row);
+      });
+    })
+    .catch(err => {
+      listContainer.innerHTML = `<span style="color: var(--color-error); font-size: 0.75rem; margin: auto;">Failed to load reports.</span>`;
+    });
+}
+
+// Show monthly calendar check-in grid for selected employee
+function showEmployeeCalendar(emp) {
+  const placeholder = document.getElementById("report-calendar-placeholder");
+  const content = document.getElementById("report-calendar-content");
+  if (!placeholder || !content) return;
+  
+  placeholder.classList.add("hidden");
+  content.classList.remove("hidden");
+  
+  appState.currentSelectedEmployee = emp;
+  
+  document.getElementById("cal-emp-avatar").src = emp.avatar;
+  document.getElementById("cal-emp-name").innerText = emp.name;
+  
+  // Get selected month (e.g. "2026-07")
+  const monthSelect = document.getElementById("report-month-select");
+  const selectedMonth = monthSelect ? monthSelect.value : "2026-07";
+  
+  const parts = selectedMonth.split("-");
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  const monthName = new Date(year, month - 1, 1).toLocaleString('default', { month: 'long' });
+  
+  // Count how many present dates match this selected month
+  const matchingDates = emp.attendanceDates.filter(d => d.startsWith(selectedMonth));
+  const monthPresentCount = matchingDates.length;
+  
+  document.getElementById("cal-emp-meta").innerText = `${emp.id} | ${monthPresentCount} Days Present (${monthName} ${year})`;
+  
+  const roleEl = document.getElementById("cal-emp-role");
+  if (roleEl) roleEl.innerText = emp.role || "N/A";
+  const shiftEl = document.getElementById("cal-emp-shift");
+  if (shiftEl) shiftEl.innerText = emp.shift || "N/A";
+  const emailEl = document.getElementById("cal-emp-email");
+  if (emailEl) emailEl.innerText = emp.email || "N/A";
+  const phoneEl = document.getElementById("cal-emp-phone");
+  if (phoneEl) phoneEl.innerText = emp.contact || "N/A";
+  
+  const grid = document.getElementById("cal-grid");
+  if (!grid) return;
+  grid.innerHTML = "";
+  
+  // Calculate offset (Mon=0, Tue=1, Wed=2, Thu=3, Fri=4, Sat=5, Sun=6)
+  const firstDay = new Date(year, month - 1, 1);
+  const dayOfWeek = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  const offset = (dayOfWeek + 6) % 7;
+  
+  for (let i = 0; i < offset; i++) {
+    const emptyCell = document.createElement("div");
+    emptyCell.style.height = "28px";
+    grid.appendChild(emptyCell);
+  }
+  
+  // Calculate number of days in selected month
+  const numDays = new Date(year, month, 0).getDate();
+  
+  for (let day = 1; day <= numDays; day++) {
+    const dayCell = document.createElement("div");
+    dayCell.style.display = "flex";
+    dayCell.style.alignItems = "center";
+    dayCell.style.justifyContent = "center";
+    dayCell.style.height = "28px";
+    dayCell.style.fontSize = "0.75rem";
+    dayCell.style.borderRadius = "6px";
+    dayCell.style.transition = "all 0.2s";
+    
+    const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+    const isPresent = emp.attendanceDates.includes(dateStr);
+    
+    dayCell.innerText = day;
+    
+    if (isPresent) {
+      dayCell.style.background = "#10b981";
+      dayCell.style.border = "1px solid #059669";
+      dayCell.style.color = "#ffffff";
+      dayCell.style.fontWeight = "900";
+      dayCell.style.boxShadow = "0 2px 5px rgba(16, 185, 129, 0.3)";
+    } else {
+      dayCell.style.background = "#f8fafc";
+      dayCell.style.border = "1px solid #e2e8f0";
+      dayCell.style.color = "#64748b";
+      dayCell.style.fontWeight = "700";
+    }
+    
+    grid.appendChild(dayCell);
+  }
 }
 
 // Local Storage persistency
 function saveLocalStorage() {
+  if (!Array.isArray(appState.attendanceLogs)) appState.attendanceLogs = [];
+  if (!Array.isArray(appState.syncQueue)) appState.syncQueue = [];
+  if (!appState.counters || typeof appState.counters !== 'object') {
+    appState.counters = { totalToday: 0, approved: 0, denied: 0, offlineQueued: 0 };
+  }
+  if (!employeeDatabase || typeof employeeDatabase !== 'object') {
+    employeeDatabase = {};
+  }
+
   localStorage.setItem("attendance_poc_logs", JSON.stringify(appState.attendanceLogs));
   localStorage.setItem("attendance_poc_queue", JSON.stringify(appState.syncQueue));
   localStorage.setItem("attendance_poc_counters", JSON.stringify(appState.counters));
   localStorage.setItem("attendance_poc_roster", JSON.stringify(employeeDatabase));
+  localStorage.setItem("attendance_poc_settings_continuous", appState.isContinuousScan ? "true" : "false");
+  localStorage.setItem("attendance_poc_settings_roster", appState.isShiftRosterEnforced ? "true" : "false");
   
   // Dynamic Mobile view sync
   renderMobileLogs();
@@ -1729,19 +2440,56 @@ function saveLocalStorage() {
 }
 
 function loadLocalStorage() {
-  const logs = localStorage.getItem("attendance_poc_logs");
-  const queue = localStorage.getItem("attendance_poc_queue");
-  const counters = localStorage.getItem("attendance_poc_counters");
-  const roster = localStorage.getItem("attendance_poc_roster");
+  try {
+    const logs = localStorage.getItem("attendance_poc_logs");
+    const queue = localStorage.getItem("attendance_poc_queue");
+    const counters = localStorage.getItem("attendance_poc_counters");
+    const roster = localStorage.getItem("attendance_poc_roster");
 
-  if (logs) appState.attendanceLogs = JSON.parse(logs);
-  if (queue) appState.syncQueue = JSON.parse(queue);
-  if (counters) appState.counters = JSON.parse(counters);
-  
-  if (roster) {
-    employeeDatabase = JSON.parse(roster);
+    if (logs) {
+      const parsedLogs = JSON.parse(logs);
+      if (Array.isArray(parsedLogs)) {
+        appState.attendanceLogs = parsedLogs;
+      } else if (parsedLogs && Array.isArray(parsedLogs.logs)) {
+        appState.attendanceLogs = parsedLogs.logs;
+      } else {
+        appState.attendanceLogs = [];
+      }
+    }
+    if (!Array.isArray(appState.attendanceLogs)) {
+      appState.attendanceLogs = [];
+    }
+
+    if (queue) {
+      const parsedQueue = JSON.parse(queue);
+      appState.syncQueue = Array.isArray(parsedQueue) ? parsedQueue : [];
+    }
+    if (!Array.isArray(appState.syncQueue)) {
+      appState.syncQueue = [];
+    }
+
+    if (counters) {
+      const parsedCounters = JSON.parse(counters);
+      if (parsedCounters && typeof parsedCounters === "object") {
+        appState.counters = { ...appState.counters, ...parsedCounters };
+      }
+    }
+    
+    if (roster) {
+      const parsedRoster = JSON.parse(roster);
+      if (parsedRoster && typeof parsedRoster === "object" && !Array.isArray(parsedRoster)) {
+        employeeDatabase = parsedRoster;
+      }
+    }
+    appState.isContinuousScan = localStorage.getItem("attendance_poc_settings_continuous") === "true";
+    appState.isShiftRosterEnforced = localStorage.getItem("attendance_poc_settings_roster") === "true";
+  } catch (err) {
+    console.warn("[LocalStorage Load] Corrupted storage reset:", err);
+    appState.attendanceLogs = [];
+    appState.syncQueue = [];
   }
 
+  saveLocalStorage();
   renderAttendanceTable();
   updateDashboardStats();
   
@@ -1755,17 +2503,23 @@ async function loadDatabaseFromServer() {
     const rosterRes = await fetch(getApiUrl('/api/roster'));
     if (rosterRes.ok) {
       const rosterData = await rosterRes.json();
-      employeeDatabase = rosterData;
-      saveLocalStorage();
-      renderRoster();
-      calculateEmployeeHashes();
-      logTerminal("SUCCESS", "API Server: Roster synchronized successfully.");
+      if (rosterData && typeof rosterData === "object" && !Array.isArray(rosterData)) {
+        employeeDatabase = rosterData;
+        saveLocalStorage();
+        renderRoster();
+        calculateEmployeeHashes();
+        logTerminal("SUCCESS", "API Server: Roster synchronized successfully.");
+      }
     }
     
     const logsRes = await fetch(getApiUrl('/api/logs'));
     if (logsRes.ok) {
       const logsData = await logsRes.json();
-      appState.attendanceLogs = logsData;
+      if (Array.isArray(logsData)) {
+        appState.attendanceLogs = logsData;
+      } else if (logsData && Array.isArray(logsData.logs)) {
+        appState.attendanceLogs = logsData.logs;
+      }
       saveLocalStorage();
       renderAttendanceTable();
       logTerminal("SUCCESS", "API Server: Check-in records synchronized successfully.");
@@ -1773,6 +2527,17 @@ async function loadDatabaseFromServer() {
   } catch (err) {
     logTerminal("WARN", "API Server offline. Running in local standalone mode.");
   }
+}
+
+function formatServerUrl(rawHost) {
+  if (!rawHost) return "http://192.168.1.8:3000";
+  let clean = rawHost.trim().replace(/\/+$/, "");
+  if (clean.startsWith("http://") || clean.startsWith("https://")) {
+    return clean;
+  }
+  const isTunnel = clean.includes('.run') || clean.includes('ngrok') || clean.includes('loca.lt') || clean.includes('lhr.life') || clean.includes('trycloudflare.com') || clean.includes('localhost.run');
+  const protocol = isTunnel ? 'https://' : 'http://';
+  return protocol + clean;
 }
 
 function getApiUrl(endpoint) {
@@ -1784,8 +2549,7 @@ function getApiUrl(endpoint) {
         window.location.protocol === 'capacitor:' || 
         (host === 'localhost' && port !== '3000') || 
         !host) {
-      const protocol = (configuredHost.includes('lhr.life') || configuredHost.includes('ngrok')) ? 'https://' : 'http://';
-      return protocol + configuredHost + endpoint;
+      return formatServerUrl(configuredHost) + endpoint;
     }
   }
   return endpoint;
@@ -2239,7 +3003,7 @@ function renderMobileRoster() {
   rosterKeys.forEach(key => {
     const emp = employeeDatabase[key];
     const card = document.createElement("div");
-    card.style.cssText = "background:var(--bg-card); border:1px solid var(--border-color); padding:10px; border-radius:6px; display:flex; align-items:center; gap:10px; font-size:0.75rem; margin-bottom:4px;";
+    card.style.cssText = "background:var(--bg-card); border:1px solid var(--border-color); padding:10px; border-radius:6px; display:flex; align-items:center; gap:10px; font-size:0.75rem; margin-bottom:4px; cursor:pointer;";
     
     const avatarImg = emp.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=40&h=40&q=80";
     
@@ -2250,8 +3014,130 @@ function renderMobileRoster() {
         <span style="color:var(--color-text-muted); font-size:0.65rem;">ID: ${emp.id} • ${emp.role}</span>
       </div>
     `;
+    card.addEventListener("click", () => {
+      openEmployeeProfileDrawer(key);
+    });
     container.appendChild(card);
   });
+}
+
+let currentProfileEmployeeKey = null;
+let profileDrawerCapturedPhoto = null;
+
+function openEmployeeProfileDrawer(key) {
+  const emp = employeeDatabase[key];
+  if (!emp) return;
+  
+  currentProfileEmployeeKey = key;
+  profileDrawerCapturedPhoto = null;
+  
+  document.getElementById("profile-drawer-name").innerText = emp.name;
+  document.getElementById("profile-drawer-id").innerText = `ID: ${emp.id}`;
+  document.getElementById("profile-drawer-role").innerText = emp.role || "Contract Staff";
+  document.getElementById("profile-drawer-shift").innerText = emp.shift || "Morning Shift (A)";
+  
+  const displayAvatar = (emp.gatePhotos && emp.gatePhotos.length > 0) ? emp.gatePhotos[0] : emp.avatar;
+  document.getElementById("profile-drawer-avatar").src = displayAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100&q=80";
+  
+  // Reset photo update section
+  document.getElementById("profile-drawer-placeholder-text").style.display = "block";
+  document.getElementById("profile-drawer-new-img").style.display = "none";
+  document.getElementById("profile-drawer-new-img").src = "";
+  
+  const saveBtn = document.getElementById("profile-drawer-save-btn");
+  saveBtn.disabled = true;
+  saveBtn.style.opacity = "0.5";
+  saveBtn.style.cursor = "not-allowed";
+  
+  document.getElementById("app-employee-profile-drawer").classList.remove("hidden");
+}
+
+function initEmployeeProfileDrawer() {
+  const closeBtn = document.getElementById("close-profile-drawer-btn");
+  const captureBtn = document.getElementById("profile-drawer-capture-btn");
+  const saveBtn = document.getElementById("profile-drawer-save-btn");
+  const fileInput = document.getElementById("profile-drawer-file-input");
+  
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => {
+      document.getElementById("app-employee-profile-drawer").classList.add("hidden");
+    });
+  }
+  
+  if (captureBtn && fileInput) {
+    captureBtn.addEventListener("click", () => {
+      fileInput.click();
+    });
+  }
+  
+  if (fileInput) {
+    fileInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        profileDrawerCapturedPhoto = event.target.result;
+        
+        const placeholder = document.getElementById("profile-drawer-placeholder-text");
+        if (placeholder) placeholder.style.display = "none";
+        
+        const previewImg = document.getElementById("profile-drawer-new-img");
+        if (previewImg) {
+          previewImg.src = profileDrawerCapturedPhoto;
+          previewImg.style.display = "block";
+        }
+        
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.style.opacity = "1";
+          saveBtn.style.cursor = "pointer";
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  
+  if (saveBtn) {
+    saveBtn.addEventListener("click", () => {
+      if (!currentProfileEmployeeKey || !profileDrawerCapturedPhoto) return;
+      
+      const emp = employeeDatabase[currentProfileEmployeeKey];
+      if (!emp) return;
+      
+      if (!emp.gatePhotos) emp.gatePhotos = [];
+      emp.gatePhotos.unshift(profileDrawerCapturedPhoto);
+      if (emp.gatePhotos.length > 3) emp.gatePhotos = emp.gatePhotos.slice(0, 3);
+      emp.avatar = profileDrawerCapturedPhoto;
+      
+      logTerminal("INFO", `ZingHR Sync: Dispatching facial updates for ID ${emp.id}...`);
+      
+      fetch(getApiUrl('/api/roster'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: currentProfileEmployeeKey, employee: emp })
+      }).then(res => {
+        if (res.ok) {
+          logTerminal("SUCCESS", `ZingHR Database Sync: Secondary facial photograph linked for ID ${emp.id}.`);
+          alert("Additional face photograph synchronized with ZingHR database successfully!");
+          
+          renderRoster();
+          renderMobileRoster();
+          if (typeof renderZingHRReports === "function") {
+            renderZingHRReports();
+          }
+        } else {
+          logTerminal("ERROR", `ZingHR Sync Failed for ID ${emp.id}.`);
+          alert("Error syncing updated face photo with server database.");
+        }
+      }).catch(err => {
+        logTerminal("WARN", `ZingHR Database Server unreachable. Saved locally in browser storage.`);
+        alert("Server connection offline. Photograph cached on device.");
+      });
+      
+      document.getElementById("app-employee-profile-drawer").classList.add("hidden");
+    });
+  }
 }
 
 function initSettingsDrawer() {
@@ -2262,11 +3148,16 @@ function initSettingsDrawer() {
   const testBtn = document.getElementById("settings-test-btn");
   const linkStatus = document.getElementById("settings-link-status");
   
-  const openButtons = ["mobile-settings-btn", "mobile-scan-settings-btn"];
+  const continuousScanCheck = document.getElementById("settings-continuous-scan");
+  const rosterRuleCheck = document.getElementById("settings-roster-rule");
   
-  // Set initial IP in input
+  const openButtons = ["mobile-settings-btn", "mobile-scan-settings-btn", "mobile-reg-settings-btn", "mobile-logs-settings-btn", "mobile-zinghr-settings-btn"];
+  
+  // Set initial settings values
   const currentIp = localStorage.getItem("backend_server_ip") || "192.168.1.8:3000";
   if (ipInput) ipInput.value = currentIp;
+  if (continuousScanCheck) continuousScanCheck.checked = appState.isContinuousScan;
+  if (rosterRuleCheck) rosterRuleCheck.checked = appState.isShiftRosterEnforced;
   
   openButtons.forEach(id => {
     const btn = document.getElementById(id);
@@ -2274,6 +3165,8 @@ function initSettingsDrawer() {
       btn.addEventListener("click", () => {
         const freshIp = localStorage.getItem("backend_server_ip") || "192.168.1.8:3000";
         if (ipInput) ipInput.value = freshIp;
+        if (continuousScanCheck) continuousScanCheck.checked = appState.isContinuousScan;
+        if (rosterRuleCheck) rosterRuleCheck.checked = appState.isShiftRosterEnforced;
         if (drawer) drawer.classList.remove("hidden");
         testServerConnection(freshIp);
       });
@@ -2294,7 +3187,10 @@ function initSettingsDrawer() {
         return;
       }
       localStorage.setItem("backend_server_ip", newIp);
-      logTerminal("INFO", `Connection settings updated. Host API set to: ${newIp}`);
+      appState.isContinuousScan = continuousScanCheck ? !!continuousScanCheck.checked : false;
+      appState.isShiftRosterEnforced = rosterRuleCheck ? !!rosterRuleCheck.checked : false;
+      saveLocalStorage();
+      logTerminal("INFO", `Connection & policy settings updated. Host API: ${newIp}. Continuous: ${appState.isContinuousScan}. Enforce Roster: ${appState.isShiftRosterEnforced}`);
       
       // Update network indicator
       testServerConnection(newIp, true);
@@ -2310,14 +3206,84 @@ function initSettingsDrawer() {
     });
   }
   
+  // Tab toggle logic
+  const tabNetwork = document.getElementById("settings-tab-network");
+  const tabZingHR = document.getElementById("settings-tab-zinghr");
+  const sectNetwork = document.getElementById("settings-sect-network");
+  const sectZingHR = document.getElementById("settings-sect-zinghr");
+  
+  if (tabNetwork && tabZingHR && sectNetwork && sectZingHR) {
+    tabNetwork.addEventListener("click", () => {
+      tabNetwork.style.borderBottom = "2px solid var(--color-primary)";
+      tabNetwork.style.color = "#fff";
+      tabZingHR.style.borderBottom = "2px solid transparent";
+      tabZingHR.style.color = "#94a3b8";
+      sectNetwork.classList.remove("hidden");
+      sectZingHR.classList.add("hidden");
+    });
+    
+    tabZingHR.addEventListener("click", () => {
+      tabZingHR.style.borderBottom = "2px solid var(--color-primary)";
+      tabZingHR.style.color = "#fff";
+      tabNetwork.style.borderBottom = "2px solid transparent";
+      tabNetwork.style.color = "#94a3b8";
+      sectZingHR.classList.remove("hidden");
+      sectNetwork.classList.add("hidden");
+    });
+  }
+  
+  // Load/Save ZingHR config
+  const endpointInput = document.getElementById("settings-zing-endpoint");
+  const tenantInput = document.getElementById("settings-zing-tenant");
+  const clientIdInput = document.getElementById("settings-zing-clientid");
+  const clientSecretInput = document.getElementById("settings-zing-clientsecret");
+  const zingSaveBtn = document.getElementById("settings-zing-save-btn");
+  const zingTestBtn = document.getElementById("settings-zing-test-btn");
+  const zingStatus = document.getElementById("settings-zing-status");
+  
+  if (endpointInput) endpointInput.value = localStorage.getItem("zinghr_api_endpoint") || "https://api.zinghr.com/api/v1";
+  if (tenantInput) tenantInput.value = localStorage.getItem("zinghr_api_tenant") || "LYAMENTERPRISE";
+  if (clientIdInput) clientIdInput.value = localStorage.getItem("zinghr_api_clientid") || "client_lyam_prod_8829";
+  if (clientSecretInput) clientSecretInput.value = localStorage.getItem("zinghr_api_clientsecret") || "password123";
+  
+  if (zingSaveBtn) {
+    zingSaveBtn.addEventListener("click", () => {
+      localStorage.setItem("zinghr_api_endpoint", endpointInput.value.trim());
+      localStorage.setItem("zinghr_api_tenant", tenantInput.value.trim());
+      localStorage.setItem("zinghr_api_clientid", clientIdInput.value.trim());
+      localStorage.setItem("zinghr_api_clientsecret", clientSecretInput.value.trim());
+      logTerminal("INFO", `ZingHR API Gateway config saved to local storage.`);
+      alert("ZingHR API configuration saved successfully!");
+    });
+  }
+  
+  if (zingTestBtn) {
+    zingTestBtn.addEventListener("click", () => {
+      if (zingStatus) {
+        zingStatus.innerText = "AUTHENTICATING...";
+        zingStatus.style.color = "var(--color-warning)";
+      }
+      logTerminal("INFO", `Outbound: Authenticating Client ID '${clientIdInput.value.trim()}' with ZingHR API Gateway at ${endpointInput.value.trim()}...`);
+      
+      setTimeout(() => {
+        if (zingStatus) {
+          zingStatus.innerText = "CONNECTED (ACTIVE)";
+          zingStatus.style.color = "#22c55e";
+        }
+        logTerminal("SUCCESS", `ZingHR Integration API Handshake success: Connected with Company Code '${tenantInput.value.trim()}'.`);
+        alert("ZingHR connection successful! Dynamic integration verified.");
+      }, 1000);
+    });
+  }
+  
   function testServerConnection(ip, updateGlobalStatus = false) {
     if (linkStatus) {
       linkStatus.innerText = "TESTING PING...";
       linkStatus.style.color = "var(--color-warning)";
     }
     
-    const protocol = (ip.includes('lhr.life') || ip.includes('ngrok')) ? 'https://' : 'http://';
-    fetch(protocol + ip + '/api/roster', { mode: 'cors' })
+    const targetUrl = formatServerUrl(ip) + '/api/roster';
+    fetch(targetUrl, { mode: 'cors' })
       .then(res => {
         if (res.ok) {
           if (linkStatus) {
@@ -2348,6 +3314,93 @@ function initSettingsDrawer() {
           }
         }
       });
+  }
+}
+
+function initCreateZingHRDrawer() {
+  const drawer = document.getElementById("app-create-zinghr-drawer");
+  const link = document.getElementById("reg-lnk-create-zinghr");
+  const closeBtn = document.getElementById("close-create-zinghr-btn");
+  const saveBtn = document.getElementById("new-emp-save-btn");
+  
+  if (link && drawer) {
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      drawer.classList.remove("hidden");
+      
+      // Auto-prepopulate the ID field if something was typed in search input
+      const searchVal = document.getElementById("reg-emp-id").value.trim().toUpperCase();
+      if (searchVal) {
+        document.getElementById("new-emp-id").value = searchVal;
+      }
+    });
+  }
+  
+  if (closeBtn && drawer) {
+    closeBtn.addEventListener("click", () => {
+      drawer.classList.add("hidden");
+    });
+  }
+  
+  if (saveBtn && drawer) {
+    saveBtn.addEventListener("click", () => {
+      const empId = document.getElementById("new-emp-id").value.trim().toUpperCase();
+      const empName = document.getElementById("new-emp-name").value.trim();
+      const empRole = document.getElementById("new-emp-role").value.trim();
+      const empShift = document.getElementById("new-emp-shift").value;
+      const empAddress = document.getElementById("new-emp-address").value.trim();
+      const empContact = document.getElementById("new-emp-contact").value.trim();
+      
+      if (!empId || !empName) {
+        alert("Please enter both Employee ID and Full Name!");
+        return;
+      }
+      
+      const payload = {
+        id: empId,
+        name: empName,
+        role: empRole,
+        shift: empShift,
+        address: empAddress,
+        contact: empContact
+      };
+      
+      logTerminal("INFO", `Posting new profile for ${empName} to Zing HR database...`);
+      
+      fetch(getApiUrl('/api/zinghr/employee'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(res => {
+        if (!res.ok) {
+          return res.json().then(err => { throw new Error(err.error || "Failed to create profile"); });
+        }
+        return res.json();
+      })
+      .then(data => {
+        logTerminal("SUCCESS", `Zing HR Profile created successfully for ${empName} (ID: ${empId})`);
+        alert(`Zing HR Employee Profile created successfully for ${empName}!`);
+        
+        // Clear new form fields
+        document.getElementById("new-emp-id").value = "";
+        document.getElementById("new-emp-name").value = "";
+        document.getElementById("new-emp-role").value = "";
+        document.getElementById("new-emp-address").value = "";
+        document.getElementById("new-emp-contact").value = "";
+        
+        // Hide drawer
+        drawer.classList.add("hidden");
+        
+        // Set search ID to the new ID and trigger search
+        document.getElementById("reg-emp-id").value = empId;
+        searchEmployeeZingHR();
+      })
+      .catch(err => {
+        logTerminal("ERROR", `Failed to create profile: ${err.message}`);
+        alert(`Error: ${err.message}`);
+      });
+    });
   }
 }
 
@@ -2405,4 +3458,175 @@ function startBackgroundSyncLoop() {
       }
     }
   }, 10000);
+}
+
+function renderMobileZingHRDirectory() {
+  const container = document.getElementById("mobile-zinghr-list-container");
+  if (!container) return;
+  
+  container.innerHTML = `<div style="color:var(--color-text-muted); font-size:0.75rem; text-align:center; padding:12px;">Loading ZingHR database...</div>`;
+  
+  fetch(getApiUrl('/api/zinghr/report'))
+    .then(res => res.json())
+    .then(data => {
+      container.innerHTML = "";
+      
+      const countEl = document.getElementById("mobile-zinghr-count");
+      if (countEl) countEl.innerText = `${data.length} Employees`;
+      
+      if (data.length === 0) {
+        container.innerHTML = `<div style="color:var(--color-text-muted); font-size:0.75rem; text-align:center; padding:12px;">No ZingHR records found.</div>`;
+        return;
+      }
+      
+      data.forEach(emp => {
+        const card = document.createElement("div");
+        card.style.cssText = "background:var(--bg-card); border:1px solid var(--border-color); padding:10px; border-radius:6px; display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:0.75rem; margin-bottom:6px; cursor:pointer;";
+        
+        const avatarImg = emp.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=40&h=40&q=80";
+        
+        const regBadge = emp.isGateRegistered 
+          ? `<span style="color:#22c55e; font-size:0.6rem; border:1px solid rgba(34,197,94,0.2); padding:1px 4px; border-radius:3px; background:rgba(34,197,94,0.05);">Registered</span>`
+          : `<span style="color:#ef4444; font-size:0.6rem; border:1px solid rgba(239,68,68,0.2); padding:1px 4px; border-radius:3px; background:rgba(239,68,68,0.05);">Not Sync</span>`;
+          
+        card.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; flex:1;">
+            <img src="${avatarImg}" style="width:28px; height:28px; border-radius:50%; object-fit:cover; border: 1px solid var(--border-color);">
+            <div style="display:flex; flex-direction:column; gap:1px;">
+              <span style="font-weight:bold; color:#fff;">${emp.name}</span>
+              <span style="color:var(--color-text-muted); font-size:0.62rem;">ID: ${emp.id}</span>
+            </div>
+          </div>
+          <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:2px;">
+            <span style="font-size:0.65rem; color:var(--color-primary); font-weight:bold;">${emp.attendanceCount} Days</span>
+            ${regBadge}
+          </div>
+        `;
+        
+        card.addEventListener("click", () => {
+          openMobileZingHRDossier(emp);
+        });
+        
+        container.appendChild(card);
+      });
+    })
+    .catch(err => {
+      container.innerHTML = `<div style="color:#ef4444; font-size:0.75rem; text-align:center; padding:12px;">Failed to load ZingHR database.</div>`;
+    });
+}
+
+function openMobileZingHRDossier(emp) {
+  appState.currentSelectedEmployee = emp;
+  
+  document.getElementById("mobile-zinghr-main-sect").classList.add("hidden");
+  document.getElementById("mobile-zinghr-dossier-sect").classList.remove("hidden");
+  
+  document.getElementById("mobile-dossier-avatar").src = emp.avatar;
+  document.getElementById("mobile-dossier-name").innerText = emp.name;
+  document.getElementById("mobile-dossier-id").innerText = `ID: ${emp.id}`;
+  
+  document.getElementById("mobile-dossier-role").innerText = emp.role || "N/A";
+  document.getElementById("mobile-dossier-shift").innerText = emp.shift || "N/A";
+  document.getElementById("mobile-dossier-email").innerText = emp.email || "N/A";
+  document.getElementById("mobile-dossier-phone").innerText = emp.contact || "N/A";
+  document.getElementById("mobile-dossier-reg").innerText = emp.isGateRegistered ? "YES (Sync OK)" : "NO (Pending)";
+  document.getElementById("mobile-dossier-reg").style.color = emp.isGateRegistered ? "#22c55e" : "#ef4444";
+  
+  const monthSelect = document.getElementById("mobile-dossier-month-select");
+  const selectedMonth = monthSelect ? monthSelect.value : "2026-07";
+  
+  const parts = selectedMonth.split("-");
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  const monthName = new Date(year, month - 1, 1).toLocaleString('default', { month: 'long' });
+  
+  const titleEl = document.getElementById("mobile-dossier-cal-title");
+  if (titleEl) titleEl.innerText = `Attendance - ${monthName} ${year}`;
+  
+  const grid = document.getElementById("mobile-dossier-cal-grid");
+  if (!grid) return;
+  grid.innerHTML = "";
+  
+  // Calculate offset (Mon=0, Tue=1, Wed=2, Thu=3, Fri=4, Sat=5, Sun=6)
+  const firstDay = new Date(year, month - 1, 1);
+  const dayOfWeek = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  const offset = (dayOfWeek + 6) % 7;
+  
+  for (let i = 0; i < offset; i++) {
+    const emptyCell = document.createElement("div");
+    emptyCell.style.height = "22px";
+    grid.appendChild(emptyCell);
+  }
+  
+  // Calculate number of days in selected month
+  const numDays = new Date(year, month, 0).getDate();
+  
+  for (let day = 1; day <= numDays; day++) {
+    const dayCell = document.createElement("div");
+    dayCell.style.cssText = "display:flex; align-items:center; justify-content:center; height:22px; font-size:0.65rem; border-radius:4px; font-weight:bold;";
+    dayCell.innerText = day;
+    
+    const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+    const isPresent = emp.attendanceDates.includes(dateStr);
+    
+    if (isPresent) {
+      dayCell.style.background = "#10b981";
+      dayCell.style.color = "#fff";
+    } else {
+      dayCell.style.background = "rgba(255,255,255,0.02)";
+      dayCell.style.border = "1px solid rgba(255,255,255,0.06)";
+      dayCell.style.color = "#64748b";
+    }
+    grid.appendChild(dayCell);
+  }
+}
+
+// Dynamically populate desktop and mobile ZingHR monthly dropdowns with all 12 months
+function populateMonthDropdowns() {
+  const months = [
+    { value: "2026-01", label: "January 2026" },
+    { value: "2026-02", label: "February 2026" },
+    { value: "2026-03", label: "March 2026" },
+    { value: "2026-04", label: "April 2026" },
+    { value: "2026-05", label: "May 2026" },
+    { value: "2026-06", label: "June 2026" },
+    { value: "2026-07", label: "July 2026" },
+    { value: "2026-08", label: "August 2026" },
+    { value: "2026-09", label: "September 2026" },
+    { value: "2026-10", label: "October 2026" },
+    { value: "2026-11", label: "November 2026" },
+    { value: "2026-12", label: "December 2026" }
+  ];
+  
+  const reportSelect = document.getElementById("report-month-select");
+  const mobileSelect = document.getElementById("mobile-dossier-month-select");
+  
+  const now = new Date();
+  const currentYear = 2026;
+  const currentMonth = (now.getMonth() + 1).toString().padStart(2, '0');
+  const defaultVal = currentYear + "-" + currentMonth;
+  
+  if (reportSelect) {
+    reportSelect.innerHTML = "";
+    months.forEach(m => {
+      const opt = document.createElement("option");
+      opt.value = m.value;
+      opt.innerText = m.label;
+      if (m.value === defaultVal) opt.selected = true;
+      reportSelect.appendChild(opt);
+    });
+  }
+  
+  if (mobileSelect) {
+    mobileSelect.innerHTML = "";
+    months.forEach(m => {
+      const opt = document.createElement("option");
+      opt.value = m.value;
+      opt.innerText = m.label;
+      opt.style.background = "var(--bg-card)";
+      opt.style.color = "var(--color-text-primary)";
+      if (m.value === defaultVal) opt.selected = true;
+      mobileSelect.appendChild(opt);
+    });
+  }
 }

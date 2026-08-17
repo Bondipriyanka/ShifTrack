@@ -1,4 +1,11 @@
 # node server.js
 # http://localhost:3000/
-#ssh -R 80:localhost:3000 serveo.net
 python -m uvicorn ai_server:app --port 8000 --reload 
+
+# ssh -R 80:127.0.0.1:3000 nokey@localhost.run
+
+
+
+http://localhost:3000/api/db-status
+
+
