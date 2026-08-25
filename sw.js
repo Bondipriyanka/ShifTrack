@@ -1,11 +1,14 @@
 // Biometric Gate - Service Worker (sw.js)
-const CACHE_NAME = 'biometric-gate-v3';
+const CACHE_NAME = 'biometric-gate-v4';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/styles.css',
-  '/app.js',
-  '/manifest.json'
+  '/styles-v3.css',
+  '/app-v3.js',
+  '/manifest.json',
+  '/portal.html',
+  '/portal.css',
+  '/portal.js'
 ];
 
 // Install Event: Cache static assets

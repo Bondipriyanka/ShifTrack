@@ -1,6 +1,6 @@
 {
   "appId": "com.lyam.shifttrack",
-  "appName": "Shift Track",
+  "appName": "ShifTrack",
   "webDir": "www",
   "bundledWebRuntime": false,
   "server": {

@@ -213,6 +213,7 @@ async function verifyAccess(employeeId, supervisorCoords, locationId) {
 // Application State Manager
 const appState = {
   isScanningMode: false,
+  currentDirection: "Check-In",
   isOffline: false,
   selectedSubject: "emp-001",
   selectedLocation: "Tata Motors - Gate 1",
@@ -235,7 +236,12 @@ const appState = {
   isAuthorized: false,
   currentSelectedEmployee: null,
   isContinuousScan: false,
-  isShiftRosterEnforced: false
+  isShiftRosterEnforced: false,
+  language: "en",
+  activeSourceNode: null,
+  audioContext: null,
+  globalTtsAudio: null,
+  isVoiceEnabled: true
 };
 
 function getLocalDateString(dateObj) {
@@ -243,6 +249,576 @@ function getLocalDateString(dateObj) {
   const month = String(dateObj.getMonth() + 1).padStart(2, '0');
   const day = String(dateObj.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+// BCP-47 Translation mapping and utilities
+const TRANSLATIONS = {
+  en: {
+    supervisor_auth: "Supervisor Authorization",
+    enter_pin: "Enter Supervisor Pin",
+    authorize_access: "Authorize Access",
+    pin_hint: "Passcode Hint: 1234",
+    app_title: "ShifTrack",
+    site_attendance: "Site Attendance Scan",
+    client_location: "Client Deployment Location",
+    open_gate: "Open Attendance Gate",
+    close_gate: "Close Attendance Gate",
+    gps_lock: "GPS Location Lock:",
+    scan_gate: "Scan Gate",
+    register_face: "Register Face",
+    roster_logs: "Roster & Logs",
+    zynghr: "ZyngHR",
+    lock_hub: "Lock Hub",
+    biometric_enroll: "Biometric Enrollment",
+    register_candidate: "Register Candidate Biometrics",
+    zynghr_emp_id: "Zyng HR Employee ID",
+    search: "Search",
+    create_profile: "+ Create New Employee Profile",
+    candidate_name: "Candidate Full Name",
+    name_placeholder: "Name will populate from search",
+    roster_shift: "Roster Shift Assignment",
+    biometric_capture: "Biometric Camera Capture",
+    take_snapshot: "Take Snapshot 1",
+    save_register: "Save & Register Candidate",
+    registered_roster: "Registered Roster",
+    total_swipes: "Total Swipes",
+    roster_db: "Roster Database",
+    recent_swipes: "Recent Swipe Logs",
+    zynghr_portal: "ZyngHR Portal",
+    db_reports: "Database & Reports",
+    add_profile: "+ Add Profile",
+    zynghr_roster: "ZyngHR Company Roster:",
+    back_to_directory: "← Back to Directory",
+    job_role: "JOB ROLE",
+    shift: "SHIFT",
+    email: "EMAIL",
+    contact: "CONTACT",
+    gate_registered: "GATE REGISTERED",
+    present: "Present",
+    absent: "Absent",
+    db_records: "Database Records",
+    app_language: "App Language",
+    select_language: "Language / भाषा / భాష / மொழி",
+    attendance_marked: "Attendance marked successfully.",
+    checkout_marked: "Check-out marked successfully.",
+    already_marked: "Attendance already marked for today.",
+    already_checked_out: "Already checked out for today.",
+    wrong_shift: "Access denied. Shift roster violation.",
+    spoof_failed: "Liveness check failed. Spoof attempt blocked.",
+    unauthorized: "Face not recognized. Access denied.",
+    no_face_detected: "No face detected. Please try again.",
+    liveness_reject: "Liveness Reject",
+    spoof_attack: "Spoof Attack Blocked",
+    pedestrian_access: "Pedestrian Access",
+    invalid_id: "Invalid ID Match",
+    face_not_recognized: "Face Not Recognized",
+    access_denied: "Access Denied",
+    access_denied_shift: "Access Denied (Wrong Shift)",
+    checkin_blocked_duplicate: "Check-in Blocked (Duplicate)",
+    checkout_blocked_duplicate: "Check-out Blocked (Duplicate)",
+    syncing_zynghr: "Syncing with Zyng HR...",
+    checked_in: "Checked in",
+    queued_offline: "Queued Offline (Server Error)"
+  },
+  hi: {
+    supervisor_auth: "पर्यवेक्षक प्रमाणीकरण",
+    enter_pin: "पर्यवेक्षक पिन दर्ज करें",
+    authorize_access: "पहुंच अधिकृत करें",
+    pin_hint: "पासकोड संकेत: 1234",
+    app_title: "शिफ्ट ट्रैक",
+    site_attendance: "साइट उपस्थिति स्कैन",
+    client_location: "क्लाइंट परिनियोजन स्थान",
+    open_gate: "उपस्थिति गेट खोलें",
+    close_gate: "उपस्थिति गेट बंद करें",
+    gps_lock: "जीपीएस स्थान लॉक:",
+    scan_gate: "द्वार स्कैन",
+    register_face: "चेहरा पंजीकृत करें",
+    roster_logs: "रोस्टर और लॉग",
+    zynghr: "ज़िंग एचआर",
+    lock_hub: "हब लॉक करें",
+    biometric_enroll: "बायोमेट्रिक नामांकन",
+    register_candidate: "चेहरे का बायोमेट्रिक्स दर्ज करें",
+    zynghr_emp_id: "ज़िंग एचआर कर्मचारी आईडी",
+    search: "खोजें",
+    create_profile: "+ नया कर्मचारी प्रोफ़ाइल बनाएं",
+    candidate_name: "उम्मीदवार का पूरा नाम",
+    name_placeholder: "खोजने पर नाम अपने आप भर जाएगा",
+    roster_shift: "रोस्टर शिफ्ट असाइनमेंट",
+    biometric_capture: "बायोमेट्रिक कैमरा कैप्चर",
+    take_snapshot: "स्नैपशॉट 1 लें",
+    save_register: "सहेजें और पंजीकृत करें",
+    registered_roster: "पंजीकृत रोस्टर",
+    total_swipes: "कुल स्वाइप",
+    roster_db: "रोस्टर डेटाबेस",
+    recent_swipes: "हाल के स्वाइप लॉग",
+    zynghr_portal: "ज़िंग एचआर पोर्टल",
+    db_reports: "डेटाबेस और रिपोर्ट",
+    add_profile: "+ प्रोफ़ाइल जोड़ें",
+    zynghr_roster: "ज़िंग एचआर कंपनी रोस्टर:",
+    back_to_directory: "← निर्देशिका पर वापस जाएं",
+    job_role: "नौकरी की भूमिका",
+    shift: "शिफ्ट",
+    email: "ईमेल",
+    contact: "संपर्क",
+    gate_registered: "गेट पर पंजीकृत",
+    present: "उपस्थित",
+    absent: "अनुपस्थित",
+    db_records: "डेटाबेस रिकॉर्ड",
+    app_language: "ऐप की भाषा",
+    select_language: "भाषा / Language / భాష / மொழி",
+    attendance_marked: "उपस्थिति सफलतापूर्वक दर्ज की गई।",
+    checkout_marked: "चेक-आउट सफलतापूर्वक दर्ज किया गया।",
+    already_marked: "आज की उपस्थिति पहले ही दर्ज हो चुकी है।",
+    already_checked_out: "आज के लिए चेक-आउट पहले ही दर्ज हो चुका है।",
+    wrong_shift: "प्रवेश निषेध। शिफ्ट रोस्टर का उल्लंघन।",
+    spoof_failed: "सजीवता जांच विफल। स्पूफ प्रयास अवरुद्ध।",
+    unauthorized: "चेहरा नहीं पहचाना गया। प्रवेश निषेध।",
+    no_face_detected: "कोई चेहरा नहीं मिला। कृपया पुनः प्रयास करें।",
+    liveness_reject: "सजीवता अस्वीकृत",
+    spoof_attack: "स्पूफ हमला अवरुद्ध",
+    pedestrian_access: "पैदल यात्री पहुंच",
+    invalid_id: "अमान्य आईडी मिलान",
+    face_not_recognized: "चेहरा नहीं पहचाना गया",
+    access_denied: "प्रवेश अस्वीकृत",
+    access_denied_shift: "प्रवेश निषेध (गलत शिफ्ट)",
+    checkin_blocked_duplicate: "चेक-इन अवरुद्ध (डबल एंट्री)",
+    checkout_blocked_duplicate: "चेक-आउट अवरुद्ध (डबल एंट्री)",
+    syncing_zynghr: "ज़िंग एचआर के साथ समन्वयित हो रहा है...",
+    checked_in: "चेक इन हो गया",
+    queued_offline: "ऑफ़लाइन कतारबद्ध (सर्वर त्रुटि)"
+  },
+  te: {
+    supervisor_auth: "సూపర్‌వైజర్ ప్రాధికారత",
+    enter_pin: "సూపర్‌వైజర్ పిన్ నమోదు చేయండి",
+    authorize_access: "యాక్సెస్ ప్రాధికారం చేయి",
+    pin_hint: "పాస్‌కోడ్ హింట్: 1234",
+    app_title: "షిఫ్ట్ ట్రాక్",
+    site_attendance: "సైట్ హాజరు స్కాన్",
+    client_location: "క్లయింట్ డిప్లాయ్మెంట్ లొకేషన్",
+    open_gate: "హాజరు గేట్ తెరవండి",
+    close_gate: "హాజరు గేట్ మూసివేయండి",
+    gps_lock: "జీపీఎస్ లొకేషన్ లాక్:",
+    scan_gate: "గేట్ స్కాన్",
+    register_face: "ముఖాన్ని నమోదు చేయి",
+    roster_logs: "రోస్టర్ & లాగ్స్",
+    zynghr: "జింగ్ హెచ్ఆర్",
+    lock_hub: "హబ్ లాక్ చేయి",
+    biometric_enroll: "బయోమెట్రిక్ నమోదు",
+    register_candidate: "ముఖ బయోమెట్రిక్స్ నమోదు చేయండి",
+    zynghr_emp_id: "జింగ్ హెచ్ఆర్ ఉద్యోగి ఐడీ",
+    search: "వెతకండి",
+    create_profile: "+ కొత్త ఉద్యోగి ప్రొఫైల్ సృష్టించండి",
+    candidate_name: "అభ్యర్థి పూర్తి పేరు",
+    name_placeholder: "శోధన నుండి పేరు నింపబడుతుంది",
+    roster_shift: "రోస్టర్ షిఫ్ట్ కేటాయింపు",
+    biometric_capture: "బయోమెట్రిక్ కెమెరా క్యాప్చర్",
+    take_snapshot: "స్నాప్‌షాట్ 1 తీసుకోండి",
+    save_register: "సేవ్ చేసి నమోదు చేయండి",
+    registered_roster: "నమోదైన రోస్టర్",
+    total_swipes: "మొత్తం స్వైప్‌లు",
+    roster_db: "రోస్టర్ డేటాబేస్",
+    recent_swipes: "ఇటీవలి స్వైప్ లాగ్స్",
+    zynghr_portal: "జింగ్ హెచ్ఆర్ పోర్టల్",
+    db_reports: "డేటాబேస్ & నివేదికలు",
+    add_profile: "+ ప్రొఫைల్ జోడించు",
+    zynghr_roster: "జింగ్ హెచ్ఆర్ కంపెనీ రోస్టర్:",
+    back_to_directory: "← డైరెక్టరీకి తిరిగి వెళ్ళు",
+    job_role: "ఉద్యోగ పాత్ర",
+    shift: "షిఫ్ట్",
+    email: "ఈమెయిల్",
+    contact: "సంప్రదించండి",
+    gate_registered: "గేట్ వద్ద నమోదైనది",
+    present: "హాజరయ్యారు",
+    absent: "హాజరుకాలేదు",
+    db_records: "డేటాబేస్ రికార్డులు",
+    app_language: "యాప్ భాష",
+    select_language: "భాష / Language /  भाषा / மொழி",
+    attendance_marked: "హాజరు విజయవంతంగా నమోదైంది.",
+    checkout_marked: "చెక్-అవుట్ విజయవంతంగా నమోదైంది.",
+    already_marked: "ఈరోజు హాజరు ఇప్పటికే నమోదైంది.",
+    already_checked_out: "ఈరోజు చెక్-అవుట్ ఇప్పటికే నమోదైంది.",
+    wrong_shift: "యాక్సెస్ తిరస్కరించబడింది. షిఫ్ట్ రోస్టర్ ఉల్లంఘన.",
+    spoof_failed: "లైవ్‌నెస్ చెక్ విఫలమైంది. స్పూఫ్ ప్రయత్నం నిరోధించబడింది.",
+    unauthorized: "ముఖం గుర్తించబడలేదు. యాక్సెస్ తిరస్కరించబడింది.",
+    no_face_detected: "ముఖం గుర్తించబడలేదు. దయచేసి మళ్లీ ప్రయత్నించండి.",
+    liveness_reject: "లైవ్‌నెస్ తిరస్కరణ",
+    spoof_attack: "స్పూఫ్ దాడి నిరోధించబడింది",
+    pedestrian_access: "పాదచారుల యాక్సెస్",
+    invalid_id: "చెల్లని ఐడీ మ్యాచ్",
+    face_not_recognized: "ముఖం గుర్తించబడలేదు",
+    access_denied: "ప్రవేశం నిరాకరించబడింది",
+    access_denied_shift: "యాక్సెస్ తిరస్కరించబడింది (తప్పుడు షిఫ్ట్)",
+    checkin_blocked_duplicate: "చెక్-ఇన్ నిరోధించబడింది (డూప్లికేట్)",
+    checkout_blocked_duplicate: "చెక్-అవుట్ నిరోధించబడింది (డూప్లికేట్)",
+    syncing_zynghr: "జింగ్ హెచ్ఆర్ తో సింక్ అవుతోంది...",
+    checked_in: "చెక్ ఇన్ అయ్యారు",
+    queued_offline: "ఆఫ్‌లైన్ క్యూలో ఉంది (సర్వర్ లోపం)"
+  },
+  ta: {
+    supervisor_auth: "மேற்பார்வையாளர் அங்கீகாரம்",
+    enter_pin: "மேற்பார்வையாளர் பின்னை உள்ளிடவும்",
+    authorize_access: "அனுமதியை அங்கீகரி",
+    pin_hint: "கடவுக்குறியீடு குறிப்பு: 1234",
+    app_title: "ஷிப்ட் ட்ராக்",
+    site_attendance: "தள வருகை ஸ்கேன்",
+    client_location: "வாடிக்கையாளர் வரிசைப்படுத்தல் இடம்",
+    open_gate: "வருகை நுழைவாயிலை திற",
+    close_gate: "வருகை நுழைவாயிலை மூடு",
+    gps_lock: "ஜிபிஎஸ் இருப்பிட பூட்டு:",
+    scan_gate: "கேட் ஸ்கேன்",
+    register_face: "முகத்தை பதிவு செய்",
+    roster_logs: "பதிவேடு & பதிவுகள்",
+    zynghr: "ஜிங் எச்ஆர்",
+    lock_hub: "ஹப்பை பூட்டு",
+    biometric_enroll: "பயோமெட்ரிக் பதிவு",
+    register_candidate: "முக பயோமெட்ரிக்ஸைப் பதிவுசெய்க",
+    zynghr_emp_id: "ஜிங் எச்ஆர் ஊழியர் ஐடி",
+    search: "தேடு",
+    create_profile: "+ புதிய பணியாளர் சுயவிவரத்தை உருவாக்கு",
+    candidate_name: "வேட்பாளரின் முழு பெயர்",
+    name_placeholder: "தேடலின் மூலம் பெயர் தானாகவே நிரம்பும்",
+    roster_shift: "பணி முறை ஒதுக்கீடு",
+    biometric_capture: "பயோமெட்ரிக் கேமரா படம் பிடித்தல்",
+    take_snapshot: "படம் 1 எடுக்கவும்",
+    save_register: "சேமித்து பதிவு செய்க",
+    registered_roster: "பதிவு செய்யப்பட்ட பதிவேடு",
+    total_swipes: "மொத்த ஸ்வைப்கள்",
+    roster_db: "பதிவேட்டு தரவுத்தளம்",
+    recent_swipes: "சமீபத்திய ஸ்வைப்பு பதிவுகள்",
+    zynghr_portal: "ஜிங் எச்ஆர் போர்டல்",
+    db_reports: "தரவுத்தளம் & அறிக்கைகள்",
+    add_profile: "+ சுயவிவரத்தைச் சேர்",
+    zynghr_roster: "ஜிங் எச்ஆர் நிறுவன பதிவேடு:",
+    back_to_directory: "← அடைவுக்குத் திரும்பு",
+    job_role: "வேலை பங்கு",
+    shift: "பணி முறை",
+    email: "மின்னஞ்சல்",
+    contact: "தொடர்பு",
+    gate_registered: "கேட்டில் பதிவு செய்யப்பட்டுள்ளது",
+    present: "வருகை",
+    absent: "வருகை இல்லை",
+    db_records: "தரவுத்தள பதிவுகள்",
+    app_language: "செயலி மொழி",
+    select_language: "மொழி / Language / भाषा / భాష",
+    attendance_marked: "வருகை வெற்றிகரமாக பதிவு செய்யப்பட்டது.",
+    checkout_marked: "செக்-அவுட் வெற்றிகரமாக பதிவு செய்யப்பட்டது.",
+    already_marked: "இன்றைய வருகை ஏற்கனவே பதிவு செய்யப்பட்டுள்ளது.",
+    already_checked_out: "இன்றைய செக்-அவுட் ஏற்கனவே பதிவு செய்யப்பட்டுள்ளது.",
+    wrong_shift: "அனுமதி மறுக்கப்பட்டது. ஷிப்ட் ரோஸ்டர் விதிமீறல்.",
+    spoof_failed: "உயிரோட்ட சோதனை தோல்வி. ஏமாற்றும் முயற்சி தடுத்து நிறுத்தப்பட்டது.",
+    unauthorized: "முகம் அடையாளம் காணப்படவில்லை. அனுமதி மறுக்கப்பட்டது.",
+    no_face_detected: "முகம் கண்டறியப்படவில்லை. மீண்டும் முயற்சிக்கவும்.",
+    liveness_reject: "உயிரோட்டம் நிராகரிப்பு",
+    spoof_attack: "ஏமாற்று முயற்சி தடுக்கப்பட்டது",
+    pedestrian_access: "நடசாரிகள் அணுகல்",
+    invalid_id: "தவறான ஐடி பொருத்தம்",
+    face_not_recognized: "முகம் அடையாளம் காணப்படவில்லை",
+    access_denied: "அனுமதி மறுக்கப்பட்டது",
+    access_denied_shift: "அனுமதி மறுக்கப்பட்டது (தவறான பணிமுறை)",
+    checkin_blocked_duplicate: "செக்-இன் தடுக்கப்பட்டது (இரட்டை பதிவு)",
+    checkout_blocked_duplicate: "செக்-அவுட் தடுக்கப்பட்டது (இரட்டை பதிவு)",
+    syncing_zynghr: "ஜிங் எச்ஆர் உடன் ஒத்திசைக்கப்படுகிறது...",
+    checked_in: "செக்-இன் செய்யப்பட்டது",
+    queued_offline: "ஆஃப்லைனில் வரிசைப்படுத்தப்பட்டது (சேவையகப் பிழை)"
+  },
+  kn: {
+    supervisor_auth: "ಮೇಲ್ವಿಚಾರಕ ದೃಢೀಕರಣ",
+    enter_pin: "ಮೇಲ್ವಿಚಾರಕ ಪಿನ್ ನಮೂದಿಸಿ",
+    authorize_access: "ಪ್ರವೇಶವನ್ನು ಅಧಿಕೃತಗೊಳಿಸಿ",
+    pin_hint: "ಪಾಸ್‌ಕೋಡ್ ಸುಳಿವು: 1234",
+    app_title: "ಶಿಫ್ಟ್ ಟ್ರ್ಯಾಕ್",
+    site_attendance: "ಸೈಟ್ ಹಾಜರಾತಿ ಸ್ಕ್ಯಾನ್",
+    client_location: "ಕ್ಲೈಂಟ್ ನಿಯೋಜನೆ ಸ್ಥಳ",
+    open_gate: "ಹಾಜರಾತಿ ಗೇಟ್ ತೆರೆಯಿರಿ",
+    close_gate: "ಹಾಜರಾತಿ ಗೇಟ್ ಮುಚ್ಚಿ",
+    gps_lock: "ಜಿಪಿಎಸ್ ಸ್ಥಳ ಲಾಕ್:",
+    scan_gate: "ಗೇಟ್ ಸ್ಕ್ಯಾನ್",
+    register_face: "ಮುಖವನ್ನು ನೋಂದಾಯಿಸಿ",
+    roster_logs: "ರೋಸ್ಟರ್ ಮತ್ತು ಲಾಗ್‌ಗಳು",
+    zynghr: "ಜಿಂಗ್ ಎಚ್ಆರ್",
+    lock_hub: "ಹಬ್ ಲಾಕ್ ಮಾಡಿ",
+    biometric_enroll: "ಬಯೋಮೆಟ್ರಿಕ್ ದಾಖಲಾತಿ",
+    register_candidate: "ಮುಖ ಬಯೋಮೆಟ್ರಿಕ್ಸ್ ನೋಂದಾಯಿಸಿ",
+    zynghr_emp_id: "ಜಿಂಗ್ ಎಚ್ಆರ್ ಉದ್ಯೋಗಿ ಐಡಿ",
+    search: "ಹುಡುಕು",
+    create_profile: "+ ಹೊಸ ಉದ್ಯೋಗಿ ಪ್ರೊಫೈಲ್ ರಚಿಸಿ",
+    candidate_name: "ಅಭ್ಯರ್ಥಿಯ ಪೂರ್ಣ ಹೆಸರು",
+    name_placeholder: "ಹುಡುಕಾಟದಿಂದ ಹೆಸರು ತುಂಬುತ್ತದೆ",
+    roster_shift: "ರೋಸ್ಟರ್ ಶಿಫ್ಟ್ ನಿಯೋಜನೆ",
+    biometric_capture: "ಬಯೋಮೆಟ್ರಿಕ್ ಕ್ಯಾಮೆರಾ ಕ್ಯಾಪ್ಚರ್",
+    take_snapshot: "ಸ್ನಾಪ್‌ಶಾಟ್ 1 ತೆಗೆದುಕೊಳ್ಳಿ",
+    save_register: "ಉಳಿಸಿ ಮತ್ತು ನೋಂದಾಯಿಸಿ",
+    registered_roster: "ನೋಂದಾಯಿತ ರೋಸ್ಟರ್",
+    total_swipes: "ಒಟ್ಟು ಸ್ವೈಪ್‌ಗಳು",
+    roster_db: "ರೋಸ್ಟರ್ ಡೇಟಾಬೇಸ್",
+    recent_swipes: "ಇತ್ತೀಚಿನ ಸ್ವೈಪ್ ಲಾಗ್‌ಗಳು",
+    zynghr_portal: "ಜಿಂಗ್ ಎಚ್ಆರ್ ಪೋರ್ಟಲ್",
+    db_reports: "ಡೇಟಾಬೇಸ್ ಮತ್ತು ವರದಿಗಳು",
+    add_profile: "+ ಪ್ರೊಫೈಲ್ ಸೇರಿಸಿ",
+    zynghr_roster: "ಜಿಂಗ್ ಎಚ್ಆರ್ ಕಂಪನಿ ರೋಸ್ಟರ್:",
+    back_to_directory: "← ಡೈರೆಕ್ಟರಿಗೆ ಹಿಂತಿರುಗಿ",
+    job_role: "ಉದ್ಯೋಗ ಪಾತ್ರ",
+    shift: "ಶಿಫ್ಟ್",
+    email: "ಇಮೇಲ್",
+    contact: "ಸಂಪರ್ಕ",
+    gate_registered: "ಗೇಟ್ ನೋಂದಾಯಿಸಲಾಗಿದೆ",
+    present: "ಹಾಜರು",
+    absent: "ಗೈರುಹಾಜರು",
+    db_records: "ಡೇಟಾಬೇಸ್ ದಾಖಲೆಗಳು",
+    app_language: "ಅಪ್ಲಿಕೇಶನ್ ಭಾಷೆ",
+    select_language: "ಭಾಷೆ / Language / भाषा /  ಭಾಷ / மொழி / ಕನ್ನಡ",
+    attendance_marked: "ಹಾಜರಾತಿ ಯಶಸ್ವಿಯಾಗಿ ದಾಖಲಾಗಿದೆ.",
+    checkout_marked: "ಚೆಕ್-ಔಟ್ ಯಶಸ್ವಿಯಾಗಿ ದಾಖಲಾಗಿದೆ.",
+    already_marked: "ಇಂದಿನ ಹಾಜರಾತಿ ಈಗಾಗಲೇ ದಾಖಲಾಗಿದೆ.",
+    already_checked_out: "ಇಂದಿನ ಚೆಕ್-ಔಟ್ ಈಗಾಗಲೇ ದಾಖಲಾಗಿದೆ.",
+    wrong_shift: "ಪ್ರವೇಶ ನಿರಾಕರಿಸಲಾಗಿದೆ. ಶಿಫ್ಟ್ ರೋಸ್ಟರ್ ನಿಯಮ ಉಲ್ಲಂಘನೆ.",
+    spoof_failed: "ಲೈವ್‌ನೆಸ್ ಪರಿಶೀಲನೆ ವಿಫಲವಾಗಿದೆ. ಸ್ಪೂಫ್ ಯತ್ನ ತಡೆಯಲಾಗಿದೆ.",
+    unauthorized: "ಮುಖ ಗುರುತಿಸಲಾಗಿಲ್ಲ. ಪ್ರವೇಶ ನಿರಾಕರಿಸಲಾಗಿದೆ.",
+    no_face_detected: "ಯಾವುದೇ ಮುಖ ಪತ್ತೆಯಾಗಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ.",
+    liveness_reject: "ಲೈವ್‌ನೆಸ್ ತಿರಸ್ಕಾರ",
+    spoof_attack: "ಸ್ಪೂಫ್ ದಾಳಿ ತಡೆಯಲಾಗಿದೆ",
+    pedestrian_access: "ಪಾದಚಾರಿ ಪ್ರವೇಶ",
+    invalid_id: "ಅಮಾನ್ಯ ಐಡಿ ಹೊಂದಾಣಿಕೆ",
+    face_not_recognized: "ಮುಖ ಗುರುತಿಸಲಾಗಿಲ್ಲ",
+    access_denied: "ಪ್ರವೇಶ ನಿರಾಕರಿಸಲಾಗಿದೆ",
+    access_denied_shift: "ಪ್ರವೇಶ ನಿರಾಕರಿಸಲಾಗಿದೆ (ತಪ್ಪು ಶಿಫ್ಟ್)",
+    checkin_blocked_duplicate: "ಚೆಕ್-ಇನ್ ತಡೆಯಲಾಗಿದೆ (ಡೂಪ್ಲಿಕೇಟ್)",
+    checkout_blocked_duplicate: "ಚೆಕ್-ಔಟ್ ತಡೆಯಲಾಗಿದೆ (ಡೂಪ್ಲಿಕೇಟ್)",
+    syncing_zynghr: "ಜಿಂಗ್ ಎಚ್ಆರ್ ಜೊತೆ ಸಿಂಕ್ ಆಗುತ್ತಿದೆ...",
+    checked_in: "ಚೆಕ್ ಇನ್ ಆಗಿದೆ",
+    queued_offline: "ಆಫ್‌ಲೈನ್ ಕ್ಯೂನಲ್ಲಿದೆ (ಸರ್ವರ್ ದೋಷ)"
+  }
+};
+
+function getTranslation(key, fallback) {
+  const currentLang = appState.language || 'en';
+  return (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key]) || fallback;
+}
+
+function translateUI(lang) {
+  const translations = TRANSLATIONS[lang] || TRANSLATIONS.en;
+  
+  document.querySelectorAll("[data-i18n]").forEach(elem => {
+    const key = elem.getAttribute("data-i18n");
+    if (translations[key]) {
+      if (elem.tagName === "INPUT" && elem.hasAttribute("placeholder")) {
+        elem.setAttribute("placeholder", translations[key]);
+      } else {
+        elem.textContent = translations[key];
+      }
+    }
+  });
+
+  const scanBtnText = document.getElementById("scan-btn-text");
+  if (scanBtnText) {
+    scanBtnText.textContent = appState.isScanningMode ? translations.close_gate : translations.open_gate;
+  }
+}
+
+function handleLanguageChange(event) {
+  const selectedLang = event.target.value;
+  appState.language = selectedLang;
+  
+  const selectors = ["login-lang-select", "header-lang-select", "settings-lang-select"];
+  selectors.forEach(id => {
+    const elem = document.getElementById(id);
+    if (elem) elem.value = selectedLang;
+  });
+  
+  saveLocalStorage();
+  translateUI(selectedLang);
+  logTerminal("INFO", `Language switched to: ${selectedLang.toUpperCase()}`);
+}
+
+function playAudioViaWebAudio(url, isCancelled) {
+  return new Promise((resolve, reject) => {
+    try {
+      if (isCancelled && isCancelled()) {
+        return reject(new Error("Cancelled"));
+      }
+
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) {
+        return reject(new Error("Web Audio API not supported"));
+      }
+      
+      const audioCtx = appState.audioContext || new AudioContextClass();
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+      
+      fetch(url)
+        .then(response => {
+          if (isCancelled && isCancelled()) throw new Error("Cancelled");
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          return response.arrayBuffer();
+        })
+        .then(arrayBuffer => {
+          if (isCancelled && isCancelled()) throw new Error("Cancelled");
+          return audioCtx.decodeAudioData(arrayBuffer);
+        })
+        .then(audioBuffer => {
+          if (isCancelled && isCancelled()) throw new Error("Cancelled");
+          const source = audioCtx.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(audioCtx.destination);
+          
+          // Save active source node reference to stop it if fallback is triggered
+          appState.activeSourceNode = source;
+          
+          source.onended = () => {
+            if (appState.activeSourceNode === source) {
+              appState.activeSourceNode = null;
+            }
+          };
+          source.start(0);
+          resolve(); // Resolve immediately when playback starts to clear timeout
+        })
+        .catch(err => {
+          reject(err);
+        });
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
+function speakVoiceMessage(textKey, fallbackText) {
+  const currentLang = appState.language || 'en';
+  const text = TRANSLATIONS[currentLang][textKey] || fallbackText;
+  
+  const langCodesShort = {
+    en: 'en',
+    hi: 'hi',
+    te: 'te',
+    ta: 'ta',
+    kn: 'kn'
+  };
+  
+  const langCode = langCodesShort[currentLang] || 'en';
+  
+  const isMobile = (
+    window.location.protocol === 'file:' || 
+    window.location.protocol === 'capacitor:' || 
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+  );
+
+  // Try high-quality online TTS fallback if online
+  if (navigator.onLine && !appState.isOffline) {
+    try {
+      console.log(`TTS (Online): Speaking "${text}" in ${currentLang}`);
+      
+      let ttsUrl;
+      if (isMobile) {
+        // Direct HTTPS Google Translate URL to bypass local server requirements & mixed-content blocks on Android
+        ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${langCode}&client=tw-ob&q=${encodeURIComponent(text)}`;
+      } else {
+        // Call our secure, referrer-free local backend tts proxy API for desktop browsers
+        ttsUrl = getApiUrl(`/api/tts?lang=${langCode}&text=${encodeURIComponent(text)}`);
+      }
+      
+      let fallbackTriggered = false;
+      let timeoutId = null;
+
+      const triggerFallback = (reason) => {
+        if (!fallbackTriggered) {
+          fallbackTriggered = true;
+          if (timeoutId) clearTimeout(timeoutId);
+          console.warn(`TTS Fallback triggered due to: ${reason}`);
+          
+          // Stop Web Audio API playback instantly if active
+          if (appState.activeSourceNode) {
+            try {
+              appState.activeSourceNode.stop();
+              appState.activeSourceNode = null;
+            } catch (e) {}
+          }
+          
+          // Clear HTML5 audio callbacks and stop audio to prevent double voices
+          const audio = appState.globalTtsAudio;
+          if (audio) {
+            audio.onplaying = null;
+            audio.onerror = null;
+            try {
+              audio.pause();
+              audio.src = "";
+            } catch (e) {}
+          }
+          
+          speakLocalVoice(text, currentLang);
+        }
+      };
+
+      timeoutId = setTimeout(() => {
+        triggerFallback("timeout");
+      }, 5000); // 5s timeout to prevent early fallbacks during screen sharing
+      
+      // Try Web Audio API first (highly robust on Android WebView, bypasses range requests)
+      playAudioViaWebAudio(ttsUrl, () => fallbackTriggered)
+        .then(() => {
+          if (fallbackTriggered) return;
+          if (timeoutId) clearTimeout(timeoutId);
+        })
+        .catch(err => {
+          if (fallbackTriggered) return;
+          console.warn("Web Audio TTS failed, attempting HTML5 Audio fallback:", err);
+          
+          // Fallback to HTML5 audio element
+          const audio = appState.globalTtsAudio || document.createElement('audio');
+          appState.globalTtsAudio = audio;
+          audio.referrerPolicy = 'no-referrer';
+          audio.src = ttsUrl;
+          
+          audio.play()
+            .then(() => {
+              if (fallbackTriggered) {
+                try { audio.pause(); } catch(e) {}
+                return;
+              }
+              if (timeoutId) clearTimeout(timeoutId);
+            })
+            .catch(e => {
+              if (fallbackTriggered) return;
+              triggerFallback("html5_audio_failed");
+            });
+        });
+      return;
+    } catch (e) {
+      console.warn("Online TTS failed, falling back to local speech synthesis:", e);
+    }
+  }
+  
+  // Offline fallback
+  speakLocalVoice(text, currentLang);
+}
+
+function speakLocalVoice(text, lang) {
+  if (!window.speechSynthesis) {
+    console.warn("Speech Synthesis is not supported in this browser environment.");
+    return;
+  }
+  
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  
+  const langCodesLong = {
+    en: 'en-IN',
+    hi: 'hi-IN',
+    te: 'te-IN',
+    ta: 'ta-IN',
+    kn: 'kn-IN'
+  };
+  
+  utterance.lang = langCodesLong[lang] || 'en-US';
+  
+  // Asynchronously query voices
+  const voices = window.speechSynthesis.getVoices();
+  const matchedVoice = voices.find(v => v.lang.startsWith(utterance.lang) || v.lang.startsWith(lang));
+  if (matchedVoice) {
+    utterance.voice = matchedVoice;
+  }
+  
+  window.speechSynthesis.speak(utterance);
 }
 
 // Initialize DOM elements safely (guards against DOMContentLoaded race condition)
@@ -277,6 +853,17 @@ function initApp() {
     });
 
     document.getElementById("scan-toggle").addEventListener("click", toggleScanMode);
+    
+    // Wire up Check-In and Check-Out actions
+    const checkInBtn = document.getElementById("btn-check-in");
+    if (checkInBtn) {
+      checkInBtn.addEventListener("click", () => triggerImmediateScan("Check-In"));
+    }
+    const checkOutBtn = document.getElementById("btn-check-out");
+    if (checkOutBtn) {
+      checkOutBtn.addEventListener("click", () => triggerImmediateScan("Check-Out"));
+    }
+    
     document.getElementById("offline-switch").addEventListener("change", toggleOfflineMode);
     document.getElementById("location-select").addEventListener("change", handleLocationChange);
     document.getElementById("trigger-scan-btn").addEventListener("click", triggerManualScan);
@@ -294,6 +881,15 @@ function initApp() {
     document.getElementById("clear-logs-btn").addEventListener("click", clearLogs);
     document.getElementById("btn-camera-sim").addEventListener("click", startCameraSimulator);
 
+    const loginLang = document.getElementById("login-lang-select");
+    if (loginLang) loginLang.addEventListener("change", handleLanguageChange);
+    
+    const headerLang = document.getElementById("header-lang-select");
+    if (headerLang) headerLang.addEventListener("change", handleLanguageChange);
+    
+    const settingsLang = document.getElementById("settings-lang-select");
+    if (settingsLang) settingsLang.addEventListener("change", handleLanguageChange);
+
     // Month selector change triggers to update visual calendars dynamically
     const reportMonthSelect = document.getElementById("report-month-select");
     if (reportMonthSelect) {
@@ -307,7 +903,7 @@ function initApp() {
     if (mobileMonthSelect) {
       mobileMonthSelect.addEventListener("change", () => {
         if (appState.currentSelectedEmployee) {
-          openMobileZingHRDossier(appState.currentSelectedEmployee);
+          openMobileZyngHRDossier(appState.currentSelectedEmployee);
         }
       });
     }
@@ -396,10 +992,10 @@ function initApp() {
     document.getElementById("reg-btn-save").addEventListener("click", enrollNewCandidate);
     document.getElementById("bulk-roster-import").addEventListener("change", handleBulkRosterImport);
     
-    // Zing HR search listeners
-    document.getElementById("reg-btn-search").addEventListener("click", searchEmployeeZingHR);
+    // Zyng HR search listeners
+    document.getElementById("reg-btn-search").addEventListener("click", searchEmployeeZyngHR);
     document.getElementById("reg-emp-id").addEventListener("keypress", (e) => {
-      if (e.key === "Enter") searchEmployeeZingHR();
+      if (e.key === "Enter") searchEmployeeZyngHR();
     });
 
     // Setup tab navigator listeners
@@ -415,25 +1011,25 @@ function initApp() {
       logsBackBtn.addEventListener("click", () => switchTab("scan"));
     }
     
-    const zinghrTab = document.getElementById("nav-zinghr-tab");
-    if (zinghrTab) {
-      zinghrTab.addEventListener("click", () => switchTab("zinghr"));
+    const zynghrTab = document.getElementById("nav-zynghr-tab");
+    if (zynghrTab) {
+      zynghrTab.addEventListener("click", () => switchTab("zynghr"));
     }
-    const zinghrBackBtn = document.getElementById("mobile-zinghr-back-btn");
-    if (zinghrBackBtn) {
-      zinghrBackBtn.addEventListener("click", () => switchTab("scan"));
+    const zynghrBackBtn = document.getElementById("mobile-zynghr-back-btn");
+    if (zynghrBackBtn) {
+      zynghrBackBtn.addEventListener("click", () => switchTab("scan"));
     }
-    const dossierBackBtn = document.getElementById("mobile-zinghr-dossier-back");
+    const dossierBackBtn = document.getElementById("mobile-zynghr-dossier-back");
     if (dossierBackBtn) {
       dossierBackBtn.addEventListener("click", () => {
-        document.getElementById("mobile-zinghr-dossier-sect").classList.add("hidden");
-        document.getElementById("mobile-zinghr-main-sect").classList.remove("hidden");
+        document.getElementById("mobile-zynghr-dossier-sect").classList.add("hidden");
+        document.getElementById("mobile-zynghr-main-sect").classList.remove("hidden");
       });
     }
-    const createZingBtn = document.getElementById("mobile-zinghr-create-btn");
+    const createZingBtn = document.getElementById("mobile-zynghr-create-btn");
     if (createZingBtn) {
       createZingBtn.addEventListener("click", () => {
-        const drawer = document.getElementById("app-create-zinghr-drawer");
+        const drawer = document.getElementById("app-create-zynghr-drawer");
         if (drawer) drawer.classList.remove("hidden");
       });
     }
@@ -442,7 +1038,7 @@ function initApp() {
 
     // Initialize backend network IP configuration panel and admin tabs
     initSettingsDrawer();
-    initCreateZingHRDrawer();
+    initCreateZyngHRDrawer();
     initEmployeeProfileDrawer();
     initAdminTabs();
 
@@ -670,7 +1266,7 @@ function lockAppSupervisor() {
   const verifCard = document.getElementById("verification-card");
 
   if (scanToggle) scanToggle.classList.remove("active");
-  if (scanBtnText) scanBtnText.innerText = "Open Attendance Gate";
+  if (scanBtnText) scanBtnText.innerText = "Start Gate Camera";
   if (viewport) viewport.classList.remove("scanning", "success", "error");
   if (verifCard) verifCard.classList.remove("active");
   
@@ -700,31 +1296,31 @@ function switchTab(tabName) {
   const scanTab = document.getElementById("nav-scan-tab");
   const regTab = document.getElementById("nav-register-tab");
   const logsTab = document.getElementById("nav-logs-tab");
-  const zinghrTab = document.getElementById("nav-zinghr-tab");
+  const zynghrTab = document.getElementById("nav-zynghr-tab");
   
   if (scanTab) scanTab.classList.toggle("active", tabName === "scan");
   if (regTab) regTab.classList.toggle("active", tabName === "register");
   if (logsTab) logsTab.classList.toggle("active", tabName === "logs");
-  if (zinghrTab) zinghrTab.classList.toggle("active", tabName === "zinghr");
+  if (zynghrTab) zynghrTab.classList.toggle("active", tabName === "zynghr");
   
   // Toggle UI screen layers
   const scanView = document.getElementById("app-scan-view");
   const registerView = document.getElementById("app-register-view");
   const logsView = document.getElementById("app-logs-view");
-  const zinghrView = document.getElementById("app-zinghr-view");
+  const zynghrView = document.getElementById("app-zynghr-view");
   
   if (tabName === "scan") {
     scanView.classList.remove("hidden");
     registerView.classList.add("hidden");
     if (logsView) logsView.classList.add("hidden");
-    if (zinghrView) zinghrView.classList.add("hidden");
+    if (zynghrView) zynghrView.classList.add("hidden");
     shutdownActiveStream();
     showCameraFallback();
   } else if (tabName === "register") {
     scanView.classList.add("hidden");
     registerView.classList.remove("hidden");
     if (logsView) logsView.classList.add("hidden");
-    if (zinghrView) zinghrView.classList.add("hidden");
+    if (zynghrView) zynghrView.classList.add("hidden");
     
     // Stop scanner scan mode
     appState.isScanningMode = false;
@@ -739,7 +1335,7 @@ function switchTab(tabName) {
     scanView.classList.add("hidden");
     registerView.classList.add("hidden");
     if (logsView) logsView.classList.remove("hidden");
-    if (zinghrView) zinghrView.classList.add("hidden");
+    if (zynghrView) zynghrView.classList.add("hidden");
     
     // Stop scanner scan mode
     appState.isScanningMode = false;
@@ -752,11 +1348,11 @@ function switchTab(tabName) {
     
     renderMobileLogs();
     renderMobileRoster();
-  } else if (tabName === "zinghr") {
+  } else if (tabName === "zynghr") {
     scanView.classList.add("hidden");
     registerView.classList.add("hidden");
     if (logsView) logsView.classList.add("hidden");
-    if (zinghrView) zinghrView.classList.remove("hidden");
+    if (zynghrView) zynghrView.classList.remove("hidden");
     
     // Stop scanner scan mode
     appState.isScanningMode = false;
@@ -767,7 +1363,7 @@ function switchTab(tabName) {
     
     shutdownActiveStream();
     
-    renderMobileZingHRDirectory();
+    renderMobileZyngHRDirectory();
   }
 }
 
@@ -868,6 +1464,12 @@ function startCanvasOverlay() {
   let particleAngle = 0;
   
   function drawFrame() {
+    if (!appState.isScanningMode && !appState.capturedFaceImageElement) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      appState.simAnimationId = null;
+      return;
+    }
+    
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     // Draw real captured face snapshot if present
@@ -909,10 +1511,10 @@ function startCanvasOverlay() {
 
     // Dynamic Green Bounding Box HUD (scans the entire area borderlessly)
     if (appState.isScanningMode) {
-      const boxWidth = 200;
-      const boxHeight = 200;
-      const boxX = (canvas.width - boxWidth) / 2;
-      const boxY = (canvas.height - boxHeight) / 2 - 20;
+      const boxX = 10;
+      const boxY = 10;
+      const boxWidth = canvas.width - 20;
+      const boxHeight = canvas.height - 20;
 
       ctx.strokeStyle = "#10b981"; // Green target color
       ctx.lineWidth = 3;
@@ -982,14 +1584,17 @@ function toggleScanMode() {
   const btn = document.getElementById("scan-toggle");
   const btnText = document.getElementById("scan-btn-text");
   const viewport = document.getElementById("viewport-container");
+  const checkInOutActions = document.getElementById("check-in-out-actions");
   
   if (!appState.isScanningMode) {
     // Open stream
     appState.isScanningMode = true;
     btn.classList.add("active");
-    btnText.innerText = "Close Gate Camera";
+    btnText.innerText = "Stop Gate Camera";
     viewport.classList.add("scanning");
     logTerminal("INFO", `Scan channel opened at plant gate: [${appState.selectedLocation}]`);
+    
+    if (checkInOutActions) checkInOutActions.style.display = "flex";
     
     // Force try real webcam first (shows your real face)
     appState.isSimulatedCamera = false;
@@ -998,17 +1603,16 @@ function toggleScanMode() {
     
     // Ensure countdown elements exist (self-healing DOM check)
     setupCountdownDOMElements();
-    
-    // Auto-scan countdown runs automatically in all cases just like the desktop web app
-    startScanCountdown();
   } else {
     // Shutdown
     appState.isScanningMode = false;
     btn.classList.remove("active");
-    btnText.innerText = "Open Attendance Gate";
+    btnText.innerText = "Start Gate Camera";
     viewport.classList.remove("scanning");
     viewport.className = "camera-viewport";
     document.getElementById("verification-card").classList.remove("active");
+    
+    if (checkInOutActions) checkInOutActions.style.display = "none";
     
     appState.capturedFaceImageElement = null;
     const mobSnapBtn = document.getElementById("btn-mobile-snap-permanent");
@@ -1045,10 +1649,12 @@ function autoStopCameraScanner() {
   const btn = document.getElementById("scan-toggle");
   const btnText = document.getElementById("scan-btn-text");
   const viewport = document.getElementById("viewport-container");
+  const checkInOutActions = document.getElementById("check-in-out-actions");
   
   if (btn) btn.classList.remove("active");
-  if (btnText) btnText.innerText = "Open Attendance Gate";
+  if (btnText) btnText.innerText = "Start Gate Camera";
   if (viewport) viewport.classList.remove("scanning");
+  if (checkInOutActions) checkInOutActions.style.display = "none";
   
   appState.capturedFaceImageElement = null;
   const mobSnapBtn = document.getElementById("btn-mobile-snap-permanent");
@@ -1094,6 +1700,18 @@ function handleLocationChange(e) {
 
 // Run the core authentication pipeline
 // Run the core authentication pipeline
+function triggerImmediateScan(direction) {
+  appState.currentDirection = direction;
+  if (!appState.isScanningMode) {
+    toggleScanMode();
+    logTerminal("INFO", `Camera starting... Please align face and click ${direction} again.`);
+    speakLocalVoice(`Camera starting. Please click ${direction} when ready.`, "en");
+    return;
+  }
+  logTerminal("INFO", `Immediate scan triggered for action: [${direction}]`);
+  triggerManualScan();
+}
+
 function triggerManualScan() {
   if (!appState.isScanningMode) {
     toggleScanMode();
@@ -1231,18 +1849,18 @@ function triggerManualScan() {
             setTimeout(() => {
               highlightFlowNode("node-zynghr");
               recordAttendanceSuccess(emp, timestamp);
-            }, 800);
+            }, 150);
 
-          }, 800);
+          }, 150);
         }
-      }, 800);
+      }, 150);
     })
     .catch(err => {
       logTerminal("WARN", "Biometric API Server offline. Falling back to local client-side face recognition.");
       performLocalFaceRecognition(base64Image, location, timestamp);
     });
 
-  }, 600);
+  }, 100);
 }
 
 // Fallback biometric simulator in case backend is down
@@ -1318,8 +1936,8 @@ function performLocalFaceRecognition(base64Image, location, timestamp) {
         setTimeout(() => {
           highlightFlowNode("node-zynghr");
           recordAttendanceSuccess(emp, timestamp);
-        }, 800);
-      }, 800);
+        }, 150);
+      }, 150);
     } else {
       logTerminal("WARN", `Local Face Matcher: Mismatch. Closest similarity score was ${bestScore.toFixed(2)} (Threshold: ${threshold})`);
       handleVerificationResult(false, "UNAUTHORIZED");
@@ -1369,13 +1987,25 @@ function handleVerificationResult(isSuccess, failureReason) {
     `;
 
     if (failureReason === "SPOOF_FAILED") {
-      nameLabel.innerText = "Liveness Reject";
-      statusLabel.innerText = "Spoof Attack Blocked";
+      nameLabel.innerText = getTranslation("liveness_reject", "Liveness Reject");
+      statusLabel.innerText = getTranslation("spoof_attack", "Spoof Attack Blocked");
       logTerminal("ERROR", "Access Denied: Liveness Verification failed. Face print contains zero volumetric depth.");
+      speakVoiceMessage("spoof_failed", "Liveness check failed. Spoof attempt blocked.");
+      
+      // Trigger the blocking alert box in a short timeout so the browser has time to render the red denied card on screen first
+      setTimeout(() => {
+        alert("🚨 Liveness Verification Failed!\n\nAccess Denied: Spoof attempt blocked.");
+      }, 50);
     } else {
-      nameLabel.innerText = "Pedestrian Access";
-      statusLabel.innerText = "Invalid ID Match";
+      nameLabel.innerText = getTranslation("face_not_recognized", "Face Not Recognized");
+      statusLabel.innerText = getTranslation("access_denied", "Access Denied");
       logTerminal("ERROR", "Access Denied: Captured credentials match no candidate on roster database.");
+      speakVoiceMessage("unauthorized", "Face not recognized. Access denied.");
+      
+      // Trigger the blocking alert box in a short timeout so the browser has time to render the red denied card on screen first
+      setTimeout(() => {
+        alert("🚨 Access Denied!\n\nFace not recognized in the roster database.");
+      }, 50);
     }
 
     appState.counters.denied++;
@@ -1413,8 +2043,82 @@ function recordAttendanceSuccess(emp, timestamp) {
 
   const dateStr = getLocalDateString(checkInDate);
   const cleanId = emp.id.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const direction = appState.currentDirection || 'Check-In';
 
-  // SHIFT ROSTER ENFORCEMENT POLICY
+  // 1. STATE TRANSITION DUPLICATE CHECK
+  const todaysLogsLocal = appState.attendanceLogs.filter(l => {
+    const logDate = getLocalDateString(new Date(l.timestamp));
+    const logCleanId = l.empId.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    return logCleanId === cleanId && logDate === dateStr;
+  });
+  
+  const todaysLogsQueue = appState.syncQueue.filter(l => {
+    const logDate = getLocalDateString(new Date(l.timestamp));
+    const logCleanId = l.empId.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    return logCleanId === cleanId && logDate === dateStr;
+  });
+
+  const allTodaysLogs = [...todaysLogsLocal, ...todaysLogsQueue].sort((a, b) => {
+    return new Date(b.timestamp) - new Date(a.timestamp);
+  });
+
+  let lastDirection = null;
+  if (allTodaysLogs.length > 0) {
+    lastDirection = allTodaysLogs[0].direction || 'Check-In';
+  }
+
+  let isBlocked = false;
+  if (lastDirection === null) {
+    if (direction === 'Check-Out') {
+      isBlocked = true;
+    }
+  } else if (lastDirection === 'Check-In') {
+    if (direction === 'Check-In') {
+      isBlocked = true;
+    }
+  } else if (lastDirection === 'Check-Out') {
+    if (direction === 'Check-Out') {
+      isBlocked = true;
+    }
+  }
+
+  if (isBlocked) {
+    logTerminal("WARN", `Attendance Blocked: ${emp.name} state conflict (Requested: ${direction}, Last: ${lastDirection || 'None'}).`);
+    
+    viewport.classList.remove("success", "error");
+    viewport.classList.add("error");
+    
+    card.className = "verification-card active error-theme";
+    statusLabel.innerText = direction === 'Check-In' ? "Attendance already marked" : "Already checked out";
+    statusLabel.style.color = "var(--color-error)";
+    
+    const voiceKey = direction === 'Check-In' ? "already_marked" : "already_checked_out";
+    const voiceText = direction === 'Check-In' ? "Attendance already marked for today." : "Already checked out for today.";
+    speakVoiceMessage(voiceKey, voiceText);
+    
+    iconBox.innerHTML = `
+      <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24">
+        <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+        <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+      </svg>
+    `;
+    
+    appState.counters.total++;
+    appState.counters.denied++;
+    updateDashboardStats();
+    saveLocalStorage();
+    
+    setTimeout(() => {
+      viewport.classList.remove("error");
+      card.classList.remove("active");
+      highlightFlowNode("node-mobile");
+    }, 2000);
+    return;
+  }
+
+  const isDuplicatePunch = false;
+
+  // 2. SHIFT ROSTER ENFORCEMENT POLICY
   if (appState.isShiftRosterEnforced) {
     const checkInHour = checkInDate.getHours() + checkInDate.getMinutes() / 60;
     let isRosterValid = true;
@@ -1437,14 +2141,14 @@ function recordAttendanceSuccess(emp, timestamp) {
     
     if (!isRosterValid) {
       logTerminal("ERROR", `Shift Roster Violation: ${emp.name} is scheduled for ${emp.shift || "different shift"} (Attempted punch at ${formattedTime}).`);
-      alert(`🚨 Shift Roster Alert!\n\nAccess Denied for ${emp.name}.\nScheduled: ${allowedRangeText || emp.shift}\nAttempted: ${formattedTime}`);
       
       viewport.classList.remove("success", "error");
       viewport.classList.add("error");
       
       card.className = "verification-card active error-theme";
-      statusLabel.innerText = "Access Denied (Wrong Shift)";
+      statusLabel.innerText = getTranslation("access_denied_shift", "Access Denied (Wrong Shift)");
       statusLabel.style.color = "var(--color-error)";
+      speakVoiceMessage("wrong_shift", "Access denied. Shift roster violation.");
       
       iconBox.innerHTML = `
         <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24">
@@ -1452,84 +2156,19 @@ function recordAttendanceSuccess(emp, timestamp) {
           <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
         </svg>
       `;
-      
+
       appState.counters.total++;
       appState.counters.denied++;
       updateDashboardStats();
       saveLocalStorage();
-      if (!appState.isContinuousScan) {
-        autoStopCameraScanner();
-      }
       
       setTimeout(() => {
         viewport.classList.remove("error");
         card.classList.remove("active");
         highlightFlowNode("node-mobile");
-        if (appState.isContinuousScan && appState.isScanningMode) {
-          startScanCountdown();
-        }
-      }, 3500);
+      }, 2000);
       return;
     }
-  }
-
-  // 1. FAST LOCAL DUPLICATE CHECK
-  const isDuplicateLocal = appState.attendanceLogs.some(l => {
-    const logDate = getLocalDateString(new Date(l.timestamp));
-    const logCleanId = l.empId.toUpperCase().replace(/[^A-Z0-9]/g, "");
-    return logCleanId === cleanId && logDate === dateStr;
-  });
-
-  const isDuplicateQueue = appState.syncQueue.some(l => {
-    const logDate = getLocalDateString(new Date(l.timestamp));
-    const logCleanId = l.empId.toUpperCase().replace(/[^A-Z0-9]/g, "");
-    return logCleanId === cleanId && logDate === dateStr;
-  });
-
-  let matchedRosterEmp = null;
-  for (const key in employeeDatabase) {
-    if (employeeDatabase[key].id && employeeDatabase[key].id.toUpperCase().replace(/[^A-Z0-9]/g, "") === cleanId) {
-      matchedRosterEmp = employeeDatabase[key];
-      break;
-    }
-  }
-  const isDuplicateInRoster = matchedRosterEmp && matchedRosterEmp.attendance && matchedRosterEmp.attendance.includes(dateStr);
-
-  if (isDuplicateLocal || isDuplicateQueue || isDuplicateInRoster) {
-    logTerminal("WARN", `Attendance Blocked: ${emp.name} already checked in today.`);
-    alert(`Attendance Blocked: ${emp.name} already checked in today!`);
-    
-    viewport.classList.remove("success", "error");
-    viewport.classList.add("error");
-    
-    card.className = "verification-card active error-theme";
-    statusLabel.innerText = "Check-in Blocked (Duplicate)";
-    statusLabel.style.color = "var(--color-error)";
-    
-    iconBox.innerHTML = `
-      <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24">
-        <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
-        <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
-      </svg>
-    `;
-    
-    appState.counters.total++;
-    appState.counters.denied++;
-    updateDashboardStats();
-    saveLocalStorage();
-    if (!appState.isContinuousScan) {
-      autoStopCameraScanner();
-    }
-    
-    setTimeout(() => {
-      viewport.classList.remove("error");
-      card.classList.remove("active");
-      highlightFlowNode("node-mobile");
-      if (appState.isContinuousScan && appState.isScanningMode) {
-        startScanCountdown();
-      }
-    }, 3500);
-    return;
   }
 
   // Define check-in record payload
@@ -1540,7 +2179,8 @@ function recordAttendanceSuccess(emp, timestamp) {
     location: appState.selectedLocation,
     gps: `${appState.gps.lat.toFixed(4)}°, ${appState.gps.lng.toFixed(4)}°`,
     verified: true,
-    syncStatus: appState.isOffline ? "Pending" : "Synced"
+    syncStatus: appState.isOffline ? "Pending" : "Synced",
+    direction: direction
   };
 
   // 2. OFFLINE SCAN
@@ -1549,16 +2189,25 @@ function recordAttendanceSuccess(emp, timestamp) {
     viewport.classList.add("success");
     
     card.className = "verification-card active success-theme";
-    statusLabel.innerText = "Checked in";
+    if (isDuplicatePunch) {
+      statusLabel.innerText = direction === 'Check-In' ? "Attendance already marked" : "Already checked out";
+    } else {
+      statusLabel.innerText = direction === 'Check-In' ? getTranslation("attendance_marked", "Attendance marked successfully.") : "Check-out marked successfully.";
+    }
     statusLabel.style.color = "var(--color-success)";
+    
+    logTerminal("SUCCESS", `Biometrics Approved: ${emp.name} logged ${direction} offline.`);
+    
+    // Original voice triggers ONLY
+    const voiceKey = isDuplicatePunch ? "already_marked" : "attendance_marked";
+    const voiceText = isDuplicatePunch ? "Attendance already marked for today." : "Attendance marked successfully.";
+    speakVoiceMessage(voiceKey, voiceText);
     
     iconBox.innerHTML = `
       <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24">
         <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2"/>
       </svg>
     `;
-
-    logTerminal("SUCCESS", `Biometrics Approved for ${emp.name}. Log cached in local memory storage.`);
     
     appState.syncQueue.push(record);
     appState.attendanceLogs.unshift(record);
@@ -1569,18 +2218,12 @@ function recordAttendanceSuccess(emp, timestamp) {
     renderAttendanceTable();
     updateDashboardStats();
     saveLocalStorage();
-    if (!appState.isContinuousScan) {
-      autoStopCameraScanner();
-    }
 
     setTimeout(() => {
       viewport.classList.remove("success");
       card.classList.remove("active");
       highlightFlowNode("node-mobile");
-      if (appState.isContinuousScan && appState.isScanningMode) {
-        startScanCountdown();
-      }
-    }, 3500);
+    }, 2000);
 
   // 3. ONLINE SYNC SCAN
   } else {
@@ -1588,7 +2231,7 @@ function recordAttendanceSuccess(emp, timestamp) {
     viewport.classList.remove("success", "error");
     viewport.classList.add("success");
     card.className = "verification-card active success-theme";
-    statusLabel.innerText = "Syncing with Zing HR...";
+    statusLabel.innerText = getTranslation("syncing_zynghr", "Syncing with Zyng HR...");
     
     iconBox.innerHTML = `
       <svg class="svg-icon pulse" style="width:24px; height:24px;" viewBox="0 0 24 24">
@@ -1608,54 +2251,70 @@ function recordAttendanceSuccess(emp, timestamp) {
       }
       throw new Error("HTTP error " + res.status);
     }).then(data => {
-      if (data && data.success === false && data.error === 'ALREADY_MARKED') {
-        // Enforce duplicate warning in UI
-        logTerminal("WARN", `Attendance Blocked: ${emp.name} already checked in today.`);
-        alert(`Attendance Blocked: ${emp.name} already checked in today!`);
-        
-        viewport.classList.remove("success");
-        viewport.classList.add("error");
-        
-        card.className = "verification-card active error-theme";
-        statusLabel.innerText = "Check-in Blocked (Duplicate)";
-        statusLabel.style.color = "var(--color-error)";
-        
-        iconBox.innerHTML = `
-          <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24">
-            <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
-            <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
-          </svg>
-        `;
-        
-        appState.counters.total++;
-        appState.counters.denied++;
-      } else {
-        logTerminal("SUCCESS", `ZyngHR Server Response: Check-in accepted for Employee ${emp.id} (${emp.name})`);
-        logTerminal("SUCCESS", `API Server: Log synced successfully for ${emp.name}.`);
-        
-        statusLabel.innerText = "Checked in";
+      // Backend returns warning: 'ALREADY_MARKED' if duplicate
+      const isBackendDuplicate = data && data.warning === 'ALREADY_MARKED';
+      const isDub = isBackendDuplicate || isDuplicatePunch;
+      
+      logTerminal("SUCCESS", `ZyngHR Server Response: ${direction} accepted for Employee ${emp.id} (${emp.name})`);
+      logTerminal("SUCCESS", `API Server: Log synced successfully for ${emp.name}.`);
+      
+      viewport.classList.remove("error");
+      viewport.classList.add("success");
+      card.className = "verification-card active success-theme";
+      
+      if (isDub) {
+        statusLabel.innerText = direction === 'Check-In' ? "Attendance already marked" : "Already checked out";
         statusLabel.style.color = "var(--color-success)";
         
-        iconBox.innerHTML = `
-          <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24">
-            <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2"/>
-          </svg>
-        `;
+        speakVoiceMessage("already_marked", "Attendance already marked for today.");
+      } else {
+        statusLabel.innerText = direction === 'Check-In' ? getTranslation("attendance_marked", "Attendance marked successfully.") : "Check-out marked successfully.";
+        statusLabel.style.color = "var(--color-success)";
         
-        appState.attendanceLogs.unshift(record);
-        appState.counters.approved++;
-        appState.counters.total++;
-        
-        renderAttendanceTable();
+        const voiceKey = direction === 'Check-In' ? "attendance_marked" : "checkout_marked";
+        const voiceText = direction === 'Check-In' ? "Attendance marked successfully." : "Check-out marked successfully.";
+        speakVoiceMessage(voiceKey, voiceText);
       }
+      
+      iconBox.innerHTML = `
+        <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24">
+          <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2"/>
+        </svg>
+      `;
+      
+      appState.attendanceLogs.unshift(record);
+      appState.counters.approved++;
+      appState.counters.total++;
+      
+      renderAttendanceTable();
       updateDashboardStats();
       saveLocalStorage();
     }).catch(err => {
       logTerminal("WARN", "API Server: Unreachable. Log cached locally on browser.");
       
-      // Fallback to offline caching since server failed
-      statusLabel.innerText = "Queued Offline (Server Error)";
-      statusLabel.style.color = "var(--color-warning)";
+      viewport.classList.remove("error");
+      viewport.classList.add("success");
+      card.className = "verification-card active success-theme";
+      
+      if (isDuplicatePunch) {
+        statusLabel.innerText = direction === 'Check-In' ? "Attendance already marked (Offline)" : "Already checked out (Offline)";
+        statusLabel.style.color = "var(--color-warning)";
+        
+        speakVoiceMessage("already_marked", "Attendance already marked for today.");
+      } else {
+        statusLabel.innerText = direction === 'Check-In' ? `${getTranslation("attendance_marked", "Attendance marked")} (Offline)` : "Check-out marked (Offline)";
+        statusLabel.style.color = "var(--color-warning)";
+        
+        const voiceKey = direction === 'Check-In' ? "attendance_marked" : "checkout_marked";
+        const voiceText = direction === 'Check-In' ? "Attendance marked successfully." : "Check-out marked successfully.";
+        speakVoiceMessage(voiceKey, voiceText);
+      }
+      
+      iconBox.innerHTML = `
+        <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24">
+          <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2"/>
+        </svg>
+      `;
       
       record.syncStatus = "Pending";
       appState.syncQueue.push(record);
@@ -1668,17 +2327,11 @@ function recordAttendanceSuccess(emp, timestamp) {
       updateDashboardStats();
       saveLocalStorage();
     }).finally(() => {
-      if (!appState.isContinuousScan) {
-        autoStopCameraScanner();
-      }
       setTimeout(() => {
         viewport.classList.remove("success", "error");
         card.classList.remove("active");
         highlightFlowNode("node-mobile");
-        if (appState.isContinuousScan && appState.isScanningMode) {
-          startScanCountdown();
-        }
-      }, 3500);
+      }, 2000);
     });
   }
 }
@@ -1724,7 +2377,10 @@ function renderAttendanceTable() {
         <span style="font-family:var(--font-mono); font-size:0.65rem; color:var(--color-text-muted);">${log.empId}</span>
       </td>
       <td style="font-family:var(--font-mono);">${formattedDate}</td>
-      <td>${log.location}</td>
+      <td>
+        ${log.location}<br>
+        <span style="font-size:0.65rem; font-weight:bold; color:${log.direction === 'Check-Out' ? '#ef4444' : '#22c55e'}">${(log.direction || 'Check-In').toUpperCase()}</span>
+      </td>
       <td>
         <span style="font-family:var(--font-mono); font-size:0.75rem;">${log.gps}</span><br>
         <span style="font-size:0.65rem; color:var(--color-text-muted);">${placeName}</span>
@@ -1950,27 +2606,27 @@ async function bootRegistrationCamera() {
 }
 
 // Capture current webcam image frame onto canvas
-// Search employee from Zing HR database
-function searchEmployeeZingHR() {
+// Search employee from Zyng HR database
+function searchEmployeeZyngHR() {
   const empIdInput = document.getElementById("reg-emp-id");
   if (!empIdInput) return;
   const empId = empIdInput.value.trim().toUpperCase();
   if (!empId) {
-    alert("Please enter a Zing HR Employee ID!");
+    alert("Please enter a Zyng HR Employee ID!");
     return;
   }
   
-  logTerminal("INFO", `Querying Zing HR database for Employee ID: ${empId}...`);
+  logTerminal("INFO", `Querying Zyng HR database for Employee ID: ${empId}...`);
   
-  fetch(getApiUrl(`/api/zinghr/employee/${empId}`))
+  fetch(getApiUrl(`/api/zynghr/employee/${empId}`))
     .then(res => {
       if (!res.ok) {
-        throw new Error("Employee ID not found in Zing HR");
+        throw new Error("Employee ID not found in Zyng HR");
       }
       return res.json();
     })
     .then(employee => {
-      appState.currentZingHREmployee = employee;
+      appState.currentZyngHREmployee = employee;
       
       // Populate fields
       document.getElementById("reg-name").value = employee.name;
@@ -1986,14 +2642,14 @@ function searchEmployeeZingHR() {
       document.getElementById("reg-emp-address").innerText = employee.address;
       document.getElementById("reg-emp-contact").innerText = employee.contact;
       
-      logTerminal("SUCCESS", `Zing HR Record retrieved for: ${employee.name}`);
+      logTerminal("SUCCESS", `Zyng HR Record retrieved for: ${employee.name}`);
     })
     .catch(err => {
-      logTerminal("ERROR", `Zing HR Sync Error: Employee ID ${empId} not found.`);
-      alert(`Employee ID ${empId} not found in Zing HR database!`);
+      logTerminal("ERROR", `Zyng HR Sync Error: Employee ID ${empId} not found.`);
+      alert(`Employee ID ${empId} not found in Zyng HR database!`);
       
       // Clear fields
-      appState.currentZingHREmployee = null;
+      appState.currentZyngHREmployee = null;
       document.getElementById("reg-name").value = "";
       document.getElementById("reg-employee-details").classList.add("hidden");
     });
@@ -2108,8 +2764,8 @@ function captureRegistrationPhoto() {
 
 // Enroll face data and save to localStorage
 function enrollNewCandidate() {
-  if (!appState.currentZingHREmployee) {
-    alert("Please search and fetch a valid Zing HR Employee record before registering biometrics!");
+  if (!appState.currentZyngHREmployee) {
+    alert("Please search and fetch a valid Zyng HR Employee record before registering biometrics!");
     return;
   }
   
@@ -2118,9 +2774,9 @@ function enrollNewCandidate() {
     return;
   }
   
-  const finalKey = appState.currentZingHREmployee.id;
+  const finalKey = appState.currentZyngHREmployee.id;
   const cleanFinalKey = finalKey.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const name = appState.currentZingHREmployee.name;
+  const name = appState.currentZyngHREmployee.name;
   const firstPhoto = appState.capturedPhotos[0];
 
   logTerminal("INFO", `Biometric Security: Checking for duplicate face embeddings in database...`);
@@ -2155,7 +2811,7 @@ function finishEnrollment(finalKey, name) {
   const initials = name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2);
   const avatarUrl = (appState.capturedPhotos && appState.capturedPhotos.length > 0) 
     ? appState.capturedPhotos[0] 
-    : appState.currentZingHREmployee.avatar;
+    : appState.currentZyngHREmployee.avatar;
 
   const employeeObject = {
     id: finalKey,
@@ -2163,8 +2819,8 @@ function finishEnrollment(finalKey, name) {
     avatar: avatarUrl, // Captured gate snapshot or fallback profile pic
     gatePhotos: appState.capturedPhotos, // The 3 gate photos taken at registration
     initials: initials,
-    role: appState.currentZingHREmployee.role,
-    shift: appState.currentZingHREmployee.shift,
+    role: appState.currentZyngHREmployee.role,
+    shift: appState.currentZyngHREmployee.shift,
     status: "Active",
     location: appState.selectedLocation,
     faceVector: `[Gate Registered: 3 Photos]`,
@@ -2204,7 +2860,7 @@ function finishEnrollment(finalKey, name) {
     document.getElementById("reg-emp-id").value = "";
     document.getElementById("reg-name").value = "";
     document.getElementById("reg-employee-details").classList.add("hidden");
-    appState.currentZingHREmployee = null;
+    appState.currentZyngHREmployee = null;
     appState.capturedPhotos = [];
     appState.capturedPhotoBase64 = null;
     document.getElementById("reg-btn-capture").innerText = "Take Snapshot 1";
@@ -2253,19 +2909,19 @@ function initAdminTabs() {
       viewLive.classList.add("hidden");
       viewReports.classList.remove("hidden");
       
-      renderZingHRReports();
+      renderZyngHRReports();
     });
   }
 }
 
-// Render Zing HR reports list in admin view
-function renderZingHRReports() {
+// Render Zyng HR reports list in admin view
+function renderZyngHRReports() {
   const listContainer = document.getElementById("report-employee-list");
   if (!listContainer) return;
   
-  listContainer.innerHTML = `<span style="color: var(--color-text-muted); font-size: 0.75rem; margin: auto;">Loading Zing HR reports...</span>`;
+  listContainer.innerHTML = `<span style="color: var(--color-text-muted); font-size: 0.75rem; margin: auto;">Loading Zyng HR reports...</span>`;
   
-  fetch(getApiUrl('/api/zinghr/report'))
+  fetch(getApiUrl('/api/zynghr/report'))
     .then(res => res.json())
     .then(data => {
       listContainer.innerHTML = "";
@@ -2433,6 +3089,7 @@ function saveLocalStorage() {
   localStorage.setItem("attendance_poc_roster", JSON.stringify(employeeDatabase));
   localStorage.setItem("attendance_poc_settings_continuous", appState.isContinuousScan ? "true" : "false");
   localStorage.setItem("attendance_poc_settings_roster", appState.isShiftRosterEnforced ? "true" : "false");
+  localStorage.setItem("attendance_poc_settings_lang", appState.language || "en");
   
   // Dynamic Mobile view sync
   renderMobileLogs();
@@ -2483,11 +3140,19 @@ function loadLocalStorage() {
     }
     appState.isContinuousScan = localStorage.getItem("attendance_poc_settings_continuous") === "true";
     appState.isShiftRosterEnforced = localStorage.getItem("attendance_poc_settings_roster") === "true";
+    appState.language = localStorage.getItem("attendance_poc_settings_lang") || "en";
   } catch (err) {
     console.warn("[LocalStorage Load] Corrupted storage reset:", err);
     appState.attendanceLogs = [];
     appState.syncQueue = [];
   }
+  
+  const selectors = ["login-lang-select", "header-lang-select", "settings-lang-select"];
+  selectors.forEach(id => {
+    const elem = document.getElementById(id);
+    if (elem) elem.value = appState.language || "en";
+  });
+  translateUI(appState.language || "en");
 
   saveLocalStorage();
   renderAttendanceTable();
@@ -2974,6 +3639,7 @@ function renderMobileLogs() {
       <div style="display:flex; flex-direction:column; gap:2px;">
         <span style="font-weight:bold; color:#fff;">${log.name}</span>
         <span style="color:var(--color-text-muted); font-size:0.65rem;">ID: ${log.empId} • ${log.location}</span>
+        <span style="font-size:0.65rem; font-weight:bold; color:${log.direction === 'Check-Out' ? '#ef4444' : '#22c55e'}">${(log.direction || 'Check-In').toUpperCase()}</span>
       </div>
       <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
         <span style="font-size:0.65rem; color:#94a3b8;">${timeFormatted}</span>
@@ -3110,7 +3776,7 @@ function initEmployeeProfileDrawer() {
       if (emp.gatePhotos.length > 3) emp.gatePhotos = emp.gatePhotos.slice(0, 3);
       emp.avatar = profileDrawerCapturedPhoto;
       
-      logTerminal("INFO", `ZingHR Sync: Dispatching facial updates for ID ${emp.id}...`);
+      logTerminal("INFO", `ZyngHR Sync: Dispatching facial updates for ID ${emp.id}...`);
       
       fetch(getApiUrl('/api/roster'), {
         method: 'POST',
@@ -3118,20 +3784,20 @@ function initEmployeeProfileDrawer() {
         body: JSON.stringify({ key: currentProfileEmployeeKey, employee: emp })
       }).then(res => {
         if (res.ok) {
-          logTerminal("SUCCESS", `ZingHR Database Sync: Secondary facial photograph linked for ID ${emp.id}.`);
-          alert("Additional face photograph synchronized with ZingHR database successfully!");
+          logTerminal("SUCCESS", `ZyngHR Database Sync: Secondary facial photograph linked for ID ${emp.id}.`);
+          alert("Additional face photograph synchronized with ZyngHR database successfully!");
           
           renderRoster();
           renderMobileRoster();
-          if (typeof renderZingHRReports === "function") {
-            renderZingHRReports();
+          if (typeof renderZyngHRReports === "function") {
+            renderZyngHRReports();
           }
         } else {
-          logTerminal("ERROR", `ZingHR Sync Failed for ID ${emp.id}.`);
+          logTerminal("ERROR", `ZyngHR Sync Failed for ID ${emp.id}.`);
           alert("Error syncing updated face photo with server database.");
         }
       }).catch(err => {
-        logTerminal("WARN", `ZingHR Database Server unreachable. Saved locally in browser storage.`);
+        logTerminal("WARN", `ZyngHR Database Server unreachable. Saved locally in browser storage.`);
         alert("Server connection offline. Photograph cached on device.");
       });
       
@@ -3151,7 +3817,7 @@ function initSettingsDrawer() {
   const continuousScanCheck = document.getElementById("settings-continuous-scan");
   const rosterRuleCheck = document.getElementById("settings-roster-rule");
   
-  const openButtons = ["mobile-settings-btn", "mobile-scan-settings-btn", "mobile-reg-settings-btn", "mobile-logs-settings-btn", "mobile-zinghr-settings-btn"];
+  const openButtons = ["mobile-settings-btn", "mobile-scan-settings-btn", "mobile-reg-settings-btn", "mobile-logs-settings-btn", "mobile-zynghr-settings-btn"];
   
   // Set initial settings values
   const currentIp = localStorage.getItem("backend_server_ip") || "192.168.1.8:3000";
@@ -3208,31 +3874,31 @@ function initSettingsDrawer() {
   
   // Tab toggle logic
   const tabNetwork = document.getElementById("settings-tab-network");
-  const tabZingHR = document.getElementById("settings-tab-zinghr");
+  const tabZyngHR = document.getElementById("settings-tab-zynghr");
   const sectNetwork = document.getElementById("settings-sect-network");
-  const sectZingHR = document.getElementById("settings-sect-zinghr");
+  const sectZyngHR = document.getElementById("settings-sect-zynghr");
   
-  if (tabNetwork && tabZingHR && sectNetwork && sectZingHR) {
+  if (tabNetwork && tabZyngHR && sectNetwork && sectZyngHR) {
     tabNetwork.addEventListener("click", () => {
       tabNetwork.style.borderBottom = "2px solid var(--color-primary)";
       tabNetwork.style.color = "#fff";
-      tabZingHR.style.borderBottom = "2px solid transparent";
-      tabZingHR.style.color = "#94a3b8";
+      tabZyngHR.style.borderBottom = "2px solid transparent";
+      tabZyngHR.style.color = "#94a3b8";
       sectNetwork.classList.remove("hidden");
-      sectZingHR.classList.add("hidden");
+      sectZyngHR.classList.add("hidden");
     });
     
-    tabZingHR.addEventListener("click", () => {
-      tabZingHR.style.borderBottom = "2px solid var(--color-primary)";
-      tabZingHR.style.color = "#fff";
+    tabZyngHR.addEventListener("click", () => {
+      tabZyngHR.style.borderBottom = "2px solid var(--color-primary)";
+      tabZyngHR.style.color = "#fff";
       tabNetwork.style.borderBottom = "2px solid transparent";
       tabNetwork.style.color = "#94a3b8";
-      sectZingHR.classList.remove("hidden");
+      sectZyngHR.classList.remove("hidden");
       sectNetwork.classList.add("hidden");
     });
   }
   
-  // Load/Save ZingHR config
+  // Load/Save ZyngHR config
   const endpointInput = document.getElementById("settings-zing-endpoint");
   const tenantInput = document.getElementById("settings-zing-tenant");
   const clientIdInput = document.getElementById("settings-zing-clientid");
@@ -3241,19 +3907,19 @@ function initSettingsDrawer() {
   const zingTestBtn = document.getElementById("settings-zing-test-btn");
   const zingStatus = document.getElementById("settings-zing-status");
   
-  if (endpointInput) endpointInput.value = localStorage.getItem("zinghr_api_endpoint") || "https://api.zinghr.com/api/v1";
-  if (tenantInput) tenantInput.value = localStorage.getItem("zinghr_api_tenant") || "LYAMENTERPRISE";
-  if (clientIdInput) clientIdInput.value = localStorage.getItem("zinghr_api_clientid") || "client_lyam_prod_8829";
-  if (clientSecretInput) clientSecretInput.value = localStorage.getItem("zinghr_api_clientsecret") || "password123";
+  if (endpointInput) endpointInput.value = localStorage.getItem("zynghr_api_endpoint") || "https://api.zynghr.com/api/v1";
+  if (tenantInput) tenantInput.value = localStorage.getItem("zynghr_api_tenant") || "LYAMENTERPRISE";
+  if (clientIdInput) clientIdInput.value = localStorage.getItem("zynghr_api_clientid") || "client_lyam_prod_8829";
+  if (clientSecretInput) clientSecretInput.value = localStorage.getItem("zynghr_api_clientsecret") || "password123";
   
   if (zingSaveBtn) {
     zingSaveBtn.addEventListener("click", () => {
-      localStorage.setItem("zinghr_api_endpoint", endpointInput.value.trim());
-      localStorage.setItem("zinghr_api_tenant", tenantInput.value.trim());
-      localStorage.setItem("zinghr_api_clientid", clientIdInput.value.trim());
-      localStorage.setItem("zinghr_api_clientsecret", clientSecretInput.value.trim());
-      logTerminal("INFO", `ZingHR API Gateway config saved to local storage.`);
-      alert("ZingHR API configuration saved successfully!");
+      localStorage.setItem("zynghr_api_endpoint", endpointInput.value.trim());
+      localStorage.setItem("zynghr_api_tenant", tenantInput.value.trim());
+      localStorage.setItem("zynghr_api_clientid", clientIdInput.value.trim());
+      localStorage.setItem("zynghr_api_clientsecret", clientSecretInput.value.trim());
+      logTerminal("INFO", `ZyngHR API Gateway config saved to local storage.`);
+      alert("ZyngHR API configuration saved successfully!");
     });
   }
   
@@ -3263,15 +3929,15 @@ function initSettingsDrawer() {
         zingStatus.innerText = "AUTHENTICATING...";
         zingStatus.style.color = "var(--color-warning)";
       }
-      logTerminal("INFO", `[ZingHR Sandbox] Outbound: Simulating authentication for Client ID '${clientIdInput.value.trim()}' with ZingHR API Gateway at ${endpointInput.value.trim()}...`);
+      logTerminal("INFO", `[ZyngHR Sandbox] Outbound: Simulating authentication for Client ID '${clientIdInput.value.trim()}' with ZyngHR API Gateway at ${endpointInput.value.trim()}...`);
       
       setTimeout(() => {
         if (zingStatus) {
           zingStatus.innerText = "SIMULATED (CONNECTED)";
           zingStatus.style.color = "#22c55e";
         }
-        logTerminal("SUCCESS", `[ZingHR Sandbox] Integration Handshake success: Mock connection established for Tenant ID '${tenantInput.value.trim()}'.`);
-        alert("[ZingHR Sandbox Simulator]\nConnection simulated successfully! Secure handshake verification completed for demonstration purposes.");
+        logTerminal("SUCCESS", `[ZyngHR Sandbox] Integration Handshake success: Mock connection established for Tenant ID '${tenantInput.value.trim()}'.`);
+        alert("[ZyngHR Sandbox Simulator]\nConnection simulated successfully! Secure handshake verification completed for demonstration purposes.");
       }, 1000);
     });
   }
@@ -3317,10 +3983,10 @@ function initSettingsDrawer() {
   }
 }
 
-function initCreateZingHRDrawer() {
-  const drawer = document.getElementById("app-create-zinghr-drawer");
-  const link = document.getElementById("reg-lnk-create-zinghr");
-  const closeBtn = document.getElementById("close-create-zinghr-btn");
+function initCreateZyngHRDrawer() {
+  const drawer = document.getElementById("app-create-zynghr-drawer");
+  const link = document.getElementById("reg-lnk-create-zynghr");
+  const closeBtn = document.getElementById("close-create-zynghr-btn");
   const saveBtn = document.getElementById("new-emp-save-btn");
   
   if (link && drawer) {
@@ -3365,9 +4031,9 @@ function initCreateZingHRDrawer() {
         contact: empContact
       };
       
-      logTerminal("INFO", `Posting new profile for ${empName} to Zing HR database...`);
+      logTerminal("INFO", `Posting new profile for ${empName} to Zyng HR database...`);
       
-      fetch(getApiUrl('/api/zinghr/employee'), {
+      fetch(getApiUrl('/api/zynghr/employee'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -3379,8 +4045,8 @@ function initCreateZingHRDrawer() {
         return res.json();
       })
       .then(data => {
-        logTerminal("SUCCESS", `Zing HR Profile created successfully for ${empName} (ID: ${empId})`);
-        alert(`Zing HR Employee Profile created successfully for ${empName}!`);
+        logTerminal("SUCCESS", `Zyng HR Profile created successfully for ${empName} (ID: ${empId})`);
+        alert(`Zyng HR Employee Profile created successfully for ${empName}!`);
         
         // Clear new form fields
         document.getElementById("new-emp-id").value = "";
@@ -3394,7 +4060,7 @@ function initCreateZingHRDrawer() {
         
         // Set search ID to the new ID and trigger search
         document.getElementById("reg-emp-id").value = empId;
-        searchEmployeeZingHR();
+        searchEmployeeZyngHR();
       })
       .catch(err => {
         logTerminal("ERROR", `Failed to create profile: ${err.message}`);
@@ -3460,22 +4126,22 @@ function startBackgroundSyncLoop() {
   }, 10000);
 }
 
-function renderMobileZingHRDirectory() {
-  const container = document.getElementById("mobile-zinghr-list-container");
+function renderMobileZyngHRDirectory() {
+  const container = document.getElementById("mobile-zynghr-list-container");
   if (!container) return;
   
-  container.innerHTML = `<div style="color:var(--color-text-muted); font-size:0.75rem; text-align:center; padding:12px;">Loading ZingHR database...</div>`;
+  container.innerHTML = `<div style="color:var(--color-text-muted); font-size:0.75rem; text-align:center; padding:12px;">Loading ZyngHR database...</div>`;
   
-  fetch(getApiUrl('/api/zinghr/report'))
+  fetch(getApiUrl('/api/zynghr/report'))
     .then(res => res.json())
     .then(data => {
       container.innerHTML = "";
       
-      const countEl = document.getElementById("mobile-zinghr-count");
+      const countEl = document.getElementById("mobile-zynghr-count");
       if (countEl) countEl.innerText = `${data.length} Employees`;
       
       if (data.length === 0) {
-        container.innerHTML = `<div style="color:var(--color-text-muted); font-size:0.75rem; text-align:center; padding:12px;">No ZingHR records found.</div>`;
+        container.innerHTML = `<div style="color:var(--color-text-muted); font-size:0.75rem; text-align:center; padding:12px;">No ZyngHR records found.</div>`;
         return;
       }
       
@@ -3504,22 +4170,22 @@ function renderMobileZingHRDirectory() {
         `;
         
         card.addEventListener("click", () => {
-          openMobileZingHRDossier(emp);
+          openMobileZyngHRDossier(emp);
         });
         
         container.appendChild(card);
       });
     })
     .catch(err => {
-      container.innerHTML = `<div style="color:#ef4444; font-size:0.75rem; text-align:center; padding:12px;">Failed to load ZingHR database.</div>`;
+      container.innerHTML = `<div style="color:#ef4444; font-size:0.75rem; text-align:center; padding:12px;">Failed to load ZyngHR database.</div>`;
     });
 }
 
-function openMobileZingHRDossier(emp) {
+function openMobileZyngHRDossier(emp) {
   appState.currentSelectedEmployee = emp;
   
-  document.getElementById("mobile-zinghr-main-sect").classList.add("hidden");
-  document.getElementById("mobile-zinghr-dossier-sect").classList.remove("hidden");
+  document.getElementById("mobile-zynghr-main-sect").classList.add("hidden");
+  document.getElementById("mobile-zynghr-dossier-sect").classList.remove("hidden");
   
   document.getElementById("mobile-dossier-avatar").src = emp.avatar;
   document.getElementById("mobile-dossier-name").innerText = emp.name;
@@ -3581,7 +4247,7 @@ function openMobileZingHRDossier(emp) {
   }
 }
 
-// Dynamically populate desktop and mobile ZingHR monthly dropdowns with all 12 months
+// Dynamically populate desktop and mobile ZyngHR monthly dropdowns with all 12 months
 function populateMonthDropdowns() {
   const months = [
     { value: "2026-01", label: "January 2026" },

@@ -28,17 +28,23 @@ async function initDatabase() {
       location VARCHAR(150) NOT NULL,
       gps VARCHAR(100) NOT NULL,
       verified BOOLEAN DEFAULT TRUE,
-      sync_status VARCHAR(50) DEFAULT 'Synced'
+      sync_status VARCHAR(50) DEFAULT 'Synced',
+      direction VARCHAR(50) DEFAULT 'Check-In'
     );
     CREATE INDEX IF NOT EXISTS idx_attendance_emp_date ON attendance_logs (emp_id, timestamp);
   `;
   try {
     await pool.query(createTableQuery);
+    // Migration: ensure 'direction' column exists
+    const migrateQuery = `
+      ALTER TABLE attendance_logs ADD COLUMN IF NOT EXISTS direction VARCHAR(50) DEFAULT 'Check-In';
+    `;
+    await pool.query(migrateQuery);
     isPgConnected = true;
-    console.log("PostgreSQL Enterprise Engine: Table 'attendance_logs' and high-speed indexes initialized successfully.");
+    console.log("PostgreSQL Enterprise Engine: Table 'attendance_logs', column migrations and high-speed indexes initialized successfully.");
   } catch (err) {
     isPgConnected = false;
-    console.log("PostgreSQL Engine Notice: Operating in Standalone Mode (db.json / Zing HR sync active). PostgreSQL Error:", err.message);
+    console.log("PostgreSQL Engine Notice: Operating in Standalone Mode (db.json / Zyng HR sync active). PostgreSQL Error:", err.message);
   }
 }
 initDatabase();
@@ -47,8 +53,8 @@ initDatabase();
 async function saveLogToPostgres(log) {
   if (!isPgConnected) return;
   const insertQuery = `
-    INSERT INTO attendance_logs (emp_id, name, timestamp, location, gps, verified, sync_status)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    INSERT INTO attendance_logs (emp_id, name, timestamp, location, gps, verified, sync_status, direction)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
   `;
   try {
     await pool.query(insertQuery, [
@@ -58,9 +64,10 @@ async function saveLogToPostgres(log) {
       log.location || 'Tata Motors - Gate 1',
       log.gps || '18.6421°, 73.8056°',
       log.verified !== undefined ? log.verified : true,
-      log.syncStatus || 'Synced'
+      log.syncStatus || 'Synced',
+      log.direction || 'Check-In'
     ]);
-    console.log(`[PostgreSQL Enterprise DB] Successfully inserted SQL attendance log for ${log.empId} (${log.name})`);
+    console.log(`[PostgreSQL Enterprise DB] Successfully inserted SQL attendance log for ${log.empId} (${log.name}) [${log.direction || 'Check-In'}]`);
   } catch (err) {
     console.error("[PostgreSQL Persistence Warning]:", err.message);
   }
@@ -117,7 +124,7 @@ const DEFAULT_ROSTER = {
   }
 };
 
-const DEFAULT_ZINGHR = {
+const DEFAULT_ZYNGHR = {
   "EMP001": {
     id: "EMP001",
     name: "Priyanka M",
@@ -183,7 +190,7 @@ const DEFAULT_ZINGHR = {
 const DEFAULT_DB = {
   roster: DEFAULT_ROSTER,
   logs: [],
-  zinghr: DEFAULT_ZINGHR
+  zynghr: DEFAULT_ZYNGHR
 };
 
 // Ensure db.json exists
@@ -196,24 +203,28 @@ function readDB() {
     const data = fs.readFileSync(DB_FILE, 'utf8');
     const parsed = JSON.parse(data);
     
-    // Ensure zinghr schema exists
+    // Ensure zynghr schema exists
     let modified = false;
-    if (!parsed.zinghr) {
-      parsed.zinghr = DEFAULT_ZINGHR;
+    if (parsed.zinghr && !parsed.zynghr) {
+      parsed.zynghr = parsed.zinghr;
+      delete parsed.zinghr;
+      modified = true;
+    } else if (!parsed.zynghr) {
+      parsed.zynghr = DEFAULT_ZYNGHR;
       modified = true;
     }
     
-    // Automatically rebuild/sync zinghr attendance arrays from logs!
-    if (parsed.zinghr && parsed.logs) {
+    // Automatically rebuild/sync zynghr attendance arrays from logs!
+    if (parsed.zynghr && parsed.logs) {
       // Clear attendance arrays to rebuild them cleanly from logs
-      for (const key in parsed.zinghr) {
-        parsed.zinghr[key].attendance = [];
+      for (const key in parsed.zynghr) {
+        parsed.zynghr[key].attendance = [];
       }
       
       // Seed the mock history for Vikram, Priya Patel, Amit again so they have data
-      if (parsed.zinghr["EMP002"]) parsed.zinghr["EMP002"].attendance = ["2026-07-01", "2026-07-02", "2026-07-03", "2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21"];
-      if (parsed.zinghr["EMP003"]) parsed.zinghr["EMP003"].attendance = ["2026-07-01", "2026-07-02", "2026-07-03", "2026-07-06", "2026-07-07", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21"];
-      if (parsed.zinghr["EMP004"]) parsed.zinghr["EMP004"].attendance = ["2026-07-01", "2026-07-02", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-21"];
+      if (parsed.zynghr["EMP002"]) parsed.zynghr["EMP002"].attendance = ["2026-07-01", "2026-07-02", "2026-07-03", "2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21"];
+      if (parsed.zynghr["EMP003"]) parsed.zynghr["EMP003"].attendance = ["2026-07-01", "2026-07-02", "2026-07-03", "2026-07-06", "2026-07-07", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21"];
+      if (parsed.zynghr["EMP004"]) parsed.zynghr["EMP004"].attendance = ["2026-07-01", "2026-07-02", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-21"];
       
       // Parse logs and append dates
       parsed.logs.forEach(log => {
@@ -221,11 +232,11 @@ function readDB() {
         const logCleanId = log.empId.toUpperCase().replace(/[^A-Z0-9]/g, '');
         const dateStr = new Date(log.timestamp).toISOString().split('T')[0];
         
-        for (const key in parsed.zinghr) {
-          const cleanZingId = parsed.zinghr[key].id.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        for (const key in parsed.zynghr) {
+          const cleanZingId = parsed.zynghr[key].id.toUpperCase().replace(/[^A-Z0-9]/g, '');
           if (cleanZingId === logCleanId) {
-            if (!parsed.zinghr[key].attendance.includes(dateStr)) {
-              parsed.zinghr[key].attendance.push(dateStr);
+            if (!parsed.zynghr[key].attendance.includes(dateStr)) {
+              parsed.zynghr[key].attendance.push(dateStr);
             }
             break;
           }
@@ -234,7 +245,7 @@ function readDB() {
       modified = true;
     }
     
-    // Automatically self-heal roster & zinghr profile avatars from captured gate photos
+    // Automatically self-heal roster & zynghr profile avatars from captured gate photos
     if (parsed.roster) {
       for (const rKey in parsed.roster) {
         const emp = parsed.roster[rKey];
@@ -243,15 +254,15 @@ function readDB() {
           modified = true;
         }
         
-        if (parsed.zinghr) {
+        if (parsed.zynghr) {
           const cleanId = (emp.id || rKey).toUpperCase().replace(/[^A-Z0-9]/g, '');
-          for (const zKey in parsed.zinghr) {
+          for (const zKey in parsed.zynghr) {
             const cleanZKey = zKey.toUpperCase().replace(/[^A-Z0-9]/g, '');
-            const cleanZId = (parsed.zinghr[zKey].id || zKey).toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const cleanZId = (parsed.zynghr[zKey].id || zKey).toUpperCase().replace(/[^A-Z0-9]/g, '');
             if (cleanZKey === cleanId || cleanZId === cleanId) {
-              if (emp.gatePhotos && emp.gatePhotos.length > 0 && parsed.zinghr[zKey].avatar !== emp.gatePhotos[0]) {
-                parsed.zinghr[zKey].avatar = emp.gatePhotos[0];
-                parsed.zinghr[zKey].gatePhotos = emp.gatePhotos;
+              if (emp.gatePhotos && emp.gatePhotos.length > 0 && parsed.zynghr[zKey].avatar !== emp.gatePhotos[0]) {
+                parsed.zynghr[zKey].avatar = emp.gatePhotos[0];
+                parsed.zynghr[zKey].gatePhotos = emp.gatePhotos;
                 modified = true;
               }
             }
@@ -309,6 +320,7 @@ function postToAIServer(path, payload, callback) {
 }
 
 const requestHandler = async (req, res) => {
+  console.log(`[HTTP Server] Request: ${req.method} ${req.url}`);
   // Add CORS headers so mobile app can connect
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -349,23 +361,23 @@ const requestHandler = async (req, res) => {
         
         db.roster[key] = employee;
         
-        // Link with Zing HR record if matches Zing HR ID (robust lookup)
+        // Link with Zyng HR record if matches Zyng HR ID (robust lookup)
         const cleanEmpId = key.toUpperCase().replace(/[^A-Z0-9]/g, '');
         let zingEmpKey = null;
-        for (const zKey in db.zinghr) {
+        for (const zKey in db.zynghr) {
           if (zKey.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanEmpId || 
-              db.zinghr[zKey].id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanEmpId) {
+              db.zynghr[zKey].id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanEmpId) {
             zingEmpKey = zKey;
             break;
           }
         }
         
         if (zingEmpKey) {
-          db.zinghr[zingEmpKey].gatePhotos = employee.gatePhotos || [];
-          // Also set the main Zing HR profile picture (avatar) to the first gate photo taken,
+          db.zynghr[zingEmpKey].gatePhotos = employee.gatePhotos || [];
+          // Also set the main Zyng HR profile picture (avatar) to the first gate photo taken,
           // so the reports tab immediately displays the newly captured gate registration photo!
           if (employee.gatePhotos && employee.gatePhotos.length > 0) {
-            db.zinghr[zingEmpKey].avatar = employee.gatePhotos[0];
+            db.zynghr[zingEmpKey].avatar = employee.gatePhotos[0];
           }
         }
         
@@ -444,13 +456,51 @@ const requestHandler = async (req, res) => {
     return;
   }
 
+  if (url.startsWith('/api/tts') && req.method === 'GET') {
+    const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+    const text = parsedUrl.searchParams.get('text');
+    const lang = parsedUrl.searchParams.get('lang') || 'en';
+    
+    if (!text) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Text parameter required' }));
+      return;
+    }
+    
+    const googleTtsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${lang}&client=tw-ob&q=${encodeURIComponent(text)}`;
+    
+    const request = https.get(googleTtsUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.0.0 Safari/537.36'
+      }
+    }, (googleRes) => {
+      if (googleRes.statusCode === 200) {
+        res.writeHead(200, {
+          'Content-Type': 'audio/mpeg',
+          'Cache-Control': 'public, max-age=86400'
+        });
+        googleRes.pipe(res);
+      } else {
+        console.error(`Google TTS responded with status: ${googleRes.statusCode}`);
+        res.writeHead(502, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: `Google TTS responded with status ${googleRes.statusCode}` }));
+      }
+    });
+    
+    request.on('error', (err) => {
+      console.error('TTS request error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Internal Server Error' }));
+    });
+    return;
+  }
+
   if (url === '/api/logs' && req.method === 'GET') {
     const db = readDB();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(db.logs));
     return;
   }
-
   if (url === '/api/logs' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
@@ -459,53 +509,73 @@ const requestHandler = async (req, res) => {
         const log = JSON.parse(body);
         const db = readDB();
         
-        // Enforce duplicate prevention in logs & Zing HR!
+        // Enforce duplicate prevention in logs & Zyng HR!
         const empId = log.empId;
         const dateStr = new Date(log.timestamp).toISOString().split('T')[0];
+        const direction = log.direction || 'Check-In';
         
         // Match clean ID (strip non-alphanumeric, case-insensitive)
         const cleanEmpId = empId.toUpperCase().replace(/[^A-Z0-9]/g, '');
         
-        // Find existing record in logs for today (robust check)
-        const isDuplicateInLogs = db.logs.some(l => {
+        // Find most recent log for this employee on dateStr to check state transition
+        const employeeLogs = db.logs.filter(l => {
           const logDate = new Date(l.timestamp).toISOString().split('T')[0];
           const logCleanId = l.empId.toUpperCase().replace(/[^A-Z0-9]/g, '');
           return logCleanId === cleanEmpId && logDate === dateStr;
         });
         
-        // Find in Zing HR dynamically
+        let lastDirection = null;
+        if (employeeLogs.length > 0) {
+          lastDirection = employeeLogs[0].direction || 'Check-In';
+        }
+        
+        let isBlocked = false;
+        if (lastDirection === null) {
+          if (direction === 'Check-Out') {
+            isBlocked = true;
+          }
+        } else if (lastDirection === 'Check-In') {
+          if (direction === 'Check-In') {
+            isBlocked = true;
+          }
+        } else if (lastDirection === 'Check-Out') {
+          if (direction === 'Check-Out') {
+            isBlocked = true;
+          }
+        }
+        
+        if (isBlocked) {
+          console.log(`State transition check blocked for employee ${empId} [${direction}] on date ${dateStr} (Last was ${lastDirection})`);
+          const errCode = direction === 'Check-In' ? 'ALREADY_MARKED_CHECKIN' : 'ALREADY_MARKED_CHECKOUT';
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: errCode, message: 'Attendance already marked for today' }));
+          return;
+        }
+
+        // Find in Zyng HR dynamically
         let zingEmpKey = null;
-        for (const key in db.zinghr) {
+        for (const key in db.zynghr) {
           if (key.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanEmpId || 
-              db.zinghr[key].id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanEmpId) {
+              db.zynghr[key].id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanEmpId) {
             zingEmpKey = key;
             break;
           }
         }
         
-        let alreadyMarked = isDuplicateInLogs;
-        if (zingEmpKey && db.zinghr[zingEmpKey].attendance) {
-          if (db.zinghr[zingEmpKey].attendance.includes(dateStr)) {
-            alreadyMarked = true;
+        // Save log to db.logs and postgres
+        db.logs.unshift(log);
+        
+        // Update Zyng HR attendance if record exists
+        if (zingEmpKey) {
+          if (!db.zynghr[zingEmpKey].attendance) db.zynghr[zingEmpKey].attendance = [];
+          if (!db.zynghr[zingEmpKey].attendance.includes(dateStr)) {
+            db.zynghr[zingEmpKey].attendance.push(dateStr);
           }
         }
         
-        if (alreadyMarked) {
-          console.log(`Duplicate check-in blocked for employee ${empId} on date ${dateStr}`);
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: false, error: 'ALREADY_MARKED', message: 'Attendance already marked for today' }));
-          return;
-        }
-        
-        // Update Zing HR attendance if record exists
-        if (zingEmpKey) {
-          if (!db.zinghr[zingEmpKey].attendance) db.zinghr[zingEmpKey].attendance = [];
-          db.zinghr[zingEmpKey].attendance.push(dateStr);
-        }
-
-        db.logs.unshift(log);
         writeDB(db);
         saveLogToPostgres(log);
+        
         res.writeHead(201, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, log, pgSynced: isPgConnected }));
       } catch (err) {
@@ -528,41 +598,38 @@ const requestHandler = async (req, res) => {
           const empId = log.empId;
           const dateStr = new Date(log.timestamp).toISOString().split('T')[0];
           const cleanEmpId = empId.toUpperCase().replace(/[^A-Z0-9]/g, '');
+          const direction = log.direction || 'Check-In';
           
-          // Check if employee already has a log in db.logs for this day
-          let isDuplicateForDay = db.logs.some(l => {
+          // Avoid duplicate entries during sync
+          const isDuplicate = db.logs.some(l => {
             const logDate = new Date(l.timestamp).toISOString().split('T')[0];
             const logCleanId = l.empId.toUpperCase().replace(/[^A-Z0-9]/g, '');
-            return logCleanId === cleanEmpId && logDate === dateStr;
+            const logDirection = l.direction || 'Check-In';
+            return logCleanId === cleanEmpId && logDate === dateStr && logDirection === direction;
           });
           
-          // Check if employee already has attendance marked in db.zinghr
+          if (isDuplicate) return;
+          
+          db.logs.unshift(log);
+          
+          // Check if employee exists in db.zynghr
           let zingEmpKey = null;
-          for (const key in db.zinghr) {
+          for (const key in db.zynghr) {
             if (key.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanEmpId || 
-                db.zinghr[key].id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanEmpId) {
+                db.zynghr[key].id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanEmpId) {
               zingEmpKey = key;
               break;
             }
           }
           
-          if (zingEmpKey && db.zinghr[zingEmpKey].attendance) {
-            if (db.zinghr[zingEmpKey].attendance.includes(dateStr)) {
-              isDuplicateForDay = true;
+          if (zingEmpKey) {
+            if (!db.zynghr[zingEmpKey].attendance) db.zynghr[zingEmpKey].attendance = [];
+            if (!db.zynghr[zingEmpKey].attendance.includes(dateStr)) {
+              db.zynghr[zingEmpKey].attendance.push(dateStr);
             }
           }
-          
-          if (!isDuplicateForDay) {
-            db.logs.unshift(log);
-            if (zingEmpKey) {
-              if (!db.zinghr[zingEmpKey].attendance) db.zinghr[zingEmpKey].attendance = [];
-              if (!db.zinghr[zingEmpKey].attendance.includes(dateStr)) {
-                db.zinghr[zingEmpKey].attendance.push(dateStr);
-              }
-            }
-            saveLogToPostgres(log);
-            addedCount++;
-          }
+          saveLogToPostgres(log);
+          addedCount++;
         });
         writeDB(db);
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -581,31 +648,31 @@ const requestHandler = async (req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       pgConnected: isPgConnected,
-      mode: isPgConnected ? "Enterprise Hybrid (PostgreSQL SQL + Zing HR DB)" : "Standalone (Zing HR db.json)",
+      mode: isPgConnected ? "Enterprise Hybrid (PostgreSQL SQL + Zyng HR DB)" : "Standalone (Zyng HR db.json)",
       rosterCount: Object.keys(db.roster || {}).length,
-      zinghrEmployeeCount: Object.keys(db.zinghr || {}).length,
+      zynghrEmployeeCount: Object.keys(db.zynghr || {}).length,
       totalLogsCount: (db.logs || []).length
     }));
     return;
   }
 
   // ZING HR API: Fetch Employee by ID
-  if (url.startsWith('/api/zinghr/employee/') && req.method === 'GET') {
+  if (url.startsWith('/api/zynghr/employee/') && req.method === 'GET') {
     const rawEmpId = url.split('/').pop().split('?')[0].toUpperCase();
     const cleanId = rawEmpId.replace(/[^A-Z0-9]/g, '');
     const db = readDB();
     
-    // Try matching in zinghr
+    // Try matching in zynghr
     let employee = null;
-    for (const key in db.zinghr) {
+    for (const key in db.zynghr) {
       if (key.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanId || 
-          db.zinghr[key].id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanId) {
-        employee = db.zinghr[key];
+          db.zynghr[key].id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanId) {
+        employee = db.zynghr[key];
         break;
       }
     }
     
-    // Fallback: Check if it exists in local roster, if so create mock Zing HR record!
+    // Fallback: Check if it exists in local roster, if so create mock Zyng HR record!
     if (!employee) {
       for (const key in db.roster) {
         const emp = db.roster[key];
@@ -622,7 +689,7 @@ const requestHandler = async (req, res) => {
             attendance: [],
             gatePhotos: []
           };
-          db.zinghr[emp.id] = employee;
+          db.zynghr[emp.id] = employee;
           writeDB(db);
           break;
         }
@@ -634,13 +701,13 @@ const requestHandler = async (req, res) => {
       res.end(JSON.stringify(employee));
     } else {
       res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: `Employee ID ${rawEmpId} not found in Zing HR database` }));
+      res.end(JSON.stringify({ error: `Employee ID ${rawEmpId} not found in Zyng HR database` }));
     }
     return;
   }
 
   // ZING HR API: Create new Employee profile
-  if (url === '/api/zinghr/employee' && req.method === 'POST') {
+  if (url === '/api/zynghr/employee' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', () => {
@@ -655,11 +722,11 @@ const requestHandler = async (req, res) => {
         const db = readDB();
         const cleanId = emp.id.toUpperCase().replace(/[^A-Z0-9]/g, '');
         
-        // Check if employee already exists in Zing HR database
+        // Check if employee already exists in Zyng HR database
         let exists = false;
-        for (const key in db.zinghr) {
+        for (const key in db.zynghr) {
           if (key.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanId || 
-              db.zinghr[key].id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanId) {
+              db.zynghr[key].id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanId) {
             exists = true;
             break;
           }
@@ -667,7 +734,7 @@ const requestHandler = async (req, res) => {
         
         if (exists) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: `Employee ID ${emp.id} already exists in Zing HR database` }));
+          res.end(JSON.stringify({ error: `Employee ID ${emp.id} already exists in Zyng HR database` }));
           return;
         }
         
@@ -685,7 +752,7 @@ const requestHandler = async (req, res) => {
           gatePhotos: []
         };
         
-        db.zinghr[newEmployee.id] = newEmployee;
+        db.zynghr[newEmployee.id] = newEmployee;
         writeDB(db);
         
         res.writeHead(201, { 'Content-Type': 'application/json' });
@@ -699,9 +766,9 @@ const requestHandler = async (req, res) => {
   }
 
   // ZING HR API: Get report for all employees
-  if (url.startsWith('/api/zinghr/report') && req.method === 'GET') {
+  if (url.startsWith('/api/zynghr/report') && req.method === 'GET') {
     const db = readDB();
-    const reportData = Object.values(db.zinghr).map(emp => {
+    const reportData = Object.values(db.zynghr).map(emp => {
       return {
         id: emp.id,
         name: emp.name,
@@ -726,7 +793,7 @@ const requestHandler = async (req, res) => {
   }
 
   // ZING HR API: Direct check-in sync (alternative POST endpoint)
-  if (url === '/api/zinghr/attendance' && req.method === 'POST') {
+  if (url === '/api/zynghr/attendance' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', () => {
@@ -736,26 +803,26 @@ const requestHandler = async (req, res) => {
         const dateStr = new Date(timestamp).toISOString().split('T')[0];
         const db = readDB();
         
-        if (!db.zinghr[empId]) {
+        if (!db.zynghr[empId]) {
           res.writeHead(404, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: `Employee ID ${empId} not found in Zing HR` }));
+          res.end(JSON.stringify({ error: `Employee ID ${empId} not found in Zyng HR` }));
           return;
         }
 
-        if (!db.zinghr[empId].attendance) {
-          db.zinghr[empId].attendance = [];
+        if (!db.zynghr[empId].attendance) {
+          db.zynghr[empId].attendance = [];
         }
 
-        if (db.zinghr[empId].attendance.includes(dateStr)) {
+        if (db.zynghr[empId].attendance.includes(dateStr)) {
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: false, error: 'ALREADY_MARKED', message: 'Attendance already marked for today' }));
           return;
         }
 
-        db.zinghr[empId].attendance.push(dateStr);
+        db.zynghr[empId].attendance.push(dateStr);
         writeDB(db);
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true, message: 'Attendance synced with Zing HR' }));
+        res.end(JSON.stringify({ success: true, message: 'Attendance synced with Zyng HR' }));
       } catch (err) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Invalid JSON body' }));

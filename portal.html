@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Layam Attendance Portal & Biometric Analytics</title>
+  <!-- Google Fonts: Outfit and JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="portal.css?v=2.2.1">
+</head>
+<body>
+
+  <!-- PORTAL HEADER -->
+  <header class="portal-header">
+    <div class="header-logo-section">
+      <div class="logo-icon">📊</div>
+      <div>
+        <h1>Layam Attendance Analytics</h1>
+        <p>Enterprise Biometric Audit & ZyngHR Integration Console</p>
+      </div>
+    </div>
+    <div class="header-controls">
+      <div class="system-time-hud">
+        <span id="portal-clock-time">12:00:00</span>
+        <small id="portal-clock-date">August 17, 2026</small>
+      </div>
+      <a href="/" class="app-back-btn">
+        <span class="btn-icon">📱</span> Open Supervisor App
+      </a>
+    </div>
+  </header>
+
+  <main class="portal-container">
+    
+    <!-- DASHBOARD FILTERS BAR -->
+    <section class="filters-bar">
+      <div class="filter-group">
+        <label for="portal-date-picker">Target Report Date:</label>
+        <input type="date" id="portal-date-picker">
+      </div>
+      
+      <div class="filter-group">
+        <label for="portal-location-filter">Plant Location:</label>
+        <select id="portal-location-filter">
+          <option value="all">All Plant Locations</option>
+          <option value="Tata Motors - Gate 1">Tata Motors (Gate 1)</option>
+          <option value="Tata Motors - Assembly Line B">Tata Motors (Assembly B)</option>
+          <option value="Reliance Industries - Plant A">Reliance Industries (Plant A)</option>
+          <option value="Adani Port - Cargo Yard">Adani Port (Cargo Yard)</option>
+          <option value="L&T Construction Site #4">L&T Site #4</option>
+        </select>
+      </div>
+
+      <div class="refresh-hud-group">
+        <span class="status-indicator online"></span>
+        <span style="font-size: 0.75rem; font-weight: 600; color: var(--color-success);">LIVE SYNC ENABLED</span>
+        <button id="portal-manual-refresh" class="refresh-btn">🔄 Refresh Data</button>
+      </div>
+    </section>
+
+    <!-- KEY PERFORMANCE INDICATORS (KPIS) GRID -->
+    <section class="kpi-grid">
+      <!-- KPI 1: Total Workforce strength -->
+      <div class="kpi-card" id="kpi-card-strength">
+        <div class="kpi-icon-wrapper" style="background: rgba(56, 189, 248, 0.1); color: var(--color-primary);">👥</div>
+        <div class="kpi-data">
+          <h3>Total Workforce Strength</h3>
+          <div class="kpi-value" id="kpi-total-workforce">-</div>
+          <p class="kpi-subtext">Active contract staff mapped in ZyngHR</p>
+        </div>
+      </div>
+
+      <!-- KPI 2: Biometric Registration rate -->
+      <div class="kpi-card radial-card" id="kpi-card-reg-rate">
+        <div class="radial-gauge-container">
+          <svg viewBox="0 0 36 36" class="circular-chart">
+            <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="circle" id="kpi-reg-circle" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <text x="18" y="20.35" class="percentage" id="kpi-reg-pct">0%</text>
+          </svg>
+        </div>
+        <div class="kpi-data">
+          <h3>Biometric Registration Rate</h3>
+          <div class="kpi-detail-text" id="kpi-reg-count">- / - Enrolled</div>
+          <p class="kpi-subtext">Employees registered with face templates</p>
+        </div>
+      </div>
+
+      <!-- KPI 3: Daily Attendance rate -->
+      <div class="kpi-card radial-card" id="kpi-card-att-rate">
+        <div class="radial-gauge-container">
+          <svg viewBox="0 0 36 36" class="circular-chart success-chart">
+            <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="circle" id="kpi-att-circle" stroke-dasharray="0, 100" stroke="var(--color-success)" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <text x="18" y="20.35" class="percentage" id="kpi-att-pct">0%</text>
+          </svg>
+        </div>
+        <div class="kpi-data">
+          <h3>Daily Attendance Rate</h3>
+          <div class="kpi-detail-text" id="kpi-att-count">- / - Present</div>
+          <p class="kpi-subtext">Attendance punches on selected date</p>
+        </div>
+      </div>
+
+      <!-- KPI 4: Pending Biometrics (Critical Audit) -->
+      <div class="kpi-card highlight-kpi" id="kpi-card-pending">
+        <div class="kpi-icon-wrapper" style="background: rgba(239, 68, 68, 0.1); color: var(--color-error);">⚠️</div>
+        <div class="kpi-data">
+          <h3>Biometrics Enrollment Pending</h3>
+          <div class="kpi-value color-error" id="kpi-unregistered-count">-</div>
+          <p class="kpi-subtext">Staff working but lacking face profiles</p>
+        </div>
+      </div>
+
+      <!-- KPI 5: AI Recognition Latency (Telemetry) -->
+      <div class="kpi-card" id="kpi-card-speed">
+        <div class="kpi-icon-wrapper" style="background: rgba(14, 165, 233, 0.1); color: var(--color-primary);">⚡</div>
+        <div class="kpi-data">
+          <h3>AI Recognition Speed</h3>
+          <div class="kpi-value" id="kpi-scan-speed">1.12s</div>
+          <p class="kpi-subtext">Avg gate matching & liveness latency</p>
+        </div>
+      </div>
+
+      <!-- KPI 6: Liveness Check & Spoof Blocking Gauge -->
+      <div class="kpi-card radial-card" id="kpi-card-liveness">
+        <div class="radial-gauge-container">
+          <svg viewBox="0 0 36 36" class="circular-chart warning-chart">
+            <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="circle" id="kpi-live-circle" stroke-dasharray="100, 100" stroke="var(--color-warning)" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <text x="18" y="20.35" class="percentage" id="kpi-live-pct">100%</text>
+          </svg>
+        </div>
+        <div class="kpi-data">
+          <h3>Liveness Block Rate</h3>
+          <div class="kpi-detail-text" id="kpi-live-count">0 Attacks</div>
+          <p class="kpi-subtext">Spoof & stranger attempts blocked</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- CORE REPORT WORKSPACE: TWO COLUMN LAYOUT -->
+    <section class="portal-workspace-grid">
+      
+      <!-- COLUMN 1: BIOMETRIC REGISTRATION AUDIT PANEL -->
+      <article class="workspace-panel card-layout">
+        <div class="panel-header">
+          <div class="panel-title-group">
+            <h2>Biometric Enrollment Audit</h2>
+            <p>Transparency check: Map ZyngHR entries to Face recognition enrollments</p>
+          </div>
+        </div>
+
+        <!-- Audit controls -->
+        <div class="panel-filters-row">
+          <div class="search-box-wrapper">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="audit-search-input" placeholder="Search by name, ID or role...">
+          </div>
+          <div class="panel-tabs">
+            <button class="tab-btn active" id="audit-tab-all">All</button>
+            <button class="tab-btn" id="audit-tab-registered">Registered</button>
+            <button class="tab-btn error-tab" id="audit-tab-unregistered">Unregistered ⚠️</button>
+          </div>
+        </div>
+
+        <!-- Audit Employee list scroll area -->
+        <div class="employee-scroll-list" id="audit-employee-list">
+          <div class="loading-state">Loading company roster data...</div>
+        </div>
+      </article>
+
+      <!-- COLUMN 2: DAILY ATTENDANCE MONITOR -->
+      <article class="workspace-panel card-layout">
+        <div class="panel-header">
+          <div class="panel-title-group">
+            <h2>Daily Attendance Board</h2>
+            <p>Verification logs for selected date</p>
+          </div>
+          <div class="attendance-counters">
+            <span class="badge badge-success" id="att-count-present">Present: 0</span>
+            <span class="badge badge-error" id="att-count-absent">Absent: 0</span>
+          </div>
+        </div>
+
+        <div class="panel-filters-row">
+          <div class="search-box-wrapper">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="attendance-search-input" placeholder="Search logs...">
+          </div>
+          <div class="panel-tabs">
+            <button class="tab-btn active" id="att-tab-all">All Roster</button>
+            <button class="tab-btn" id="att-tab-present">Present</button>
+            <button class="tab-btn" id="att-tab-absent">Absent</button>
+          </div>
+        </div>
+
+        <div class="table-outer-container">
+          <table class="portal-table">
+            <thead>
+              <tr>
+                <th>Employee Details</th>
+                <th>Shift</th>
+                <th>Check-in Time</th>
+                <th>Punch Location</th>
+                <th>Verification</th>
+                <th>ZyngHR Sync</th>
+              </tr>
+            </thead>
+            <tbody id="attendance-board-body">
+              <tr>
+                <td colspan="6" style="text-align:center; padding:50px; color:var(--color-text-secondary);">Select a date above to display records.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+      
+    </section>
+
+    <!-- ANALYTICS SECTION: SHIFT & LOCATION DISTRIBUTION -->
+    <section class="analytics-row-grid">
+      <!-- Card A: Shift Attendance Breakdown -->
+      <div class="workspace-panel card-layout">
+        <h3>Shift Attendance Distribution</h3>
+        <p class="section-desc-sm">Punch active counts vs scheduled staff by shift</p>
+        <div class="bar-chart-container" id="shift-bar-chart">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Card B: Location-wise Attendance Breakdown -->
+      <div class="workspace-panel card-layout">
+        <h3>Location Punch Activity</h3>
+        <p class="section-desc-sm">Check-in load statistics by gate / entry terminal</p>
+        <div class="bar-chart-container" id="location-bar-chart">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </section>
+
+    <!-- MONTHLY HISTORY SECTION: DOSSIER CALENDAR CARD -->
+    <section class="history-calendar-section workspace-panel card-layout">
+      <div class="panel-header" style="flex-wrap: wrap; gap:12px;">
+        <div class="panel-title-group">
+          <h2>Individual Monthly Dossier Sheet</h2>
+          <p>Track full attendance history calendar grid for any staff member</p>
+        </div>
+        <div class="dossier-selectors">
+          <select id="dossier-employee-select" style="min-width: 250px;">
+            <option value="">Select Employee...</option>
+          </select>
+          <select id="dossier-month-select">
+            <option value="2026-01">January 2026</option>
+            <option value="2026-02">February 2026</option>
+            <option value="2026-03">March 2026</option>
+            <option value="2026-04">April 2026</option>
+            <option value="2026-05">May 2026</option>
+            <option value="2026-06">June 2026</option>
+            <option value="2026-07">July 2026</option>
+            <option value="2026-08" selected>August 2026</option>
+            <option value="2026-09">September 2026</option>
+            <option value="2026-10">October 2026</option>
+            <option value="2026-11">November 2026</option>
+            <option value="2026-12">December 2026</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Calendar content container -->
+      <div id="dossier-calendar-wrapper">
+        <div class="calendar-placeholder-card">
+          <div class="placeholder-icon">📅</div>
+          <p>Please select an employee and month from the headers above to draw their month-view check-in sheet.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="portal-footer">
+    <p>Layam Attendance Biometric Reporting Console &copy; 2026. Standalone Mode Enabled.</p>
+  </footer>
+
+  <script src="portal.js?v=2.2.1"></script>
+  <!-- Programmatic Cache Clear & Service Worker Unregistration to solve browser cache headaches on portal.html -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (let registration of registrations) {
+          registration.unregister().then(() => {
+            console.log('[PWA] Service Worker unregistered on portal.');
+          });
+        }
+      });
+    }
+  </script>
+</body>
+</html>

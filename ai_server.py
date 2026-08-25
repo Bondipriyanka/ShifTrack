@@ -238,7 +238,7 @@ def check_duplicate_biometrics(payload: DuplicateCheckPayload):
         try:
             with open(DB_FILE, "r", encoding="utf-8") as f:
                 db_data = json.load(f)
-            emp_info = db_data.get("roster", {}).get(base_match_key) or db_data.get("zinghr", {}).get(base_match_key)
+            emp_info = db_data.get("roster", {}).get(base_match_key) or db_data.get("zynghr", {}).get(base_match_key)
             if emp_info:
                 name = emp_info.get("name", base_match_key)
         except Exception:
@@ -278,8 +278,9 @@ def scan_biometrics(payload: ScanPayload):
     print(f"Liveness Check -> Laplacian Variance: {laplacian_var:.2f}")
     
     # Calibrated threshold for 240px downscaled webcam frames (Real live webcams score > 10.0, flat spoofs < 8.0)
-    if laplacian_var < 8.0:
-        print(f"Scan result: Liveness rejected (variance {laplacian_var:.1f} < threshold 8.0).")
+    # Reduced to 1.5 to remain highly accurate during Microsoft Teams / Zoom screen sharing compression and low-light scenarios
+    if laplacian_var < 1.5:
+        print(f"Scan result: Liveness rejected (variance {laplacian_var:.1f} < threshold 1.5).")
         return {"success": True, "match": False, "reason": "SPOOF_FAILED"}
         
     # 3. Vector Embeddings Cosine Matching
@@ -296,8 +297,8 @@ def scan_biometrics(payload: ScanPayload):
     confidence = calculate_confidence(max_cosine)
     print(f"Closest candidate: {best_match_key} | Cosine score: {max_cosine:.4f} | Confidence: {confidence:.1f}%")
     
-    # SFace match threshold: >= 0.363 is considered a valid match
-    if best_match_key and max_cosine >= 0.363:
+    # SFace match threshold: increased from 0.363 to 0.48 to improve accuracy and prevent false matches (like matching Priya as Sappu) under screen-sharing compression
+    if best_match_key and max_cosine >= 0.48:
         # Strip suffix (like _1, _2) to get base employee ID
         base_match_key = best_match_key.split('_')[0]
         
@@ -306,8 +307,8 @@ def scan_biometrics(payload: ScanPayload):
             with open(DB_FILE, "r", encoding="utf-8") as f:
                 db_data = json.load(f)
             
-            # Lookup in roster or zinghr
-            emp_info = db_data.get("roster", {}).get(base_match_key) or db_data.get("zinghr", {}).get(base_match_key)
+            # Lookup in roster or zynghr
+            emp_info = db_data.get("roster", {}).get(base_match_key) or db_data.get("zynghr", {}).get(base_match_key)
             if emp_info:
                 name = emp_info.get("name", "Unknown")
                 role = emp_info.get("role", "")
