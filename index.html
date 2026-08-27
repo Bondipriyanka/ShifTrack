@@ -130,8 +130,8 @@
                 <!-- Camera Fallback when webcam is off or blocked -->
                 <div class="camera-fallback" id="camera-fallback">
                   <svg class="svg-icon" style="width:48px; height:48px;" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="2" fill="none"/></svg>
-                  <h3>Camera Feed Inactive</h3>
-                  <p style="font-size: 0.8rem; margin: 8px 0; color: var(--color-text-muted);">Open live camera stream or capture a real face snapshot for AI biometric recognition.</p>
+                  <h3>Turn On Gate Camera</h3>
+                  <p style="font-size: 0.8rem; margin: 8px 0; color: var(--color-text-muted);">Supervisor: turn on the gate camera to begin attendance scanning.</p>
                   <div style="display:flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 6px;">
                     <button id="btn-mobile-snap-trigger" style="background: #22c55e; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.85rem;">
                       <svg class="svg-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="2" fill="none"/></svg>
@@ -157,12 +157,14 @@
 
                 <!-- Slide-up verification access card -->
                 <div class="verification-card" id="verification-card">
+                  <img id="verif-avatar" alt="" style="display:none; width:42px; height:42px; border-radius:50%; object-fit:cover;">
                   <div class="verification-icon" id="verif-icon-box">
                     <!-- Dynamic SVG insertion -->
                   </div>
                   <div class="verification-info">
                     <h4 id="verif-name">John Doe</h4>
                     <p id="verif-status">Access Approved</p>
+                    <small id="verif-employee-id"></small>
                   </div>
                   <div class="verification-timestamp">
                     <div id="verif-time">08:30:15</div>
@@ -190,13 +192,14 @@
                  </button>
 
                  <!-- Check-In / Check-Out Actions (Green & Red buttons) -->
-                 <div id="check-in-out-actions" style="display: none; gap: 10px; margin-top: 10px; width: 100%;">
-                   <button class="scan-btn" id="btn-check-in" style="display: none; flex: 1; background: #22c55e; color: #fff; border: none; font-weight: bold; height: 45px; border-radius: 8px; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; align-items: center; justify-content: center; gap: 6px;">
-                     🟢 Check-In
+                 <div id="check-in-out-actions" style="display: flex; gap: 10px; margin-top: 10px; width: 100%;">
+                   <button class="scan-btn" id="btn-check-out" disabled style="flex: 1; background: #ef4444; color: #fff; border: none; font-weight: bold; height: 45px; border-radius: 8px; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                     Check Out
                    </button>
-                   <button class="scan-btn" id="btn-check-out" style="flex: 1; background: #ef4444; color: #fff; border: none; font-weight: bold; height: 45px; border-radius: 8px; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                     🔴 Check-Out
-                   </button>
+                 </div>
+                 <div id="manual-attendance-actions" class="hidden" style="display: none; gap: 8px; margin-top: 10px; width: 100%;">
+                   <select id="manual-employee-select" aria-label="Employee for manual attendance" style="flex: 1; min-width: 0;"></select>
+                   <button class="scan-btn" id="btn-manual-attendance" type="button" style="background: #f59e0b; color: #111827; border: none; font-weight: bold; padding: 0 14px;">Manual Attendance</button>
                  </div>
 
                  <!-- Permanent mobile snap button, only visible when scanner is active -->
@@ -237,6 +240,7 @@
                         <span data-i18n="search">Search</span>
                       </button>
                     </div>
+                    <div id="reg-employee-search-results" class="hidden" style="margin-top: 8px; max-height: 150px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.12); border-radius: 6px;"></div>
                     <div style="display: none; text-align: right; margin-top: 4px;">
                       <a href="#" id="reg-lnk-create-zynghr" style="font-size: 0.68rem; color: var(--color-primary); text-decoration: none; font-weight: bold; transition: opacity 0.2s;" data-i18n="create_profile">+ Create New Employee Profile</a>
                     </div>

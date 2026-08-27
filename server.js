@@ -73,7 +73,7 @@ async function saveLogToPostgres(log) {
   }
 }
 
-const PORT = 3000;
+const PORT = 2000;
 const DB_FILE = path.join(__dirname, 'db.json');
 
 // Initial default roster
@@ -456,6 +456,30 @@ const requestHandler = async (req, res) => {
     return;
   }
 
+  if (url === '/api/biometric/detect-person' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body);
+        postToAIServer('/api/biometric/detect-person', payload, (err, aiResponse) => {
+          if (err) {
+            console.error("AI Server connection error:", err.message);
+            res.writeHead(502, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'AI biometric server offline' }));
+          } else {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(aiResponse));
+          }
+        });
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid JSON body' }));
+      }
+    });
+    return;
+  }
+
   if (url.startsWith('/api/tts') && req.method === 'GET') {
     const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
     const text = parsedUrl.searchParams.get('text');
@@ -516,6 +540,26 @@ const requestHandler = async (req, res) => {
         
         // Match clean ID (strip non-alphanumeric, case-insensitive)
         const cleanEmpId = empId.toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+        // Resolve the employee assignment from the server-side master data.
+        const zyngEmployee = Object.values(db.zynghr || {}).find(employee =>
+          employee.id && employee.id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanEmpId
+        );
+        const rosterEmployee = Object.values(db.roster || {}).find(employee =>
+          employee.id && employee.id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanEmpId
+        );
+        const masterEmployee = zyngEmployee || rosterEmployee;
+        const assignedLocation = (zyngEmployee && zyngEmployee.location) || (rosterEmployee && rosterEmployee.location);
+        if (!masterEmployee || !assignedLocation || assignedLocation.trim().toLowerCase() !== (log.location || '').trim().toLowerCase()) {
+          console.log(`Plant validation blocked attendance for ${empId}. Assigned: ${assignedLocation || 'unknown'}, requested: ${log.location || 'unknown'}`);
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            success: false,
+            error: 'PLANT_MISMATCH',
+            message: `Attendance not recorded. ${masterEmployee ? masterEmployee.name : 'Employee'} is not assigned to this plant.`
+          }));
+          return;
+        }
         
         // Find most recent log for this employee on dateStr to check state transition
         const employeeLogs = db.logs.filter(l => {

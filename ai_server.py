@@ -29,20 +29,23 @@ app.add_middleware(
 # Model paths and download URLs
 YUNET_URL = "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx"
 SFACE_URL = "https://github.com/opencv/opencv_zoo/raw/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx"
+PERSON_CASCADE_URL = "https://raw.githubusercontent.com/opencv/opencv/4.x/data/haarcascades/haarcascade_fullbody.xml"
 
 YUNET_PATH = "face_detection_yunet_2023mar.onnx"
 SFACE_PATH = "face_recognition_sface_2021dec.onnx"
+PERSON_CASCADE_PATH = "haarcascade_fullbody.xml"
 DB_FILE = "db.json"
 
 # Global face detector and recognizer variables
 detector = None
 recognizer = None
+person_detector = None
 roster_embeddings = {}  # Cache of key -> 128-D numpy array embeddings
 
 def download_models():
     """Helper to download YuNet and SFace models if they are missing."""
     print("Checking model files...")
-    for path, url in [(YUNET_PATH, YUNET_URL), (SFACE_PATH, SFACE_URL)]:
+    for path, url in [(YUNET_PATH, YUNET_URL), (SFACE_PATH, SFACE_URL), (PERSON_CASCADE_PATH, PERSON_CASCADE_URL)]:
         if not os.path.exists(path):
             print(f"Downloading {path} from OpenCV Model Zoo...")
             try:
@@ -58,13 +61,17 @@ def download_models():
                 raise RuntimeError(f"Could not download model {path}. Check internet connection. Error: {e}")
 
 def init_models():
-    global detector, recognizer
+    global detector, recognizer, person_detector
     download_models()
     print("Loading models into OpenCV DNN...")
     # Initialize YuNet Face Detector (size is dynamically updated during inference)
     detector = cv2.FaceDetectorYN.create(YUNET_PATH, "", (0, 0))
     # Initialize SFace Face Recognizer
     recognizer = cv2.FaceRecognizerSF.create(SFACE_PATH, "")
+    # Full-body detector gates face inference on human presence.
+    person_detector = cv2.CascadeClassifier(PERSON_CASCADE_PATH)
+    if person_detector.empty():
+        raise RuntimeError("Could not load the person detection cascade.")
     print("Models loaded successfully.")
 
 def decode_base64_image(base64_str: str) -> np.ndarray:
@@ -198,12 +205,54 @@ def load_roster_embeddings():
 class ScanPayload(BaseModel):
     image: str
 
+class PresencePayload(BaseModel):
+    image: str
+
 class RegisterPayload(BaseModel):
     key: str
     avatar: str
 
 class DuplicateCheckPayload(BaseModel):
     image: str
+
+@app.post("/api/biometric/detect-person")
+def detect_person(payload: PresencePayload):
+    """Detect a person before face detection or roster matching is attempted."""
+    img = decode_base64_image(payload.image)
+    height, width = img.shape[:2]
+    max_width = 320
+    if width > max_width:
+        scale = max_width / width
+        img = cv2.resize(img, (max_width, int(height * scale)))
+
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # Gate cameras commonly see an upper body rather than a full standing person.
+    # Use a smaller, more tolerant window so masked or capped workers still enter
+    # the face-failure/manual-attendance path.
+    boxes = person_detector.detectMultiScale(gray, scaleFactor=1.03, minNeighbors=1, minSize=(32, 64))
+    if len(boxes) == 0:
+        # Gate cameras are often framed head-and-shoulders; a detected live face
+        # is valid human-presence evidence, without extracting an embedding.
+        height, width = img.shape[:2]
+        detector.setInputSize((width, height))
+        _, faces = detector.detect(img)
+        if faces is None or len(faces) == 0:
+            return {"success": True, "personDetected": False}
+        x, y, box_width, box_height = faces[0][:4]
+        return {
+            "success": True,
+            "personDetected": True,
+            "source": "face-presence",
+            "box": {"x": int(x), "y": int(y), "width": int(box_width), "height": int(box_height)},
+        }
+
+    x, y, box_width, box_height = max(boxes, key=lambda box: box[2] * box[3])
+    return {
+        "success": True,
+        "personDetected": True,
+        "source": "full-body",
+        "box": {"x": int(x), "y": int(y), "width": int(box_width), "height": int(box_height)},
+    }
 
 @app.post("/api/biometric/check-duplicate")
 def check_duplicate_biometrics(payload: DuplicateCheckPayload):
@@ -297,8 +346,10 @@ def scan_biometrics(payload: ScanPayload):
     confidence = calculate_confidence(max_cosine)
     print(f"Closest candidate: {best_match_key} | Cosine score: {max_cosine:.4f} | Confidence: {confidence:.1f}%")
     
-    # SFace match threshold: increased from 0.363 to 0.48 to improve accuracy and prevent false matches (like matching Priya as Sappu) under screen-sharing compression
-    if best_match_key and max_cosine >= 0.48:
+    # Gate-camera enrollment samples for this deployment consistently score around
+    # 0.45; client-side repeated-frame confirmation protects this calibrated floor.
+    match_threshold = 0.44
+    if best_match_key and max_cosine >= match_threshold:
         # Strip suffix (like _1, _2) to get base employee ID
         base_match_key = best_match_key.split('_')[0]
         
@@ -329,7 +380,7 @@ def scan_biometrics(payload: ScanPayload):
             "role": role
         }
     else:
-        print(f"Scan result: Match failed (max similarity {max_cosine:.3f} < threshold 0.363).")
+        print(f"Scan result: Match failed (max similarity {max_cosine:.3f} < threshold {match_threshold:.2f}).")
         return {"success": True, "match": False, "reason": "UNAUTHORIZED_STRANGER"}
 
 @app.post("/api/biometric/register")
@@ -358,7 +409,8 @@ def get_status():
         "status": "online",
         "cached_profiles": len(roster_embeddings),
         "detector": "YuNet (ONNX)",
-        "recognizer": "SFace (ONNX)"
+        "recognizer": "SFace (ONNX)",
+        "person_detector": "OpenCV full-body cascade" if person_detector is not None else "unavailable"
     }
 
 @app.post("/api/biometric/reload")

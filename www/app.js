@@ -235,7 +235,12 @@ const appState = {
   isAuthorized: false,
   currentSelectedEmployee: null,
   isContinuousScan: false,
-  isShiftRosterEnforced: false
+  isShiftRosterEnforced: false,
+  scanState: "idle",
+  scanTimer: null,
+  scanRequestInFlight: false,
+  checkoutCandidate: null,
+  scanCooldownUntil: 0
 };
 
 function getLocalDateString(dateObj) {
@@ -280,6 +285,7 @@ function initApp() {
     document.getElementById("offline-switch").addEventListener("change", toggleOfflineMode);
     document.getElementById("location-select").addEventListener("change", handleLocationChange);
     document.getElementById("trigger-scan-btn").addEventListener("click", triggerManualScan);
+    document.getElementById("btn-check-out").addEventListener("click", completeCheckout);
     document.getElementById("trigger-stranger-btn").addEventListener("click", () => {
       appState.selectedSubject = "unauthorized";
       updateWalkUpStatusText();
@@ -641,6 +647,9 @@ function handleSupervisorLogin() {
       if (loginScreen) loginScreen.classList.add("hidden");
       if (bottomNavbar) bottomNavbar.classList.remove("hidden");
       switchTab("scan");
+      setTimeout(() => {
+        if (!appState.isScanningMode) toggleScanMode();
+      }, 100);
       
       logTerminal("SUCCESS", "Supervisor credentials authorized successfully. Portal Hub unlocked.");
     } else {
@@ -773,6 +782,7 @@ function switchTab(tabName) {
 
 // Shutdown webcam streams
 function shutdownActiveStream() {
+  stopContinuousScanner();
   if (appState.webcamStream) {
     appState.webcamStream.getTracks().forEach(track => track.stop());
     appState.webcamStream = null;
@@ -986,6 +996,7 @@ function toggleScanMode() {
   if (!appState.isScanningMode) {
     // Open stream
     appState.isScanningMode = true;
+    appState.isContinuousScan = true;
     btn.classList.add("active");
     btnText.innerText = "Close Gate Camera";
     viewport.classList.add("scanning");
@@ -1058,6 +1069,184 @@ function autoStopCameraScanner() {
   showCameraFallback();
 }
 
+function stopContinuousScanner() {
+  if (appState.scanTimer) {
+    clearTimeout(appState.scanTimer);
+    appState.scanTimer = null;
+  }
+  appState.scanRequestInFlight = false;
+  appState.scanState = "idle";
+  appState.checkoutCandidate = null;
+  const checkoutButton = document.getElementById("btn-check-out");
+  if (checkoutButton) checkoutButton.disabled = true;
+}
+
+function captureScanFrame() {
+  const video = document.getElementById("camera-stream");
+  if (!video || video.readyState < 2) return null;
+  const canvas = document.createElement("canvas");
+  const scale = Math.min(1, 480 / video.videoWidth);
+  canvas.width = Math.round(video.videoWidth * scale);
+  canvas.height = Math.round(video.videoHeight * scale);
+  const context = canvas.getContext("2d");
+  context.translate(canvas.width, 0);
+  context.scale(-1, 1);
+  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", 0.85);
+}
+
+function scheduleNextScan(delay = 650) {
+  if (!appState.isScanningMode || appState.checkoutCandidate) return;
+  if (appState.scanTimer) clearTimeout(appState.scanTimer);
+  appState.scanTimer = setTimeout(runPresenceGatedScan, delay);
+}
+
+function setVerificationProfile(emp) {
+  const avatar = document.getElementById("verif-avatar");
+  const employeeId = document.getElementById("verif-employee-id");
+  if (avatar) {
+    avatar.src = emp.avatar || "";
+    avatar.alt = emp.name || "Recognized employee";
+    avatar.style.display = emp.avatar ? "block" : "none";
+  }
+  if (employeeId) employeeId.innerText = emp.id || "";
+}
+
+function showRecognitionFailure(reason) {
+  const viewport = document.getElementById("viewport-container");
+  const card = document.getElementById("verification-card");
+  document.getElementById("verif-name").innerText = reason === "SPOOF_FAILED" ? "Liveness Reject" : "Person Detected";
+  document.getElementById("verif-status").innerText = reason === "SPOOF_FAILED" ? "Spoof Attack Blocked" : "Person Not Recognized";
+  viewport.classList.remove("success");
+  viewport.classList.add("error");
+  card.className = "verification-card active error-theme";
+  appState.scanState = "showingResult";
+  setTimeout(() => {
+    viewport.classList.remove("error");
+    card.classList.remove("active");
+    appState.scanState = "idle";
+    scheduleNextScan();
+  }, 3000);
+}
+
+function getTodayAttendanceDirection(employeeId) {
+  const today = getLocalDateString(new Date());
+  const normalizedId = employeeId.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const logs = [...appState.attendanceLogs, ...appState.syncQueue]
+    .filter(log => log.empId && log.empId.toUpperCase().replace(/[^A-Z0-9]/g, "") === normalizedId && getLocalDateString(new Date(log.timestamp)) === today)
+    .sort((left, right) => new Date(right.timestamp) - new Date(left.timestamp));
+  return logs[0] ? (logs[0].direction || "Check-In") : null;
+}
+
+function showCheckoutReady(emp) {
+  const viewport = document.getElementById("viewport-container");
+  const card = document.getElementById("verification-card");
+  setVerificationProfile(emp);
+  document.getElementById("verif-name").innerText = emp.name;
+  document.getElementById("verif-status").innerText = "Already Checked In";
+  document.getElementById("verif-time").innerText = new Date().toLocaleTimeString();
+  card.className = "verification-card active success-theme";
+  viewport.classList.add("success");
+  appState.checkoutCandidate = emp;
+  appState.scanState = "checkoutReady";
+  const checkoutButton = document.getElementById("btn-check-out");
+  if (checkoutButton) checkoutButton.disabled = false;
+}
+
+function speakConfirmation(text) {
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+  }
+}
+
+async function runPresenceGatedScan() {
+  if (!appState.isScanningMode || appState.scanRequestInFlight || appState.checkoutCandidate) return;
+  if (Date.now() < appState.scanCooldownUntil) return scheduleNextScan(appState.scanCooldownUntil - Date.now());
+  const image = captureScanFrame();
+  if (!image) return scheduleNextScan();
+
+  appState.scanRequestInFlight = true;
+  try {
+    appState.scanState = "detectingPerson";
+    const presenceResponse = await fetch(getApiUrl("/api/biometric/detect-person"), {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image })
+    });
+    const presence = await presenceResponse.json();
+    if (!presenceResponse.ok || !presence.personDetected) return;
+
+    appState.scanState = "detectingFace";
+    const scanResponse = await fetch(getApiUrl("/api/biometric/scan"), {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image })
+    });
+    const scan = await scanResponse.json();
+    if (!scanResponse.ok) throw new Error("Face recognition service unavailable");
+    if (scan.reason === "NO_FACE_DETECTED") return;
+    if (scan.reason === "SPOOF_FAILED" || !scan.match) {
+      showRecognitionFailure(scan.reason);
+      return;
+    }
+
+    const emp = employeeDatabase[scan.employeeId] || { id: scan.employeeId, name: scan.name, role: scan.role };
+    setVerificationProfile(emp);
+    appState.scanState = "processingAttendance";
+    if (getTodayAttendanceDirection(emp.id) === "Check-In") {
+      showCheckoutReady(emp);
+      return;
+    }
+    appState.scanCooldownUntil = Date.now() + 4000;
+    recordAttendanceSuccess(emp, new Date().toISOString());
+  } catch (error) {
+    logTerminal("WARN", `Presence-gated scan unavailable: ${error.message}`);
+  } finally {
+    appState.scanRequestInFlight = false;
+    if (appState.scanState !== "showingResult" && appState.scanState !== "checkoutReady" && appState.scanState !== "processingAttendance") {
+      appState.scanState = "idle";
+      scheduleNextScan();
+    }
+  }
+}
+
+async function completeCheckout() {
+  const emp = appState.checkoutCandidate;
+  if (!emp || appState.scanRequestInFlight) return;
+  appState.scanRequestInFlight = true;
+  document.getElementById("btn-check-out").disabled = true;
+  const record = {
+    empId: emp.id, name: emp.name, timestamp: new Date().toISOString(), direction: "Check-Out",
+    location: appState.selectedLocation, gps: `${appState.gps.lat.toFixed(4)}°, ${appState.gps.lng.toFixed(4)}°`,
+    verified: true, syncStatus: appState.isOffline ? "Pending" : "Synced"
+  };
+  try {
+    if (!appState.isOffline) {
+      const response = await fetch(getApiUrl("/api/logs"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record) });
+      const result = await response.json();
+      if (!response.ok || result.success === false) throw new Error(result.message || "Checkout was not accepted");
+    } else {
+      appState.syncQueue.push(record);
+    }
+    appState.attendanceLogs.unshift(record);
+    document.getElementById("verif-status").innerText = "Checkout Recorded";
+    document.getElementById("viewport-container").classList.add("success");
+    speakConfirmation("Checkout successfully recorded.");
+    appState.scanCooldownUntil = Date.now() + 4000;
+    setTimeout(() => {
+      document.getElementById("verification-card").classList.remove("active");
+      document.getElementById("viewport-container").classList.remove("success");
+      appState.checkoutCandidate = null;
+      appState.scanRequestInFlight = false;
+      appState.scanState = "idle";
+      scheduleNextScan();
+    }, 3000);
+  } catch (error) {
+    logTerminal("WARN", `Checkout failed: ${error.message}`);
+    appState.scanRequestInFlight = false;
+    appState.checkoutCandidate = null;
+    appState.scanState = "idle";
+    scheduleNextScan();
+  }
+}
+
 // Offline Switch
 function toggleOfflineMode(e) {
   appState.isOffline = e.target.checked;
@@ -1095,6 +1284,10 @@ function handleLocationChange(e) {
 // Run the core authentication pipeline
 // Run the core authentication pipeline
 function triggerManualScan() {
+  if (!appState.isSimulatedCamera) {
+    runPresenceGatedScan();
+    return;
+  }
   if (!appState.isScanningMode) {
     toggleScanMode();
     setTimeout(triggerManualScan, 1200);
@@ -1559,6 +1752,8 @@ function recordAttendanceSuccess(emp, timestamp) {
     `;
 
     logTerminal("SUCCESS", `Biometrics Approved for ${emp.name}. Log cached in local memory storage.`);
+    setVerificationProfile(emp);
+    speakConfirmation("Attendance successfully recorded.");
     
     appState.syncQueue.push(record);
     appState.attendanceLogs.unshift(record);
@@ -1635,6 +1830,8 @@ function recordAttendanceSuccess(emp, timestamp) {
         
         statusLabel.innerText = "Checked in";
         statusLabel.style.color = "var(--color-success)";
+        setVerificationProfile(emp);
+        speakConfirmation("Attendance successfully recorded.");
         
         iconBox.innerHTML = `
           <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24">
@@ -2908,42 +3105,11 @@ function validateFaceFeatures(grid) {
 // ----------------------------------------------------
 
 function startScanCountdown() {
-  setupCountdownDOMElements();
-  
-  let count = 3;
   const banner = document.getElementById("scan-timer-banner");
   const overlay = document.getElementById("scan-countdown-overlay");
-  
-  if (banner && overlay) {
-    banner.innerText = `AUTO-SCAN IN ${count}.0s`;
-    overlay.innerText = `${count}`;
-    overlay.style.color = "var(--color-primary)";
-    overlay.style.borderColor = "var(--color-primary)";
-    banner.style.color = "var(--color-primary)";
-    
-    banner.classList.remove("hidden");
-    overlay.classList.remove("hidden");
-    
-    appState.autoScanInterval = setInterval(() => {
-      count -= 1;
-      if (count <= 0) {
-        clearInterval(appState.autoScanInterval);
-        appState.autoScanInterval = null;
-        banner.classList.add("hidden");
-        overlay.classList.add("hidden");
-        triggerManualScan();
-      } else {
-        banner.innerText = `AUTO-SCAN IN ${count}.0s`;
-        overlay.innerText = `${count}`;
-        
-        if (count === 1) {
-          overlay.style.color = "var(--color-warning)";
-          overlay.style.borderColor = "var(--color-warning)";
-          banner.style.color = "var(--color-warning)";
-        }
-      }
-    }, 1000);
-  }
+  if (banner) banner.classList.add("hidden");
+  if (overlay) overlay.classList.add("hidden");
+  scheduleNextScan(250);
 }
 
 function renderMobileLogs() {
