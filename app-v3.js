@@ -1892,9 +1892,9 @@ function triggerManualScan() {
         highlightFlowNode("node-recognition");
 
         if (data.reason === "NO_FACE_DETECTED") {
-          logTerminal("WARN", "Face Matcher: No face bounding boxes detected (wall/blank background).");
+          logTerminal("INFO", "Scan: No face detected. Engine remains idle.");
           appState.isScanInProgress = false;
-          handleVerificationResult(false, "UNAUTHORIZED");
+          // Quietly exit without calling handleVerificationResult
         } else if (data.reason === "SPOOF_FAILED" || subject === "spoof") {
           appState.isScanInProgress = false;
           handleVerificationResult(false, "SPOOF_FAILED");
@@ -1936,6 +1936,7 @@ function triggerManualScan() {
     });
 
   }, 100);
+
 }
 
 // Fallback biometric simulator in case backend is down
@@ -1976,9 +1977,8 @@ function performLocalFaceRecognition(base64Image, location, timestamp) {
     // Generate color grid from the image
     const capturedGrid = getColorGrid(img);
     if (!capturedGrid || !validateFaceFeatures(capturedGrid)) {
-      logTerminal("WARN", "Local Face Matcher: Face structure check failed. No valid face detected in frame.");
+      logTerminal("INFO", "Local Matcher: No face structure detected. Gateway remains idle.");
       appState.isScanInProgress = false;
-      handleVerificationResult(false, "UNAUTHORIZED");
       return;
     }
     

@@ -16296,6 +16296,96 @@
     {
       "empId": "EMP-5715",
       "name": "Priya M",
+      "timestamp": "2026-08-27T11:05:39.570Z",
+      "location": "Tata Motors - Gate 1",
+      "gps": "18.6421°, 73.8056°",
+      "verified": true,
+      "syncStatus": "Synced",
+      "direction": "Check-In"
+    },
+    {
+      "empId": "EMP-5715",
+      "name": "Priya M",
+      "timestamp": "2026-08-27T11:05:29.960Z",
+      "location": "Tata Motors - Gate 1",
+      "gps": "18.6421°, 73.8056°",
+      "verified": true,
+      "syncStatus": "Synced",
+      "direction": "Check-Out"
+    },
+    {
+      "empId": "EMP-5715",
+      "name": "Priya M",
+      "timestamp": "2026-08-27T10:38:35.390Z",
+      "location": "Tata Motors - Gate 1",
+      "gps": "18.6421°, 73.8056°",
+      "verified": true,
+      "syncStatus": "Synced",
+      "direction": "Check-In"
+    },
+    {
+      "empId": "EMP-5715",
+      "name": "Priya M",
+      "timestamp": "2026-08-27T10:38:24.758Z",
+      "location": "Tata Motors - Gate 1",
+      "gps": "18.6421°, 73.8056°",
+      "verified": true,
+      "syncStatus": "Synced",
+      "direction": "Check-Out"
+    },
+    {
+      "empId": "EMP-5715",
+      "name": "Priya M",
+      "timestamp": "2026-08-27T10:34:49.743Z",
+      "location": "Tata Motors - Gate 1",
+      "gps": "18.6421°, 73.8056°",
+      "verified": true,
+      "syncStatus": "Synced",
+      "direction": "Check-In"
+    },
+    {
+      "empId": "EMP-5715",
+      "name": "Priya M",
+      "timestamp": "2026-08-27T10:32:46.709Z",
+      "location": "Tata Motors - Gate 1",
+      "gps": "18.6421°, 73.8056°",
+      "verified": true,
+      "syncStatus": "Synced",
+      "direction": "Check-Out"
+    },
+    {
+      "empId": "EMP-5715",
+      "name": "Priya M",
+      "timestamp": "2026-08-27T10:32:42.601Z",
+      "location": "Tata Motors - Gate 1",
+      "gps": "18.6421°, 73.8056°",
+      "verified": true,
+      "syncStatus": "Synced",
+      "direction": "Check-In"
+    },
+    {
+      "empId": "EMP-5715",
+      "name": "Priya M",
+      "timestamp": "2026-08-27T10:32:24.823Z",
+      "location": "Tata Motors - Gate 1",
+      "gps": "18.6421°, 73.8056°",
+      "verified": true,
+      "syncStatus": "Synced",
+      "direction": "Check-Out"
+    },
+    {
+      "empId": "EMP-5715",
+      "name": "Priya M",
+      "timestamp": "2026-08-27T10:32:18.303Z",
+      "location": "Tata Motors - Gate 1",
+      "gps": "18.6421°, 73.8056°",
+      "verified": true,
+      "syncStatus": "Synced",
+      "direction": "Check-In"
+    },
+    {
+      "empId": "EMP-5715",
+      "name": "Priya M",
       "timestamp": "2026-08-27T08:32:06.665Z",
       "location": "Tata Motors - Gate 1",
       "gps": "18.6421°, 73.8056°",
