@@ -191,7 +191,7 @@
 
                  <!-- Check-In / Check-Out Actions (Green & Red buttons) -->
                  <div id="check-in-out-actions" style="display: none; gap: 10px; margin-top: 10px; width: 100%;">
-                   <button class="scan-btn" id="btn-check-in" style="flex: 1; background: #22c55e; color: #fff; border: none; font-weight: bold; height: 45px; border-radius: 8px; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                   <button class="scan-btn" id="btn-check-in" style="display: none; flex: 1; background: #22c55e; color: #fff; border: none; font-weight: bold; height: 45px; border-radius: 8px; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; align-items: center; justify-content: center; gap: 6px;">
                      🟢 Check-In
                    </button>
                    <button class="scan-btn" id="btn-check-out" style="flex: 1; background: #ef4444; color: #fff; border: none; font-weight: bold; height: 45px; border-radius: 8px; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;">
@@ -369,6 +369,11 @@
                     <span style="color: var(--color-text-muted);" data-i18n="zynghr_roster">ZyngHR Company Roster:</span>
                     <strong id="mobile-zynghr-count" style="color: var(--color-primary); font-size:0.85rem;">6 Employees</strong>
                   </div>
+                  <div style="text-align: right; margin-top: -4px; margin-bottom: 2px;">
+                    <a href="portal.html?compact=true" target="_blank" id="mobile-zynghr-portal-lnk" style="font-size: 0.68rem; color: var(--color-primary); text-decoration: none; font-weight: bold; transition: opacity 0.2s;">
+                      ↗ View Attendance Board & Sync Status
+                    </a>
+                  </div>
                   <div id="mobile-zynghr-list-container" style="display: flex; flex-direction: column; gap: 8px;">
                     <!-- Loaded dynamically -->
                   </div>
@@ -408,6 +413,19 @@
                     <div>
                       <span style="display: block; font-size: 0.6rem; color: #64748b;">GATE REGISTERED</span>
                       <strong id="mobile-dossier-reg" style="color: var(--color-text-primary);">-</strong>
+                    </div>
+                  </div>
+                  <!-- Manual Attendance Override -->
+                  <div id="mobile-dossier-manual-attendance" style="background: var(--bg-card); border: 1px solid var(--border-color); padding: 10px; border-radius: 8px; display: flex; flex-direction: column; gap: 8px; margin-top: 2px;">
+                    <h4 style="margin: 0; font-size: 0.75rem; color: var(--color-primary); font-weight: bold;">Manual Attendance Override</h4>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                      <select id="mobile-dossier-manual-direction" style="flex: 1; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #fff; font-size: 0.72rem; padding: 6px; cursor: pointer; outline: none;">
+                        <option value="Check-In">🟢 Manual Check-In</option>
+                        <option value="Check-Out">🔴 Manual Check-Out</option>
+                      </select>
+                      <button id="mobile-dossier-manual-btn" style="background: var(--color-primary); border: none; color: #000; font-weight: bold; font-size: 0.72rem; padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: opacity 0.2s;">
+                        Submit Swipe
+                      </button>
                     </div>
                   </div>
                   <!-- Calendar Reports Grid -->

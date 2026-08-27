@@ -23,6 +23,22 @@ function initPortal() {
     
     // Listen for date picker changes
     datePicker.addEventListener("change", renderDashboard);
+
+    const datePickerHeader = document.getElementById("attendance-board-date-picker");
+    if (datePickerHeader) {
+      datePickerHeader.value = datePicker.value;
+      
+      // Sync main date picker to header date picker
+      datePicker.addEventListener("change", (e) => {
+        datePickerHeader.value = e.target.value;
+      });
+      
+      // Sync header date picker to main date picker and trigger rendering
+      datePickerHeader.addEventListener("change", (e) => {
+        datePicker.value = e.target.value;
+        renderDashboard();
+      });
+    }
   }
 
   // Update clock every second
@@ -454,7 +470,9 @@ function renderAttendanceBoard() {
         punchLocation = item.log.location;
         gpsLink = `<a href="https://maps.google.com/?q=${item.log.gps.replace('°', '')}" target="_blank" class="gps-link">📍 ${item.log.gps}</a>`;
         verificationBadge = item.log.verified 
-          ? `<span class="badge badge-success">Face Verified</span>` 
+          ? (item.log.isManual 
+              ? `<span class="badge badge-success">Face Verified (Manual)</span>` 
+              : `<span class="badge badge-success">Face Verified</span>`)
           : `<span class="badge badge-error">Mismatch</span>`;
         
         syncBadge = item.log.syncStatus === "Synced"

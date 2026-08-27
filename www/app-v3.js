@@ -229,6 +229,8 @@ const appState = {
   webcamStream: null,
   isSimulatedCamera: false,
   simAnimationId: null,
+  isScanInProgress: false,
+  cooldownActive: false,
   
   // Registration and Auth state
   currentActiveTab: "scan",
@@ -684,6 +686,24 @@ function playAudioViaWebAudio(url, isCancelled) {
 }
 
 function speakVoiceMessage(textKey, fallbackText) {
+  // Stop Web Audio API playback instantly if active to prevent overlapping voices
+  if (appState.activeSourceNode) {
+    try {
+      appState.activeSourceNode.stop();
+      appState.activeSourceNode = null;
+    } catch (e) {}
+  }
+  // Clear HTML5 audio callbacks and stop audio to prevent double voices
+  const activeAudio = appState.globalTtsAudio;
+  if (activeAudio) {
+    activeAudio.onplaying = null;
+    activeAudio.onerror = null;
+    try {
+      activeAudio.pause();
+      activeAudio.src = "";
+    } catch (e) {}
+  }
+
   const currentLang = appState.language || 'en';
   const text = TRANSLATIONS[currentLang][textKey] || fallbackText;
   
@@ -904,6 +924,17 @@ function initApp() {
       mobileMonthSelect.addEventListener("change", () => {
         if (appState.currentSelectedEmployee) {
           openMobileZyngHRDossier(appState.currentSelectedEmployee);
+        }
+      });
+    }
+
+    const manualBtn = document.getElementById("mobile-dossier-manual-btn");
+    if (manualBtn) {
+      manualBtn.addEventListener("click", () => {
+        if (appState.currentSelectedEmployee) {
+          const dirSelect = document.getElementById("mobile-dossier-manual-direction");
+          const direction = dirSelect ? dirSelect.value : "Check-In";
+          submitManualAttendance(appState.currentSelectedEmployee, direction);
         }
       });
     }
@@ -1603,6 +1634,11 @@ function toggleScanMode() {
     
     // Ensure countdown elements exist (self-healing DOM check)
     setupCountdownDOMElements();
+
+    appState.currentDirection = "Check-In";
+    appState.isScanInProgress = false;
+    speakLocalVoice("Starting gate camera. Please align your face.", appState.language || "en");
+    setTimeout(autoScanCheck, 2000);
   } else {
     // Shutdown
     appState.isScanningMode = false;
@@ -1628,6 +1664,8 @@ function toggleScanMode() {
     shutdownActiveStream();
     showCameraFallback();
     logTerminal("INFO", "Gate scanner deactivated.");
+    
+    appState.isScanInProgress = false;
   }
 }
 
@@ -1701,15 +1739,41 @@ function handleLocationChange(e) {
 // Run the core authentication pipeline
 // Run the core authentication pipeline
 function triggerImmediateScan(direction) {
-  appState.currentDirection = direction;
   if (!appState.isScanningMode) {
     toggleScanMode();
+    appState.currentDirection = direction;
+    appState.isScanInProgress = false;
     logTerminal("INFO", `Camera starting... Please align face and click ${direction} again.`);
     speakLocalVoice(`Camera starting. Please click ${direction} when ready.`, "en");
     return;
   }
+  appState.currentDirection = direction;
+  appState.isScanInProgress = true;
   logTerminal("INFO", `Immediate scan triggered for action: [${direction}]`);
   triggerManualScan();
+}
+
+function autoScanCheck() {
+  if (!appState.isScanningMode) {
+    return;
+  }
+  
+  if (appState.currentDirection !== "Check-In") {
+    setTimeout(autoScanCheck, 1000);
+    return;
+  }
+  
+  const card = document.getElementById("verification-card");
+  const isCardActive = card && card.classList.contains("active");
+  
+  if (isCardActive || appState.isScanInProgress || appState.cooldownActive) {
+    setTimeout(autoScanCheck, 1000);
+    return;
+  }
+  
+  triggerManualScan();
+  
+  setTimeout(autoScanCheck, 2000);
 }
 
 function triggerManualScan() {
@@ -1719,6 +1783,7 @@ function triggerManualScan() {
     return;
   }
 
+  appState.isScanInProgress = true;
   logTerminal("INFO", "Scan triggered: capturing camera stream image frame...");
   highlightFlowNode("node-mobile");
 
@@ -1784,6 +1849,7 @@ function triggerManualScan() {
       }
     } else {
       logTerminal("ERROR", "Biometric Core: Capture failed. Camera stream not ready.");
+      appState.isScanInProgress = false;
       handleVerificationResult(false, "UNAUTHORIZED");
       return;
     }
@@ -1791,6 +1857,7 @@ function triggerManualScan() {
 
   if (!base64Image) {
     logTerminal("ERROR", "Biometric Core: Capture failed. Camera stream not ready.");
+    appState.isScanInProgress = false;
     return;
   }
 
@@ -1802,13 +1869,18 @@ function triggerManualScan() {
     highlightFlowNode("node-detection");
     logTerminal("INFO", "Biometric Core: Requesting edge validation and face detection...");
 
-    // Send payload to real backend API
+    // Send payload to real backend API with a 3.5-second connection timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+
     fetch(getApiUrl('/api/biometric/scan'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: base64Image })
+      body: JSON.stringify({ image: base64Image }),
+      signal: controller.signal
     })
     .then(response => {
+      clearTimeout(timeoutId);
       if (!response.ok) {
         throw new Error("HTTP status " + response.status);
       }
@@ -1819,17 +1891,20 @@ function triggerManualScan() {
       setTimeout(() => {
         highlightFlowNode("node-recognition");
 
-        // Handle specific server rejections
         if (data.reason === "NO_FACE_DETECTED") {
           logTerminal("WARN", "Face Matcher: No face bounding boxes detected (wall/blank background).");
+          appState.isScanInProgress = false;
           handleVerificationResult(false, "UNAUTHORIZED");
         } else if (data.reason === "SPOOF_FAILED" || subject === "spoof") {
+          appState.isScanInProgress = false;
           handleVerificationResult(false, "SPOOF_FAILED");
         } else if (!data.match || data.reason === "UNAUTHORIZED_STRANGER") {
           logTerminal("WARN", "Face Matcher: Query vector mismatch. No match above confidence threshold.");
+          appState.isScanInProgress = false;
           handleVerificationResult(false, "UNAUTHORIZED");
         } else {
           // Match successful!
+          appState.isScanInProgress = false;
           const matchedId = data.employeeId;
           const confidence = data.confidence;
           const emp = employeeDatabase[matchedId] || { id: matchedId, name: data.name, role: data.role };
@@ -1902,6 +1977,7 @@ function performLocalFaceRecognition(base64Image, location, timestamp) {
     const capturedGrid = getColorGrid(img);
     if (!capturedGrid || !validateFaceFeatures(capturedGrid)) {
       logTerminal("WARN", "Local Face Matcher: Face structure check failed. No valid face detected in frame.");
+      appState.isScanInProgress = false;
       handleVerificationResult(false, "UNAUTHORIZED");
       return;
     }
@@ -1931,6 +2007,7 @@ function performLocalFaceRecognition(base64Image, location, timestamp) {
       updateWalkUpStatusText();
       
       highlightFlowNode("node-recognition");
+      appState.isScanInProgress = false;
       setTimeout(() => {
         highlightFlowNode("node-verification");
         setTimeout(() => {
@@ -1940,6 +2017,7 @@ function performLocalFaceRecognition(base64Image, location, timestamp) {
       }, 150);
     } else {
       logTerminal("WARN", `Local Face Matcher: Mismatch. Closest similarity score was ${bestScore.toFixed(2)} (Threshold: ${threshold})`);
+      appState.isScanInProgress = false;
       handleVerificationResult(false, "UNAUTHORIZED");
     }
   };
@@ -2019,8 +2097,12 @@ function handleVerificationResult(isSuccess, failureReason) {
       if (card) card.classList.remove("active");
       highlightFlowNode("node-mobile");
       
-      // Automatically stop scanner and close camera feed
-      autoStopCameraScanner();
+      // Always revert back to Check-In direction and trigger cooldown
+      appState.currentDirection = "Check-In";
+      appState.cooldownActive = true;
+      setTimeout(() => {
+        appState.cooldownActive = false;
+      }, 4000);
     }, 3000);
   }
 }
@@ -2112,6 +2194,12 @@ function recordAttendanceSuccess(emp, timestamp) {
       viewport.classList.remove("error");
       card.classList.remove("active");
       highlightFlowNode("node-mobile");
+      appState.currentDirection = "Check-In";
+      appState.cooldownActive = true;
+      appState.isScanInProgress = false;
+      setTimeout(() => {
+        appState.cooldownActive = false;
+      }, 4000);
     }, 2000);
     return;
   }
@@ -2166,6 +2254,12 @@ function recordAttendanceSuccess(emp, timestamp) {
         viewport.classList.remove("error");
         card.classList.remove("active");
         highlightFlowNode("node-mobile");
+        appState.currentDirection = "Check-In";
+        appState.cooldownActive = true;
+        appState.isScanInProgress = false;
+        setTimeout(() => {
+          appState.cooldownActive = false;
+        }, 4000);
       }, 2000);
       return;
     }
@@ -2223,6 +2317,14 @@ function recordAttendanceSuccess(emp, timestamp) {
       viewport.classList.remove("success");
       card.classList.remove("active");
       highlightFlowNode("node-mobile");
+      
+      // Always revert back to Check-In direction and activate cooldown
+      appState.currentDirection = "Check-In";
+      appState.cooldownActive = true;
+      appState.isScanInProgress = false;
+      setTimeout(() => {
+        appState.cooldownActive = false;
+      }, 4000);
     }, 2000);
 
   // 3. ONLINE SYNC SCAN
@@ -2331,6 +2433,14 @@ function recordAttendanceSuccess(emp, timestamp) {
         viewport.classList.remove("success", "error");
         card.classList.remove("active");
         highlightFlowNode("node-mobile");
+        
+        // Always revert back to Check-In direction and activate cooldown
+        appState.currentDirection = "Check-In";
+        appState.cooldownActive = true;
+        appState.isScanInProgress = false;
+        setTimeout(() => {
+          appState.cooldownActive = false;
+        }, 4000);
       }, 2000);
     });
   }
@@ -2371,6 +2481,19 @@ function renderAttendanceTable() {
       placeName = "Jamnagar, Gujarat";
     }
 
+    let verificationHtml = `
+      <span style="color:var(--color-success); font-weight:600; display:flex; align-items:center; gap:4px;">
+        <svg class="svg-icon sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" stroke="currentColor"/></svg> Verified
+      </span>
+    `;
+    if (log.isManual) {
+      verificationHtml = `
+        <span style="color:#38bdf8; font-weight:600; display:flex; align-items:center; gap:4px;">
+          <svg class="svg-icon sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Manual
+        </span>
+      `;
+    }
+
     row.innerHTML = `
       <td>
         <strong style="color:var(--color-text-primary);">${log.name}</strong><br>
@@ -2379,16 +2502,14 @@ function renderAttendanceTable() {
       <td style="font-family:var(--font-mono);">${formattedDate}</td>
       <td>
         ${log.location}<br>
-        <span style="font-size:0.65rem; font-weight:bold; color:${log.direction === 'Check-Out' ? '#ef4444' : '#22c55e'}">${(log.direction || 'Check-In').toUpperCase()}</span>
+        <span style="font-size:0.65rem; font-weight:bold; color:${log.direction === 'Check-Out' ? '#ef4444' : '#22c55e'}">${(log.direction || 'Check-In').toUpperCase()}${log.isManual ? ' (MANUAL)' : ''}</span>
       </td>
       <td>
         <span style="font-family:var(--font-mono); font-size:0.75rem;">${log.gps}</span><br>
         <span style="font-size:0.65rem; color:var(--color-text-muted);">${placeName}</span>
       </td>
       <td>
-        <span style="color:var(--color-success); font-weight:600; display:flex; align-items:center; gap:4px;">
-          <svg class="svg-icon sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" stroke="currentColor"/></svg> Verified
-        </span>
+        ${verificationHtml}
       </td>
       <td>
         <span class="sync-badge ${isSynced ? 'synced' : 'pending'}">
@@ -3557,10 +3678,12 @@ function validateFaceFeatures(grid) {
   const avgG = gSum / totalPixels;
   const avgB = bSum / totalPixels;
   
-  // Extremely lenient face validation:
-  // - Eye band should be darker than cheeks or forehead to block flat items
+  // Lenient but robust face validation checking shadow structure:
+  // - Eye band should be darker than cheeks and forehead by a threshold to block uniform surfaces
+  // - There must be sufficient contrast between zones
   // - Warm tones (melanin / hemoglobin) dominant over blue/cold hues
-  const hasFaceStructure = (avgEyes < avgCheeks * 1.15) || (avgEyes < avgForehead * 1.15);
+  const hasContrast = Math.max(avgForehead, avgCheeks, avgEyes) - Math.min(avgForehead, avgCheeks, avgEyes) > 5;
+  const hasFaceStructure = hasContrast && ((avgEyes < avgCheeks - 8) || (avgEyes < avgForehead - 8));
   const hasWarmTone = (avgR > avgB - 5) && (avgR > avgG - 10);
   
   console.log(`Biometrics Validate -> Structure: ${hasFaceStructure} (F:${avgForehead.toFixed(0)} E:${avgEyes.toFixed(0)} C:${avgCheeks.toFixed(0)}), WarmTone: ${hasWarmTone} (R:${avgR.toFixed(0)} G:${avgG.toFixed(0)} B:${avgB.toFixed(0)})`);
@@ -3635,15 +3758,22 @@ function renderMobileLogs() {
     const isApproved = log.verified;
     const timeFormatted = new Date(log.timestamp).toLocaleTimeString();
     
+    let badgeText = isApproved ? "APPROVED" : "DENIED";
+    let badgeStyle = isApproved ? "background:rgba(34,197,94,0.1); color:#22c55e;" : "background:rgba(239,68,68,0.1); color:#ef4444;";
+    if (log.isManual) {
+      badgeText = "MANUAL";
+      badgeStyle = "background:rgba(56,189,248,0.1); color:#38bdf8;";
+    }
+
     card.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:2px;">
         <span style="font-weight:bold; color:#fff;">${log.name}</span>
         <span style="color:var(--color-text-muted); font-size:0.65rem;">ID: ${log.empId} • ${log.location}</span>
-        <span style="font-size:0.65rem; font-weight:bold; color:${log.direction === 'Check-Out' ? '#ef4444' : '#22c55e'}">${(log.direction || 'Check-In').toUpperCase()}</span>
+        <span style="font-size:0.65rem; font-weight:bold; color:${log.direction === 'Check-Out' ? '#ef4444' : '#22c55e'}">${(log.direction || 'Check-In').toUpperCase()}${log.isManual ? ' (MANUAL)' : ''}</span>
       </div>
       <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
         <span style="font-size:0.65rem; color:#94a3b8;">${timeFormatted}</span>
-        <span style="padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:bold; ${isApproved ? "background:rgba(34,197,94,0.1); color:#22c55e;" : "background:rgba(239,68,68,0.1); color:#ef4444;"}">${isApproved ? "APPROVED" : "DENIED"}</span>
+        <span style="padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:bold; ${badgeStyle}">${badgeText}</span>
       </div>
     `;
     container.appendChild(card);
@@ -4247,7 +4377,85 @@ function openMobileZyngHRDossier(emp) {
   }
 }
 
-// Dynamically populate desktop and mobile ZyngHR monthly dropdowns with all 12 months
+function submitManualAttendance(emp, direction) {
+  const timestamp = new Date().toISOString();
+  
+  const record = {
+    empId: emp.id,
+    name: emp.name,
+    timestamp: timestamp,
+    location: appState.selectedLocation,
+    gps: `${appState.gps.lat.toFixed(4)}°, ${appState.gps.lng.toFixed(4)}°`,
+    verified: true,
+    syncStatus: appState.isOffline ? "Pending" : "Synced",
+    direction: direction,
+    isManual: true
+  };
+
+  logTerminal("INFO", `Supervisor manually marking ${direction} for ${emp.name} (ID: ${emp.id})...`);
+
+  if (appState.isOffline) {
+    appState.syncQueue.push(record);
+    appState.attendanceLogs.unshift(record);
+    
+    appState.counters.total++;
+    if (direction === "Check-In") {
+      appState.counters.approved++;
+    }
+    
+    if (!emp.attendanceDates) emp.attendanceDates = [];
+    const dateStr = timestamp.split('T')[0];
+    if (!emp.attendanceDates.includes(dateStr)) {
+      emp.attendanceDates.push(dateStr);
+      emp.attendanceCount = emp.attendanceDates.length;
+    }
+    
+    renderAttendanceTable();
+    renderMobileLogs();
+    updateDashboardStats();
+    saveLocalStorage();
+    
+    openMobileZyngHRDossier(emp);
+    
+    alert(`✅ Manually marked ${direction} offline for ${emp.name}.`);
+  } else {
+    fetch(getApiUrl('/api/logs'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(record)
+    })
+    .then(res => {
+      if (res.ok) return res.json();
+      throw new Error("HTTP error " + res.status);
+    })
+    .then(data => {
+      logTerminal("SUCCESS", `ZyngHR Server Response: Manual ${direction} accepted for ${emp.name}`);
+      
+      appState.attendanceLogs.unshift(record);
+      appState.counters.total++;
+      
+      const dateStr = timestamp.split('T')[0];
+      if (!emp.attendanceDates) emp.attendanceDates = [];
+      if (!emp.attendanceDates.includes(dateStr)) {
+        emp.attendanceDates.push(dateStr);
+        emp.attendanceCount = emp.attendanceDates.length;
+      }
+      
+      loadDatabaseFromServer().then(() => {
+        renderMobileZyngHRDirectory();
+        openMobileZyngHRDossier(emp);
+      });
+      
+      alert(`✅ Manually marked ${direction} online for ${emp.name}.`);
+    })
+    .catch(err => {
+      logTerminal("ERROR", `Failed to submit manual attendance: ${err.message}`);
+      alert(`❌ Failed to submit manual attendance: ${err.message}`);
+    });
+  }
+}
+
+// Dynamically populate desktop and mobile ZyngHR dropdowns with all 12 months
 function populateMonthDropdowns() {
   const months = [
     { value: "2026-01", label: "January 2026" },

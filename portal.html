@@ -9,6 +9,44 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="portal.css?v=2.2.1">
+  <script>
+    if (new URLSearchParams(window.location.search).get('compact') === 'true') {
+      document.documentElement.classList.add('compact-view');
+    }
+  </script>
+  <style>
+    html.compact-view .portal-header,
+    html.compact-view .filters-bar,
+    html.compact-view .kpi-grid,
+    html.compact-view .portal-workspace-grid > :first-child,
+    html.compact-view .analytics-row-grid,
+    html.compact-view .history-calendar-section,
+    html.compact-view .portal-footer {
+      display: none !important;
+    }
+    html.compact-view .portal-workspace-grid {
+      grid-template-columns: 1fr !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    html.compact-view .portal-container {
+      padding: 10px !important;
+      max-width: 100% !important;
+    }
+    html.compact-view body {
+      background: var(--bg-body) !important;
+    }
+    #attendance-board-date-picker {
+      background-color: #f8fafc !important;
+      color: #0f172a !important;
+      border: 1px solid #cbd5e1 !important;
+      color-scheme: light !important;
+    }
+    #attendance-board-date-picker::-webkit-calendar-picker-indicator {
+      filter: none !important;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
 
@@ -174,10 +212,13 @@
 
       <!-- COLUMN 2: DAILY ATTENDANCE MONITOR -->
       <article class="workspace-panel card-layout">
-        <div class="panel-header">
-          <div class="panel-title-group">
+        <div class="panel-header" style="flex-wrap: wrap; gap: 10px;">
+          <div class="panel-title-group" style="display: flex; flex-direction: column; gap: 4px;">
             <h2>Daily Attendance Board</h2>
-            <p>Verification logs for selected date</p>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--color-text-secondary);">
+              <span>Date:</span>
+              <input type="date" id="attendance-board-date-picker" style="background: #1e293b; border: 1px solid #334155; border-radius: 4px; color: #fff; font-size: 0.75rem; padding: 2px 6px; outline: none; cursor: pointer;">
+            </div>
           </div>
           <div class="attendance-counters">
             <span class="badge badge-success" id="att-count-present">Present: 0</span>
