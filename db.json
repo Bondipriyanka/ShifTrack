@@ -16296,6 +16296,56 @@
     {
       "empId": "EMP-003",
       "name": "Kapil.K",
+      "timestamp": "2026-08-28T08:57:19.516Z",
+      "location": "Tata Motors - Gate 1",
+      "gps": "18.6371°, 73.8096°",
+      "verified": true,
+      "syncStatus": "Synced",
+      "direction": "Check-In"
+    },
+    {
+      "empId": "EMP-003",
+      "name": "Kapil.K",
+      "timestamp": "2026-08-28T08:56:50.238Z",
+      "location": "Tata Motors - Gate 1",
+      "gps": "18.6421°, 73.8056°",
+      "verified": true,
+      "syncStatus": "Synced",
+      "direction": "Check-Out"
+    },
+    {
+      "empId": "EMP-003",
+      "name": "Kapil.K",
+      "timestamp": "2026-08-28T08:56:37.564Z",
+      "location": "Tata Motors - Gate 1",
+      "gps": "18.6421°, 73.8056°",
+      "verified": true,
+      "syncStatus": "Synced",
+      "direction": "Check-In"
+    },
+    {
+      "empId": "EMP-003",
+      "name": "Kapil.K",
+      "timestamp": "2026-08-28T08:56:29.349Z",
+      "location": "Tata Motors - Gate 1",
+      "gps": "18.6421°, 73.8056°",
+      "verified": true,
+      "syncStatus": "Synced",
+      "direction": "Check-Out"
+    },
+    {
+      "empId": "EMP-003",
+      "name": "Kapil.K",
+      "timestamp": "2026-08-28T08:56:00.093Z",
+      "location": "Tata Motors - Gate 1",
+      "gps": "18.6421°, 73.8056°",
+      "verified": true,
+      "syncStatus": "Synced",
+      "direction": "Check-In"
+    },
+    {
+      "empId": "EMP-003",
+      "name": "Kapil.K",
       "timestamp": "2026-08-27T13:02:04.467Z",
       "location": "Tata Motors - Gate 1",
       "gps": "18.6421°, 73.8056°",
@@ -20208,6 +20258,7 @@
       "email": "kapil.k@layam.com",
       "contact": "9506754571",
       "attendance": [
+        "2026-08-28",
         "2026-08-27",
         "2026-08-24"
       ],
