@@ -1,7 +1,7 @@
-<svg viewBox="0 0 300 150" xmlns="http://www.w3.org/2000/svg">
-  <!-- Teal curved arc at bottom -->
-  <path d="M 50 140 Q 150 40, 250 140" stroke="#20B2AA" stroke-width="18" fill="none" stroke-linecap="round"/>
+<svg viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg">
+  <!-- Teal curved arch at the top -->
+  <path d="M 80 350 Q 300 50, 520 350" stroke="#20B2AA" stroke-width="50" fill="none" stroke-linecap="round"/>
   
-  <!-- Red stylized "layam" text -->
-  <text x="150" y="110" font-family="Georgia, serif" font-size="60" font-weight="bold" fill="#DC143C" text-anchor="middle" font-style="italic">layam</text>
+  <!-- Red handwritten-style "layam" text -->
+  <text x="300" y="320" font-family="'Comic Sans MS', 'Segoe Print', cursive" font-size="140" font-weight="700" fill="#E63946" text-anchor="middle" letter-spacing="-5" font-style="italic">layam</text>
 </svg>
