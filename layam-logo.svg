@@ -1,7 +1,7 @@
-<svg viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg">
-  <!-- Teal curved arch at the top -->
-  <path d="M 80 350 Q 300 50, 520 350" stroke="#20B2AA" stroke-width="50" fill="none" stroke-linecap="round"/>
+<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- SHIFTRACK main text -->
+  <text x="300" y="80" font-family="Arial, sans-serif" font-size="72" font-weight="bold" fill="#001a4d" text-anchor="middle">SHIFTRACK</text>
   
-  <!-- Red handwritten-style "layam" text -->
-  <text x="300" y="320" font-family="'Comic Sans MS', 'Segoe Print', cursive" font-size="140" font-weight="700" fill="#E63946" text-anchor="middle" letter-spacing="-5" font-style="italic">layam</text>
+  <!-- SMART HR ATTENDANCE GATEWAY subtitle -->
+  <text x="300" y="140" font-family="Arial, sans-serif" font-size="28" font-weight="600" fill="#0052CC" text-anchor="middle" letter-spacing="3">SMART HR ATTENDANCE GATEWAY</text>
 </svg>
