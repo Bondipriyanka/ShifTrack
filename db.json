@@ -16294,6 +16294,66 @@
   },
   "logs": [
     {
+      "empId": "EMP-5715",
+      "name": "Priya M",
+      "timestamp": "2026-08-30T09:14:29.852Z",
+      "location": "Tata Motors - Gate 1",
+      "gps": "18.6421°, 73.8056°",
+      "verified": true,
+      "syncStatus": "Synced",
+      "direction": "Check-In"
+    },
+    {
+      "empId": "EMP-5715",
+      "name": "Priya M",
+      "timestamp": "2026-08-30T09:09:17.635Z",
+      "location": "Tata Motors - Gate 1",
+      "gps": "18.6421°, 73.8056°",
+      "verified": true,
+      "syncStatus": "Synced",
+      "direction": "Check-Out"
+    },
+    {
+      "empId": "EMP-5715",
+      "name": "Priya M",
+      "timestamp": "2026-08-30T09:07:38.320Z",
+      "location": "Tata Motors - Gate 1",
+      "gps": "18.6421°, 73.8056°",
+      "verified": true,
+      "syncStatus": "Synced",
+      "direction": "Check-In"
+    },
+    {
+      "empId": "EMP-5715",
+      "name": "Priya M",
+      "timestamp": "2026-08-30T09:04:50.078Z",
+      "location": "Tata Motors - Gate 1",
+      "gps": "18.6421°, 73.8056°",
+      "verified": true,
+      "syncStatus": "Synced",
+      "direction": "Check-Out"
+    },
+    {
+      "empId": "EMP-5715",
+      "name": "Priya M",
+      "timestamp": "2026-08-30T09:01:02.341Z",
+      "location": "Tata Motors - Gate 1",
+      "gps": "18.6421°, 73.8056°",
+      "verified": true,
+      "syncStatus": "Synced",
+      "direction": "Check-In"
+    },
+    {
+      "empId": "EMP-5715",
+      "name": "Priya M",
+      "timestamp": "2026-08-27T13:19:03.881Z",
+      "location": "Tata Motors - Gate 1",
+      "gps": "18.6421°, 73.8056°",
+      "verified": true,
+      "syncStatus": "Synced",
+      "direction": "Check-Out"
+    },
+    {
       "empId": "EMP-003",
       "name": "Kapil.K",
       "timestamp": "2026-08-28T08:57:19.516Z",
@@ -20108,6 +20168,7 @@
       "email": "priya.m@layam.com",
       "contact": "+91 98765 43210",
       "attendance": [
+        "2026-08-30",
         "2026-08-27",
         "2026-08-26",
         "2026-08-25",

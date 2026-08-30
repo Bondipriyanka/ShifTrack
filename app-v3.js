@@ -1859,6 +1859,17 @@ function showManualAttendanceOption() {
   viewport.classList.remove("success");
   viewport.classList.add("error");
   card.className = "verification-card active error-theme";
+
+  const iconBox = document.getElementById("verif-icon-box");
+  if (iconBox) {
+    iconBox.innerHTML = `
+      <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24" fill="none">
+        <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" fill="none"/>
+        <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" fill="none"/>
+      </svg>
+    `;
+  }
+
   actions.classList.remove("hidden");
   actions.style.display = "flex";
   appState.manualAttendanceAvailable = true;
@@ -1867,7 +1878,11 @@ function showManualAttendanceOption() {
   appState.pendingRecognitionId = null;
   appState.pendingRecognitionCount = 0;
   appState.faceRecognitionAttempts = 0;
-  setTimeout(() => {
+  if (appState.manualHideTimeout) {
+    clearTimeout(appState.manualHideTimeout);
+    appState.manualHideTimeout = null;
+  }
+  appState.manualHideTimeout = setTimeout(() => {
     if (!appState.manualAttendanceAvailable) return;
     viewport.classList.remove("error");
     card.classList.remove("active");
@@ -1876,49 +1891,65 @@ function showManualAttendanceOption() {
     appState.pendingRecognitionId = null;
     appState.pendingRecognitionCount = 0;
     appState.faceRecognitionAttempts = 0;
-  }, 1000);
+  }, 6000);
+
+  select.onchange = select.onfocus = () => {
+    if (appState.manualHideTimeout) {
+      clearTimeout(appState.manualHideTimeout);
+      appState.manualHideTimeout = null;
+      logTerminal("INFO", "Manual Override: Dropdown focused/changed. Auto-hide cancelled.");
+    }
+  };
 }
 
 async function submitManualAttendanceFromScan() {
   if (!appState.manualAttendanceAvailable) return;
   const select = document.getElementById("manual-employee-select");
-  const selectedEmployee = Object.values(employeeDatabase).find(employee => employee.id === select.value);
-  if (!selectedEmployee) return;
+  if (!select || !select.value) {
+    alert("Please select an employee first!");
+    return;
+  }
+  const empId = select.value;
   const button = document.getElementById("btn-manual-attendance");
   button.disabled = true;
-  const record = {
-    empId: selectedEmployee.id,
-    name: selectedEmployee.name,
-    timestamp: new Date().toISOString(),
-    location: appState.selectedLocation,
-    gps: `${appState.gps.lat.toFixed(4)}°, ${appState.gps.lng.toFixed(4)}°`,
-    verified: false,
-    syncStatus: "Synced",
-    direction: appState.currentDirection || "Check-In",
-    isManual: true
-  };
+  
+  logTerminal("INFO", `Manual Override: Redirecting to ZyngHR dossier for Employee ID: ${empId}...`);
+  
   try {
-    const response = await fetch(getApiUrl('/api/logs'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(record) });
-    const result = await response.json();
-    if (!response.ok || result.success === false) throw new Error(result.message || "Manual attendance was not accepted.");
-    appState.attendanceLogs.unshift(record);
-    setVerificationProfile(selectedEmployee);
-    document.getElementById("verif-name").innerText = selectedEmployee.name;
-    document.getElementById("verif-status").innerText = `Manual ${record.direction} recorded`;
-    document.getElementById("viewport-container").classList.remove("error");
-    document.getElementById("viewport-container").classList.add("success");
-    document.getElementById("verification-card").className = "verification-card active success-theme";
-    speakVoiceMessage("attendance_marked", "Manual attendance recorded.");
-    updateDashboardStats();
-    renderAttendanceTable();
-    setTimeout(() => {
-      hideManualAttendanceOption();
-      document.getElementById("verification-card").classList.remove("active");
-      document.getElementById("viewport-container").classList.remove("success");
-      appState.currentDirection = "Check-In";
-    }, 3000);
+    const response = await fetch(getApiUrl(`/api/zynghr/employee/${empId}`));
+    if (!response.ok) {
+      throw new Error("Employee not found in ZyngHR database");
+    }
+    const data = await response.json();
+    
+    // Map the returned database record fields to the format expected by the mobile dossier page
+    const empDossier = {
+      id: data.id,
+      name: data.name,
+      avatar: data.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100&q=80",
+      role: data.role || "Contract Staff",
+      shift: data.shift || "Morning Shift (A)",
+      email: data.email || "N/A",
+      contact: data.contact || "N/A",
+      attendanceDates: data.attendance || [],
+      isGateRegistered: true
+    };
+    
+    // Dismiss scanning overlays and close manual options card
+    hideManualAttendanceOption();
+    const card = document.getElementById("verification-card");
+    const viewport = document.getElementById("viewport-container");
+    if (card) card.classList.remove("active");
+    if (viewport) viewport.classList.remove("error", "success");
+    
+    // Navigate to the ZyngHR tab and open the employee's dossier page
+    switchTab("zynghr");
+    openMobileZyngHRDossier(empDossier);
+    
   } catch (error) {
-    document.getElementById("verif-status").innerText = error.message;
+    logTerminal("ERROR", `Failed to load employee dossier: ${error.message}`);
+    alert(`Error: ${error.message}`);
+  } finally {
     button.disabled = false;
   }
 }
@@ -1933,6 +1964,15 @@ function showCheckoutReady(emp) {
   viewport.classList.remove("error");
   viewport.classList.add("success");
   card.className = "verification-card active success-theme";
+
+  const iconBox = document.getElementById("verif-icon-box");
+  if (iconBox) {
+    iconBox.innerHTML = `
+      <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24" fill="none">
+        <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" fill="none"/>
+      </svg>
+    `;
+  }
   setTimeout(() => {
     viewport.classList.remove("success");
     card.classList.remove("active");
@@ -2346,9 +2386,9 @@ function handleVerificationResult(isSuccess, failureReason) {
     card.classList.add("active", "error-theme");
     
     iconBox.innerHTML = `
-      <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24">
-        <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
-        <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+      <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24" fill="none">
+        <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" fill="none"/>
+        <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" fill="none"/>
       </svg>
     `;
 
@@ -2463,9 +2503,9 @@ function recordAttendanceSuccess(emp, timestamp) {
     speakVoiceMessage(voiceKey, voiceText);
     
     iconBox.innerHTML = `
-      <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24">
-        <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
-        <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+      <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24" fill="none">
+        <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" fill="none"/>
+        <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" fill="none"/>
       </svg>
     `;
     
@@ -2523,9 +2563,9 @@ function recordAttendanceSuccess(emp, timestamp) {
       speakVoiceMessage("wrong_shift", "Access denied. Shift roster violation.");
       
       iconBox.innerHTML = `
-        <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24">
-          <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
-          <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+        <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24" fill="none">
+          <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" fill="none"/>
+          <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" fill="none"/>
         </svg>
       `;
 
@@ -2582,8 +2622,8 @@ function recordAttendanceSuccess(emp, timestamp) {
     speakVoiceMessage(voiceKey, voiceText);
     
     iconBox.innerHTML = `
-      <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24">
-        <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2"/>
+      <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24" fill="none">
+        <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" fill="none"/>
       </svg>
     `;
     
@@ -2672,8 +2712,8 @@ function recordAttendanceSuccess(emp, timestamp) {
       }
       
       iconBox.innerHTML = `
-        <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24">
-          <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2"/>
+        <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24" fill="none">
+          <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" fill="none"/>
         </svg>
       `;
       
@@ -2715,8 +2755,8 @@ function recordAttendanceSuccess(emp, timestamp) {
       }
       
       iconBox.innerHTML = `
-        <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24">
-          <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2"/>
+        <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24" fill="none">
+          <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" fill="none"/>
         </svg>
       `;
       
