@@ -175,10 +175,10 @@ async function verifyAccess(employeeId, supervisorCoords, locationId) {
   return { verified: true, shift: employee.shift };
 }`
   },
-  zynghr: {
-    name: "ZyngHR Sync Service",
+  zinghr: {
+    name: "ZingHR Sync Service",
     tech: "REST / Webhooks / Message Queues",
-    desc: "Interfaces the attendance engine directly with ZyngHR's core database. Transmits synchronized check-ins, reports offline reconciliation files, updates employee status registers, and serves live dashboards.",
+    desc: "Interfaces the attendance engine directly with ZingHR's core database. Transmits synchronized check-ins, reports offline reconciliation files, updates employee status registers, and serves live dashboards.",
     features: [
       "HTTP REST Integration Client (JSON payloads)",
       "Idempotency tokens (prevents double logging on network retries)",
@@ -191,7 +191,7 @@ async function verifyAccess(employeeId, supervisorCoords, locationId) {
       "Token-based OAuth2.0 authentication flow",
       "IP-whitelisted API connection limits"
     ],
-    code: `// Payload sent to ZyngHR Gateway
+    code: `// Payload sent to ZingHR Gateway
 {
   "api_token": "zh_auth_288b8x79822a10c",
   "client_id": "GATE_STAFFING_IN",
@@ -1259,7 +1259,7 @@ function toggleOfflineMode(e) {
   } else {
     statusPill.innerText = "ONLINE";
     statusPill.classList.remove("offline");
-    logTerminal("INFO", "Network link restored. Ready to post directly to ZyngHR.");
+    logTerminal("INFO", "Network link restored. Ready to post directly to ZingHR.");
     
     if (appState.syncQueue.length > 0) {
       logTerminal("INFO", `Detected ${appState.syncQueue.length} unsynced attendance logs. Starting background integration sync...`);
@@ -1422,7 +1422,7 @@ function triggerManualScan() {
 
             // Step 4: Sync integration
             setTimeout(() => {
-              highlightFlowNode("node-zynghr");
+              highlightFlowNode("node-zinghr");
               recordAttendanceSuccess(emp, timestamp);
             }, 800);
 
@@ -1458,7 +1458,7 @@ function runLocalSimulationFallback(subject, location, timestamp) {
           logTerminal("INFO", `Verification Engine: Rostered location matches [${location}]. Shift checks OK.`);
           
           setTimeout(() => {
-            highlightFlowNode("node-zynghr");
+            highlightFlowNode("node-zinghr");
             recordAttendanceSuccess(emp, timestamp);
           }, 800);
 
@@ -1509,7 +1509,7 @@ function performLocalFaceRecognition(base64Image, location, timestamp) {
       setTimeout(() => {
         highlightFlowNode("node-verification");
         setTimeout(() => {
-          highlightFlowNode("node-zynghr");
+          highlightFlowNode("node-zinghr");
           recordAttendanceSuccess(emp, timestamp);
         }, 800);
       }, 800);
@@ -1825,7 +1825,7 @@ function recordAttendanceSuccess(emp, timestamp) {
         appState.counters.total++;
         appState.counters.denied++;
       } else {
-        logTerminal("SUCCESS", `ZyngHR Server Response: Check-in accepted for Employee ${emp.id} (${emp.name})`);
+        logTerminal("SUCCESS", `ZingHR Server Response: Check-in accepted for Employee ${emp.id} (${emp.name})`);
         logTerminal("SUCCESS", `API Server: Log synced successfully for ${emp.name}.`);
         
         statusLabel.innerText = "Checked in";
@@ -2059,7 +2059,7 @@ function forceSyncOfflineQueue() {
     return;
   }
 
-  logTerminal("INFO", `Initializing sync transmission: posting ${appState.syncQueue.length} queue records to ZyngHR gateway...`);
+  logTerminal("INFO", `Initializing sync transmission: posting ${appState.syncQueue.length} queue records to ZingHR gateway...`);
   
   const queue = [...appState.syncQueue];
   appState.syncQueue = [];
@@ -2089,7 +2089,7 @@ function forceSyncOfflineQueue() {
       appState.counters.offline = Math.max(0, appState.counters.offline - 1);
       appState.counters.approved++;
       
-      logTerminal("SUCCESS", `Reconciled: Offline record verified & posted to ZyngHR for ID: ${record.empId} (${record.name})`);
+      logTerminal("SUCCESS", `Reconciled: Offline record verified & posted to ZingHR for ID: ${record.empId} (${record.name})`);
       
       renderAttendanceTable();
       updateDashboardStats();

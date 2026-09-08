@@ -287,7 +287,7 @@ def check_duplicate_biometrics(payload: DuplicateCheckPayload):
         try:
             with open(DB_FILE, "r", encoding="utf-8") as f:
                 db_data = json.load(f)
-            emp_info = db_data.get("roster", {}).get(base_match_key) or db_data.get("zynghr", {}).get(base_match_key)
+            emp_info = db_data.get("roster", {}).get(base_match_key) or db_data.get("zinghr", {}).get(base_match_key) or db_data.get("zynghr", {}).get(base_match_key)
             if emp_info:
                 name = emp_info.get("name", base_match_key)
         except Exception:
@@ -358,8 +358,8 @@ def scan_biometrics(payload: ScanPayload):
             with open(DB_FILE, "r", encoding="utf-8") as f:
                 db_data = json.load(f)
             
-            # Lookup in roster or zynghr
-            emp_info = db_data.get("roster", {}).get(base_match_key) or db_data.get("zynghr", {}).get(base_match_key)
+            # Lookup in roster, zinghr or zynghr
+            emp_info = db_data.get("roster", {}).get(base_match_key) or db_data.get("zinghr", {}).get(base_match_key) or db_data.get("zynghr", {}).get(base_match_key)
             if emp_info:
                 name = emp_info.get("name", "Unknown")
                 role = emp_info.get("role", "")

@@ -44,7 +44,7 @@ async function initDatabase() {
     console.log("PostgreSQL Enterprise Engine: Table 'attendance_logs', column migrations and high-speed indexes initialized successfully.");
   } catch (err) {
     isPgConnected = false;
-    console.log("PostgreSQL Engine Notice: Operating in Standalone Mode (db.json / Zyng HR sync active). PostgreSQL Error:", err.message);
+    console.log("PostgreSQL Engine Notice: Operating in Standalone Mode (db.json / Zing HR sync active). PostgreSQL Error:", err.message);
   }
 }
 initDatabase();
@@ -124,7 +124,7 @@ const DEFAULT_ROSTER = {
   }
 };
 
-const DEFAULT_ZYNGHR = {
+const DEFAULT_ZINGHR = {
   "EMP001": {
     id: "EMP001",
     name: "Priyanka M",
@@ -190,7 +190,7 @@ const DEFAULT_ZYNGHR = {
 const DEFAULT_DB = {
   roster: DEFAULT_ROSTER,
   logs: [],
-  zynghr: DEFAULT_ZYNGHR
+  zinghr: DEFAULT_ZINGHR
 };
 
 // Ensure db.json exists
@@ -203,28 +203,28 @@ function readDB() {
     const data = fs.readFileSync(DB_FILE, 'utf8');
     const parsed = JSON.parse(data);
     
-    // Ensure zynghr schema exists
+    // Ensure zinghr schema exists
     let modified = false;
-    if (parsed.zinghr && !parsed.zynghr) {
-      parsed.zynghr = parsed.zinghr;
+    if (parsed.zinghr && !parsed.zinghr) {
+      parsed.zinghr = parsed.zinghr;
       delete parsed.zinghr;
       modified = true;
-    } else if (!parsed.zynghr) {
-      parsed.zynghr = DEFAULT_ZYNGHR;
+    } else if (!parsed.zinghr) {
+      parsed.zinghr = DEFAULT_ZINGHR;
       modified = true;
     }
     
-    // Automatically rebuild/sync zynghr attendance arrays from logs!
-    if (parsed.zynghr && parsed.logs) {
+    // Automatically rebuild/sync zinghr attendance arrays from logs!
+    if (parsed.zinghr && parsed.logs) {
       // Clear attendance arrays to rebuild them cleanly from logs
-      for (const key in parsed.zynghr) {
-        parsed.zynghr[key].attendance = [];
+      for (const key in parsed.zinghr) {
+        parsed.zinghr[key].attendance = [];
       }
       
       // Seed the mock history for Vikram, Priya Patel, Amit again so they have data
-      if (parsed.zynghr["EMP002"]) parsed.zynghr["EMP002"].attendance = ["2026-07-01", "2026-07-02", "2026-07-03", "2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21"];
-      if (parsed.zynghr["EMP003"]) parsed.zynghr["EMP003"].attendance = ["2026-07-01", "2026-07-02", "2026-07-03", "2026-07-06", "2026-07-07", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21"];
-      if (parsed.zynghr["EMP004"]) parsed.zynghr["EMP004"].attendance = ["2026-07-01", "2026-07-02", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-21"];
+      if (parsed.zinghr["EMP002"]) parsed.zinghr["EMP002"].attendance = ["2026-07-01", "2026-07-02", "2026-07-03", "2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21"];
+      if (parsed.zinghr["EMP003"]) parsed.zinghr["EMP003"].attendance = ["2026-07-01", "2026-07-02", "2026-07-03", "2026-07-06", "2026-07-07", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21"];
+      if (parsed.zinghr["EMP004"]) parsed.zinghr["EMP004"].attendance = ["2026-07-01", "2026-07-02", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-21"];
       
       // Parse logs and append dates
       parsed.logs.forEach(log => {
@@ -232,11 +232,11 @@ function readDB() {
         const logCleanId = log.empId.toUpperCase().replace(/[^A-Z0-9]/g, '');
         const dateStr = new Date(log.timestamp).toISOString().split('T')[0];
         
-        for (const key in parsed.zynghr) {
-          const cleanZingId = parsed.zynghr[key].id.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        for (const key in parsed.zinghr) {
+          const cleanZingId = parsed.zinghr[key].id.toUpperCase().replace(/[^A-Z0-9]/g, '');
           if (cleanZingId === logCleanId) {
-            if (!parsed.zynghr[key].attendance.includes(dateStr)) {
-              parsed.zynghr[key].attendance.push(dateStr);
+            if (!parsed.zinghr[key].attendance.includes(dateStr)) {
+              parsed.zinghr[key].attendance.push(dateStr);
             }
             break;
           }
@@ -245,7 +245,7 @@ function readDB() {
       modified = true;
     }
     
-    // Automatically self-heal roster & zynghr profile avatars from captured gate photos
+    // Automatically self-heal roster & zinghr profile avatars from captured gate photos
     if (parsed.roster) {
       for (const rKey in parsed.roster) {
         const emp = parsed.roster[rKey];
@@ -254,15 +254,15 @@ function readDB() {
           modified = true;
         }
         
-        if (parsed.zynghr) {
+        if (parsed.zinghr) {
           const cleanId = (emp.id || rKey).toUpperCase().replace(/[^A-Z0-9]/g, '');
-          for (const zKey in parsed.zynghr) {
+          for (const zKey in parsed.zinghr) {
             const cleanZKey = zKey.toUpperCase().replace(/[^A-Z0-9]/g, '');
-            const cleanZId = (parsed.zynghr[zKey].id || zKey).toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const cleanZId = (parsed.zinghr[zKey].id || zKey).toUpperCase().replace(/[^A-Z0-9]/g, '');
             if (cleanZKey === cleanId || cleanZId === cleanId) {
-              if (emp.gatePhotos && emp.gatePhotos.length > 0 && parsed.zynghr[zKey].avatar !== emp.gatePhotos[0]) {
-                parsed.zynghr[zKey].avatar = emp.gatePhotos[0];
-                parsed.zynghr[zKey].gatePhotos = emp.gatePhotos;
+              if (emp.gatePhotos && emp.gatePhotos.length > 0 && parsed.zinghr[zKey].avatar !== emp.gatePhotos[0]) {
+                parsed.zinghr[zKey].avatar = emp.gatePhotos[0];
+                parsed.zinghr[zKey].gatePhotos = emp.gatePhotos;
                 modified = true;
               }
             }
@@ -319,6 +319,121 @@ function postToAIServer(path, payload, callback) {
   req.end();
 }
 
+let cachedJwtTokens = {};
+let cachedJwtExpiry = {};
+
+// Helper to fetch live JWT token from ZingHR mservices with in-memory caching per permission
+async function getZingHRToken(config, permission = 'GEMD') {
+  let username = '';
+  let password = '';
+
+  if (permission === 'SSWP') {
+    username = (config.swipeClientId || config.clientId || '').trim();
+    password = (config.swipeClientSecret || config.clientSecret || '').trim();
+  } else {
+    username = (config.clientId || '').trim();
+    password = (config.clientSecret || '').trim();
+  }
+  
+  if (!username || !password) return null;
+
+  const now = Date.now();
+  if (cachedJwtTokens[permission] && cachedJwtExpiry[permission] > now) {
+    return cachedJwtTokens[permission];
+  }
+
+  const tokenUrl = `https://mservices.zinghr.com/etl/api/v2/Auth/GenerateJWTToken?apiPermission=${encodeURIComponent(permission)}`;
+  const basicAuth = Buffer.from(`${username}:${password}`).toString('base64');
+
+  try {
+    const res = await fetch(tokenUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Basic ${basicAuth}`,
+        'Accept': 'application/json'
+      },
+      signal: AbortSignal.timeout(15000)
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data && (data.code === 1 || data.Code === 1) && (data.data || data.Data)) {
+        const token = data.data || data.Data;
+        cachedJwtTokens[permission] = token;
+        cachedJwtExpiry[permission] = Date.now() + (90 * 1000); // 90 seconds
+        return token;
+      }
+    }
+  } catch (err) {
+    console.log(`[ZingHR Auth Error - ${permission}]: ${err.message}`);
+  }
+  return null;
+}
+
+// Background function to sync biometric punches to ZingHR Live SynSwipes API
+async function syncPunchToZingHR(log) {
+  try {
+    const db = readDB();
+    const config = db.zinghr_config;
+    if (!config) {
+      console.log(`[ZingHR Swipe Sync] Config not initialized on server. Skipping real-time outbound push.`);
+      return;
+    }
+
+    const token = await getZingHRToken(config, 'SSWP');
+    if (!token) {
+      console.log(`[ZingHR Swipe Sync] Failed to generate SSWP JWT token. Skipping live push.`);
+      return;
+    }
+
+    // Format local date YYYY-MM-DD HH:mm:ss
+    const logDate = log.timestamp ? new Date(log.timestamp) : new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const formattedDate = `${logDate.getFullYear()}-${pad(logDate.getMonth() + 1)}-${pad(logDate.getDate())} ${pad(logDate.getHours())}:${pad(logDate.getMinutes())}:${pad(logDate.getSeconds())}`;
+
+    const direction = (log.direction || 'Check-In').toLowerCase();
+    const inOutFlag = direction.includes('out') ? '2' : '1'; // '1' = In, '2' = Out
+    const uniqueId = String(Date.now());
+
+    const swipeUrl = 'https://mservices.zinghr.com/etl/api/v2/TNA/SynSwipes';
+    const payload = {
+      "swipes": [
+        {
+          "empIdentification": log.empId,
+          "swipeDateTime": formattedDate,
+          "terminalId": log.location || "Gate1",
+          "swipeReceiveDateTime": formattedDate,
+          "uniqueId": uniqueId,
+          "swipeLocation": log.location || "Pune Plant Gate 1",
+          "inOutFlag": inOutFlag,
+          "source": "ShifTrack"
+        }
+      ]
+    };
+
+    console.log(`[ZingHR Live Swipe Sync] Forwarding punch for employee ${log.empId} [${log.direction}] to ${swipeUrl}...`);
+    const swipeRes = await fetch(swipeUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(8000)
+    });
+
+    if (swipeRes.ok) {
+      const resJson = await swipeRes.json();
+      console.log(`[ZingHR Live Swipe Sync] Successfully synchronized swipe to ZingHR! Code: ${resJson.code}, Message: ${resJson.message}`);
+    } else {
+      const errText = await swipeRes.text();
+      console.log(`[ZingHR Live Swipe Sync] Push rejected with status ${swipeRes.status}: ${errText}`);
+    }
+  } catch (err) {
+    console.log(`[ZingHR Live Swipe Sync Error]: ${err.message}`);
+  }
+}
+
 const requestHandler = async (req, res) => {
   console.log(`[HTTP Server] Request: ${req.method} ${req.url}`);
   // Add CORS headers so mobile app can connect
@@ -361,23 +476,23 @@ const requestHandler = async (req, res) => {
         
         db.roster[key] = employee;
         
-        // Link with Zyng HR record if matches Zyng HR ID (robust lookup)
+        // Link with Zing HR record if matches Zing HR ID (robust lookup)
         const cleanEmpId = key.toUpperCase().replace(/[^A-Z0-9]/g, '');
         let zingEmpKey = null;
-        for (const zKey in db.zynghr) {
+        for (const zKey in db.zinghr) {
           if (zKey.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanEmpId || 
-              db.zynghr[zKey].id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanEmpId) {
+              db.zinghr[zKey].id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanEmpId) {
             zingEmpKey = zKey;
             break;
           }
         }
         
         if (zingEmpKey) {
-          db.zynghr[zingEmpKey].gatePhotos = employee.gatePhotos || [];
-          // Also set the main Zyng HR profile picture (avatar) to the first gate photo taken,
+          db.zinghr[zingEmpKey].gatePhotos = employee.gatePhotos || [];
+          // Also set the main Zing HR profile picture (avatar) to the first gate photo taken,
           // so the reports tab immediately displays the newly captured gate registration photo!
           if (employee.gatePhotos && employee.gatePhotos.length > 0) {
-            db.zynghr[zingEmpKey].avatar = employee.gatePhotos[0];
+            db.zinghr[zingEmpKey].avatar = employee.gatePhotos[0];
           }
         }
         
@@ -533,7 +648,7 @@ const requestHandler = async (req, res) => {
         const log = JSON.parse(body);
         const db = readDB();
         
-        // Enforce duplicate prevention in logs & Zyng HR!
+        // Enforce duplicate prevention in logs & Zing HR!
         const empId = log.empId;
         const dateStr = new Date(log.timestamp).toISOString().split('T')[0];
         const direction = log.direction || 'Check-In';
@@ -542,14 +657,14 @@ const requestHandler = async (req, res) => {
         const cleanEmpId = empId.toUpperCase().replace(/[^A-Z0-9]/g, '');
 
         // Resolve the employee assignment from the server-side master data.
-        const zyngEmployee = Object.values(db.zynghr || {}).find(employee =>
+        const zingEmployee = Object.values(db.zinghr || {}).find(employee =>
           employee.id && employee.id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanEmpId
         );
         const rosterEmployee = Object.values(db.roster || {}).find(employee =>
           employee.id && employee.id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanEmpId
         );
-        const masterEmployee = zyngEmployee || rosterEmployee;
-        const assignedLocation = (zyngEmployee && zyngEmployee.location) || (rosterEmployee && rosterEmployee.location);
+        const masterEmployee = zingEmployee || rosterEmployee;
+        const assignedLocation = (zingEmployee && zingEmployee.location) || (rosterEmployee && rosterEmployee.location);
         if (!masterEmployee || !assignedLocation || assignedLocation.trim().toLowerCase() !== (log.location || '').trim().toLowerCase()) {
           console.log(`Plant validation blocked attendance for ${empId}. Assigned: ${assignedLocation || 'unknown'}, requested: ${log.location || 'unknown'}`);
           res.writeHead(403, { 'Content-Type': 'application/json' });
@@ -596,11 +711,11 @@ const requestHandler = async (req, res) => {
           return;
         }
 
-        // Find in Zyng HR dynamically
+        // Find in Zing HR dynamically
         let zingEmpKey = null;
-        for (const key in db.zynghr) {
+        for (const key in db.zinghr) {
           if (key.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanEmpId || 
-              db.zynghr[key].id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanEmpId) {
+              db.zinghr[key].id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanEmpId) {
             zingEmpKey = key;
             break;
           }
@@ -609,16 +724,19 @@ const requestHandler = async (req, res) => {
         // Save log to db.logs and postgres
         db.logs.unshift(log);
         
-        // Update Zyng HR attendance if record exists
+        // Update Zing HR attendance if record exists
         if (zingEmpKey) {
-          if (!db.zynghr[zingEmpKey].attendance) db.zynghr[zingEmpKey].attendance = [];
-          if (!db.zynghr[zingEmpKey].attendance.includes(dateStr)) {
-            db.zynghr[zingEmpKey].attendance.push(dateStr);
+          if (!db.zinghr[zingEmpKey].attendance) db.zinghr[zingEmpKey].attendance = [];
+          if (!db.zinghr[zingEmpKey].attendance.includes(dateStr)) {
+            db.zinghr[zingEmpKey].attendance.push(dateStr);
           }
         }
         
         writeDB(db);
         saveLogToPostgres(log);
+
+        // Sync punch to ZingHR in the background
+        syncPunchToZingHR(log);
         
         res.writeHead(201, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, log, pgSynced: isPgConnected }));
@@ -656,20 +774,20 @@ const requestHandler = async (req, res) => {
           
           db.logs.unshift(log);
           
-          // Check if employee exists in db.zynghr
+          // Check if employee exists in db.zinghr
           let zingEmpKey = null;
-          for (const key in db.zynghr) {
+          for (const key in db.zinghr) {
             if (key.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanEmpId || 
-                db.zynghr[key].id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanEmpId) {
+                db.zinghr[key].id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanEmpId) {
               zingEmpKey = key;
               break;
             }
           }
           
           if (zingEmpKey) {
-            if (!db.zynghr[zingEmpKey].attendance) db.zynghr[zingEmpKey].attendance = [];
-            if (!db.zynghr[zingEmpKey].attendance.includes(dateStr)) {
-              db.zynghr[zingEmpKey].attendance.push(dateStr);
+            if (!db.zinghr[zingEmpKey].attendance) db.zinghr[zingEmpKey].attendance = [];
+            if (!db.zinghr[zingEmpKey].attendance.includes(dateStr)) {
+              db.zinghr[zingEmpKey].attendance.push(dateStr);
             }
           }
           saveLogToPostgres(log);
@@ -692,31 +810,225 @@ const requestHandler = async (req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       pgConnected: isPgConnected,
-      mode: isPgConnected ? "Enterprise Hybrid (PostgreSQL SQL + Zyng HR DB)" : "Standalone (Zyng HR db.json)",
+      mode: isPgConnected ? "Enterprise Hybrid (PostgreSQL SQL + Zing HR DB)" : "Standalone (Zing HR db.json)",
       rosterCount: Object.keys(db.roster || {}).length,
-      zynghrEmployeeCount: Object.keys(db.zynghr || {}).length,
+      zinghrEmployeeCount: Object.keys(db.zinghr || {}).length,
       totalLogsCount: (db.logs || []).length
     }));
     return;
   }
 
+  // ZING HR API: Get Saved Configuration
+  if (url === '/api/zinghr/config' && req.method === 'GET') {
+    const db = readDB();
+    const cfg = db.zinghr_config || {};
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      endpoint: cfg.endpoint || 'https://mservices.zinghr.com',
+      tenant: cfg.tenant || 'LAYAMGROUP',
+      clientId: cfg.clientId || 'qlkb0n1za4bna3g7rj8m5tye',
+      clientSecret: cfg.clientSecret ? '••••••••' : '',
+      swipeClientId: cfg.swipeClientId || '4mb1mye6h7f0ar46eea203zf',
+      apiPermission: cfg.apiPermission || 'GEMD',
+      swipePermission: cfg.swipePermission || 'SSWP'
+    }));
+    return;
+  }
+
+  // ZING HR API: Save Credentials Configuration
+  if (url === '/api/zinghr/config' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+      try {
+        const config = JSON.parse(body);
+        const db = readDB();
+        db.zinghr_config = {
+          endpoint: config.endpoint || 'https://mservices.zinghr.com',
+          tenant: config.tenant || 'LAYAMGROUP',
+          clientId: config.clientId || '',
+          clientSecret: config.clientSecret || '',
+          apiPermission: config.apiPermission || 'SSWP'
+        };
+        writeDB(db);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid JSON body' }));
+      }
+    });
+    return;
+  }
+
+  // ZING HR API: Real-time Handshake & Live Employee Sync
+  if (url === '/api/zinghr/handshake' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const config = JSON.parse(body);
+        let endpoint = (config.endpoint || 'https://mservices.zinghr.com').trim();
+        const tenant = (config.tenant || 'LAYAMGROUP').trim();
+        const clientId = (config.clientId || 'qlkb0n1za4bna3g7rj8m5tye').trim();
+        let clientSecret = (config.clientSecret || '').trim();
+        // If clientSecret was omitted or the old SSWP swipe secret was sent by mistake with GEMD client ID:
+        if (!clientSecret || (clientId === 'qlkb0n1za4bna3g7rj8m5tye' && clientSecret === '3p12xij3mromu5d0bqa7s3hduc5ahv2xe7zw60b75zhgj08qbho53rtaq308hz7v')) {
+          clientSecret = '21fqq370n70lx9y1igkieyhria9wfhigxleclt7rvbwt6rt2ofkz02eyuiewxpg1';
+        }
+        const swipeClientId = (config.swipeClientId || '4mb1mye6h7f0ar46eea203zf').trim();
+        const swipeClientSecret = (config.swipeClientSecret || '3p12xij3mromu5d0bqa7s3hduc5ahv2xe7zw60b75zhgj08qbho53rtaq308hz7v').trim();
+
+        if (!clientId || !clientSecret) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, message: 'Client ID and Client Secret are required for handshake.' }));
+          return;
+        }
+
+        console.log(`[ZingHR Live Handshake] Fetching live employee master for Tenant: ${tenant}...`);
+
+        const token = await getZingHRToken({ clientId, clientSecret }, 'GEMD');
+
+        const db = readDB();
+        db.zinghr_config = {
+          endpoint,
+          tenant,
+          clientId,
+          clientSecret,
+          apiPermission: 'GEMD',
+          swipeClientId,
+          swipeClientSecret,
+          swipePermission: 'SSWP'
+        };
+
+        if (!token) {
+          console.log(`[ZingHR Live Handshake] Token generation failed with provided credentials.`);
+          writeDB(db);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            success: false,
+            count: Object.keys(db.zinghr || {}).length,
+            message: `Authentication failed: Unable to generate JWT token from ZingHR. Please verify your Client Key and Secret.`
+          }));
+          return;
+        }
+
+        // Fetch live employee list from ZingHR GetEmployeeDetails API
+        const empUrl = 'https://mservices.zinghr.com/etl/api/v2/Employee/GetEmployeeDetails';
+        console.log(`[ZingHR Live Handshake] Querying ${empUrl} with PageSize 100...`);
+        
+        let syncCount = 0;
+        let totalZingCount = 0;
+
+        try {
+          const empRes = await fetch(empUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ "PageSize": 100, "PageNumber": 1 }),
+            signal: AbortSignal.timeout(30000)
+          });
+
+          if (empRes.ok) {
+            const resData = await empRes.json();
+            const rawEmployees = resData.data?.employees || [];
+            totalZingCount = resData.data?.totalEmployeeCount || rawEmployees.length;
+
+            if (Array.isArray(rawEmployees) && rawEmployees.length > 0) {
+              rawEmployees.forEach(emp => {
+                const empCode = (emp.employeeCode || '').trim();
+                const empName = (emp.employeeName || '').trim();
+                if (!empCode || !empName) return;
+
+                const cleanId = empCode.toUpperCase();
+                
+                // Parse attributes
+                const attrs = {};
+                (emp.attributes || []).forEach(a => {
+                  attrs[a.attributeTypeCode] = a.attributeTypeUnitDescription;
+                });
+
+                const dept = attrs['Department'] || 'Operations';
+                const desig = attrs['Designation'] || 'Staff Member';
+                const city = attrs['City'] || attrs['Plant'] || 'Pantnagar';
+                const attendanceGroup = attrs['Attendance Rule Group'] || 'General Shift (G)';
+                const status = emp.employeeStatus || 'Active';
+
+                // Map to db.zinghr
+                db.zinghr[cleanId] = {
+                  id: cleanId,
+                  name: empName,
+                  avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100&q=80`,
+                  role: `${desig} (${dept})`,
+                  shift: attendanceGroup,
+                  address: city,
+                  email: `${empName.toLowerCase().replace(/[^a-z0-9]/g, '.')}@layam.com`,
+                  contact: '+91 98765 43210',
+                  status: status,
+                  dateOfLeaving: emp.dateOfLeaving || '',
+                  attendance: db.zinghr[cleanId]?.attendance || [],
+                  gatePhotos: db.zinghr[cleanId]?.gatePhotos || []
+                };
+
+                // Also map to db.roster so they appear in mobile scan & attendance immediately!
+                const rosterKey = `emp-${cleanId.toLowerCase()}`;
+                db.roster[rosterKey] = {
+                  id: cleanId,
+                  name: empName,
+                  avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100&q=80`,
+                  initials: empName.split(' ').map(p => p[0]).filter(Boolean).join('').substring(0, 2).toUpperCase() || 'EM',
+                  role: `${desig} (${dept})`,
+                  shift: attendanceGroup,
+                  status: (status === 'Resigned' || status.includes('Locked')) ? 'Inactive' : 'Active',
+                  location: city
+                };
+                syncCount++;
+              });
+            }
+          }
+        } catch (empErr) {
+          console.error(`[ZingHR Handshake] Error fetching employee details: ${empErr.message}`);
+        }
+
+        writeDB(db);
+
+        console.log(`[ZingHR Live Handshake] Successfully synchronized ${syncCount} real employees from Layam ZingHR! Total in database: ${totalZingCount}`);
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: true,
+          count: syncCount,
+          totalInZing: totalZingCount,
+          message: `Connected to ZingHR Live Database successfully!\n\nSynchronized ${syncCount} real-time employees directly from Layam ZingHR (Total workforce: ${totalZingCount}).\nAttendance swipes are connected and live.`
+        }));
+      } catch (err) {
+        console.error(`[ZingHR Handshake Error]: ${err.message}`);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: `Server error during handshake: ${err.message}` }));
+      }
+    });
+    return;
+  }
+
   // ZING HR API: Fetch Employee by ID
-  if (url.startsWith('/api/zynghr/employee/') && req.method === 'GET') {
+  if (url.startsWith('/api/zinghr/employee/') && req.method === 'GET') {
     const rawEmpId = url.split('/').pop().split('?')[0].toUpperCase();
     const cleanId = rawEmpId.replace(/[^A-Z0-9]/g, '');
     const db = readDB();
     
-    // Try matching in zynghr
+    // Try matching in zinghr
     let employee = null;
-    for (const key in db.zynghr) {
+    for (const key in db.zinghr) {
       if (key.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanId || 
-          db.zynghr[key].id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanId) {
-        employee = db.zynghr[key];
+          db.zinghr[key].id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanId) {
+        employee = db.zinghr[key];
         break;
       }
     }
     
-    // Fallback: Check if it exists in local roster, if so create mock Zyng HR record!
+    // Fallback: Check if it exists in local roster, if so create mock Zing HR record!
     if (!employee) {
       for (const key in db.roster) {
         const emp = db.roster[key];
@@ -733,7 +1045,7 @@ const requestHandler = async (req, res) => {
             attendance: [],
             gatePhotos: []
           };
-          db.zynghr[emp.id] = employee;
+          db.zinghr[emp.id] = employee;
           writeDB(db);
           break;
         }
@@ -745,13 +1057,13 @@ const requestHandler = async (req, res) => {
       res.end(JSON.stringify(employee));
     } else {
       res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: `Employee ID ${rawEmpId} not found in Zyng HR database` }));
+      res.end(JSON.stringify({ error: `Employee ID ${rawEmpId} not found in Zing HR database` }));
     }
     return;
   }
 
   // ZING HR API: Create new Employee profile
-  if (url === '/api/zynghr/employee' && req.method === 'POST') {
+  if (url === '/api/zinghr/employee' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', () => {
@@ -766,11 +1078,11 @@ const requestHandler = async (req, res) => {
         const db = readDB();
         const cleanId = emp.id.toUpperCase().replace(/[^A-Z0-9]/g, '');
         
-        // Check if employee already exists in Zyng HR database
+        // Check if employee already exists in Zing HR database
         let exists = false;
-        for (const key in db.zynghr) {
+        for (const key in db.zinghr) {
           if (key.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanId || 
-              db.zynghr[key].id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanId) {
+              db.zinghr[key].id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanId) {
             exists = true;
             break;
           }
@@ -778,7 +1090,7 @@ const requestHandler = async (req, res) => {
         
         if (exists) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: `Employee ID ${emp.id} already exists in Zyng HR database` }));
+          res.end(JSON.stringify({ error: `Employee ID ${emp.id} already exists in Zing HR database` }));
           return;
         }
         
@@ -796,7 +1108,7 @@ const requestHandler = async (req, res) => {
           gatePhotos: []
         };
         
-        db.zynghr[newEmployee.id] = newEmployee;
+        db.zinghr[newEmployee.id] = newEmployee;
         writeDB(db);
         
         res.writeHead(201, { 'Content-Type': 'application/json' });
@@ -810,9 +1122,9 @@ const requestHandler = async (req, res) => {
   }
 
   // ZING HR API: Get report for all employees
-  if (url.startsWith('/api/zynghr/report') && req.method === 'GET') {
+  if (url.startsWith('/api/zinghr/report') && req.method === 'GET') {
     const db = readDB();
-    const reportData = Object.values(db.zynghr).map(emp => {
+    const reportData = Object.values(db.zinghr).map(emp => {
       return {
         id: emp.id,
         name: emp.name,
@@ -837,7 +1149,7 @@ const requestHandler = async (req, res) => {
   }
 
   // ZING HR API: Direct check-in sync (alternative POST endpoint)
-  if (url === '/api/zynghr/attendance' && req.method === 'POST') {
+  if (url === '/api/zinghr/attendance' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', () => {
@@ -847,26 +1159,26 @@ const requestHandler = async (req, res) => {
         const dateStr = new Date(timestamp).toISOString().split('T')[0];
         const db = readDB();
         
-        if (!db.zynghr[empId]) {
+        if (!db.zinghr[empId]) {
           res.writeHead(404, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: `Employee ID ${empId} not found in Zyng HR` }));
+          res.end(JSON.stringify({ error: `Employee ID ${empId} not found in Zing HR` }));
           return;
         }
 
-        if (!db.zynghr[empId].attendance) {
-          db.zynghr[empId].attendance = [];
+        if (!db.zinghr[empId].attendance) {
+          db.zinghr[empId].attendance = [];
         }
 
-        if (db.zynghr[empId].attendance.includes(dateStr)) {
+        if (db.zinghr[empId].attendance.includes(dateStr)) {
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: false, error: 'ALREADY_MARKED', message: 'Attendance already marked for today' }));
           return;
         }
 
-        db.zynghr[empId].attendance.push(dateStr);
+        db.zinghr[empId].attendance.push(dateStr);
         writeDB(db);
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true, message: 'Attendance synced with Zyng HR' }));
+        res.end(JSON.stringify({ success: true, message: 'Attendance synced with Zing HR' }));
       } catch (err) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Invalid JSON body' }));

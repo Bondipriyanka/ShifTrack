@@ -175,10 +175,10 @@ async function verifyAccess(employeeId, supervisorCoords, locationId) {
   return { verified: true, shift: employee.shift };
 }`
   },
-  zynghr: {
-    name: "ZyngHR Sync Service",
+  zinghr: {
+    name: "ZingHR Sync Service",
     tech: "REST / Webhooks / Message Queues",
-    desc: "Interfaces the attendance engine directly with ZyngHR's core database. Transmits synchronized check-ins, reports offline reconciliation files, updates employee status registers, and serves live dashboards.",
+    desc: "Interfaces the attendance engine directly with ZingHR's core database. Transmits synchronized check-ins, reports offline reconciliation files, updates employee status registers, and serves live dashboards.",
     features: [
       "HTTP REST Integration Client (JSON payloads)",
       "Idempotency tokens (prevents double logging on network retries)",
@@ -191,7 +191,7 @@ async function verifyAccess(employeeId, supervisorCoords, locationId) {
       "Token-based OAuth2.0 authentication flow",
       "IP-whitelisted API connection limits"
     ],
-    code: `// Payload sent to ZyngHR Gateway
+    code: `// Payload sent to ZingHR Gateway
 {
   "api_token": "zh_auth_288b8x79822a10c",
   "client_id": "GATE_STAFFING_IN",
@@ -279,11 +279,11 @@ const TRANSLATIONS = {
     scan_gate: "Scan Gate",
     register_face: "Register Face",
     roster_logs: "Roster & Logs",
-    zynghr: "ZyngHR",
+    zinghr: "ZingHR",
     lock_hub: "Lock Hub",
     biometric_enroll: "Biometric Enrollment",
     register_candidate: "Register Candidate Biometrics",
-    zynghr_emp_id: "Zyng HR Employee ID",
+    zinghr_emp_id: "Zing HR Employee ID",
     search: "Search",
     create_profile: "+ Create New Employee Profile",
     candidate_name: "Candidate Full Name",
@@ -296,10 +296,10 @@ const TRANSLATIONS = {
     total_swipes: "Total Swipes",
     roster_db: "Roster Database",
     recent_swipes: "Recent Swipe Logs",
-    zynghr_portal: "ZyngHR Portal",
+    zinghr_portal: "ZingHR Portal",
     db_reports: "Database & Reports",
     add_profile: "+ Add Profile",
-    zynghr_roster: "ZyngHR Company Roster:",
+    zinghr_roster: "ZingHR Company Roster:",
     back_to_directory: "← Back to Directory",
     job_role: "JOB ROLE",
     shift: "SHIFT",
@@ -328,7 +328,7 @@ const TRANSLATIONS = {
     access_denied_shift: "Access Denied (Wrong Shift)",
     checkin_blocked_duplicate: "Check-in Blocked (Duplicate)",
     checkout_blocked_duplicate: "Check-out Blocked (Duplicate)",
-    syncing_zynghr: "Syncing with Zyng HR...",
+    syncing_zinghr: "Syncing with Zing HR...",
     checked_in: "Checked in",
     queued_offline: "Queued Offline (Server Error)"
   },
@@ -346,11 +346,11 @@ const TRANSLATIONS = {
     scan_gate: "द्वार स्कैन",
     register_face: "चेहरा पंजीकृत करें",
     roster_logs: "रोस्टर और लॉग",
-    zynghr: "ज़िंग एचआर",
+    zinghr: "ज़िंग एचआर",
     lock_hub: "हब लॉक करें",
     biometric_enroll: "बायोमेट्रिक नामांकन",
     register_candidate: "चेहरे का बायोमेट्रिक्स दर्ज करें",
-    zynghr_emp_id: "ज़िंग एचआर कर्मचारी आईडी",
+    zinghr_emp_id: "ज़िंग एचआर कर्मचारी आईडी",
     search: "खोजें",
     create_profile: "+ नया कर्मचारी प्रोफ़ाइल बनाएं",
     candidate_name: "उम्मीदवार का पूरा नाम",
@@ -363,10 +363,10 @@ const TRANSLATIONS = {
     total_swipes: "कुल स्वाइप",
     roster_db: "रोस्टर डेटाबेस",
     recent_swipes: "हाल के स्वाइप लॉग",
-    zynghr_portal: "ज़िंग एचआर पोर्टल",
+    zinghr_portal: "ज़िंग एचआर पोर्टल",
     db_reports: "डेटाबेस और रिपोर्ट",
     add_profile: "+ प्रोफ़ाइल जोड़ें",
-    zynghr_roster: "ज़िंग एचआर कंपनी रोस्टर:",
+    zinghr_roster: "ज़िंग एचआर कंपनी रोस्टर:",
     back_to_directory: "← निर्देशिका पर वापस जाएं",
     job_role: "नौकरी की भूमिका",
     shift: "शिफ्ट",
@@ -395,7 +395,7 @@ const TRANSLATIONS = {
     access_denied_shift: "प्रवेश निषेध (गलत शिफ्ट)",
     checkin_blocked_duplicate: "चेक-इन अवरुद्ध (डबल एंट्री)",
     checkout_blocked_duplicate: "चेक-आउट अवरुद्ध (डबल एंट्री)",
-    syncing_zynghr: "ज़िंग एचआर के साथ समन्वयित हो रहा है...",
+    syncing_zinghr: "ज़िंग एचआर के साथ समन्वयित हो रहा है...",
     checked_in: "चेक इन हो गया",
     queued_offline: "ऑफ़लाइन कतारबद्ध (सर्वर त्रुटि)"
   },
@@ -413,11 +413,11 @@ const TRANSLATIONS = {
     scan_gate: "గేట్ స్కాన్",
     register_face: "ముఖాన్ని నమోదు చేయి",
     roster_logs: "రోస్టర్ & లాగ్స్",
-    zynghr: "జింగ్ హెచ్ఆర్",
+    zinghr: "జింగ్ హెచ్ఆర్",
     lock_hub: "హబ్ లాక్ చేయి",
     biometric_enroll: "బయోమెట్రిక్ నమోదు",
     register_candidate: "ముఖ బయోమెట్రిక్స్ నమోదు చేయండి",
-    zynghr_emp_id: "జింగ్ హెచ్ఆర్ ఉద్యోగి ఐడీ",
+    zinghr_emp_id: "జింగ్ హెచ్ఆర్ ఉద్యోగి ఐడీ",
     search: "వెతకండి",
     create_profile: "+ కొత్త ఉద్యోగి ప్రొఫైల్ సృష్టించండి",
     candidate_name: "అభ్యర్థి పూర్తి పేరు",
@@ -430,10 +430,10 @@ const TRANSLATIONS = {
     total_swipes: "మొత్తం స్వైప్‌లు",
     roster_db: "రోస్టర్ డేటాబేస్",
     recent_swipes: "ఇటీవలి స్వైప్ లాగ్స్",
-    zynghr_portal: "జింగ్ హెచ్ఆర్ పోర్టల్",
+    zinghr_portal: "జింగ్ హెచ్ఆర్ పోర్టల్",
     db_reports: "డేటాబேస్ & నివేదికలు",
     add_profile: "+ ప్రొఫைల్ జోడించు",
-    zynghr_roster: "జింగ్ హెచ్ఆర్ కంపెనీ రోస్టర్:",
+    zinghr_roster: "జింగ్ హెచ్ఆర్ కంపెనీ రోస్టర్:",
     back_to_directory: "← డైరెక్టరీకి తిరిగి వెళ్ళు",
     job_role: "ఉద్యోగ పాత్ర",
     shift: "షిఫ్ట్",
@@ -462,7 +462,7 @@ const TRANSLATIONS = {
     access_denied_shift: "యాక్సెస్ తిరస్కరించబడింది (తప్పుడు షిఫ్ట్)",
     checkin_blocked_duplicate: "చెక్-ఇన్ నిరోధించబడింది (డూప్లికేట్)",
     checkout_blocked_duplicate: "చెక్-అవుట్ నిరోధించబడింది (డూప్లికేట్)",
-    syncing_zynghr: "జింగ్ హెచ్ఆర్ తో సింక్ అవుతోంది...",
+    syncing_zinghr: "జింగ్ హెచ్ఆర్ తో సింక్ అవుతోంది...",
     checked_in: "చెక్ ఇన్ అయ్యారు",
     queued_offline: "ఆఫ్‌లైన్ క్యూలో ఉంది (సర్వర్ లోపం)"
   },
@@ -480,11 +480,11 @@ const TRANSLATIONS = {
     scan_gate: "கேட் ஸ்கேன்",
     register_face: "முகத்தை பதிவு செய்",
     roster_logs: "பதிவேடு & பதிவுகள்",
-    zynghr: "ஜிங் எச்ஆர்",
+    zinghr: "ஜிங் எச்ஆர்",
     lock_hub: "ஹப்பை பூட்டு",
     biometric_enroll: "பயோமெட்ரிக் பதிவு",
     register_candidate: "முக பயோமெட்ரிக்ஸைப் பதிவுசெய்க",
-    zynghr_emp_id: "ஜிங் எச்ஆர் ஊழியர் ஐடி",
+    zinghr_emp_id: "ஜிங் எச்ஆர் ஊழியர் ஐடி",
     search: "தேடு",
     create_profile: "+ புதிய பணியாளர் சுயவிவரத்தை உருவாக்கு",
     candidate_name: "வேட்பாளரின் முழு பெயர்",
@@ -497,10 +497,10 @@ const TRANSLATIONS = {
     total_swipes: "மொத்த ஸ்வைப்கள்",
     roster_db: "பதிவேட்டு தரவுத்தளம்",
     recent_swipes: "சமீபத்திய ஸ்வைப்பு பதிவுகள்",
-    zynghr_portal: "ஜிங் எச்ஆர் போர்டல்",
+    zinghr_portal: "ஜிங் எச்ஆர் போர்டல்",
     db_reports: "தரவுத்தளம் & அறிக்கைகள்",
     add_profile: "+ சுயவிவரத்தைச் சேர்",
-    zynghr_roster: "ஜிங் எச்ஆர் நிறுவன பதிவேடு:",
+    zinghr_roster: "ஜிங் எச்ஆர் நிறுவன பதிவேடு:",
     back_to_directory: "← அடைவுக்குத் திரும்பு",
     job_role: "வேலை பங்கு",
     shift: "பணி முறை",
@@ -529,7 +529,7 @@ const TRANSLATIONS = {
     access_denied_shift: "அனுமதி மறுக்கப்பட்டது (தவறான பணிமுறை)",
     checkin_blocked_duplicate: "செக்-இன் தடுக்கப்பட்டது (இரட்டை பதிவு)",
     checkout_blocked_duplicate: "செக்-அவுட் தடுக்கப்பட்டது (இரட்டை பதிவு)",
-    syncing_zynghr: "ஜிங் எச்ஆர் உடன் ஒத்திசைக்கப்படுகிறது...",
+    syncing_zinghr: "ஜிங் எச்ஆர் உடன் ஒத்திசைக்கப்படுகிறது...",
     checked_in: "செக்-இன் செய்யப்பட்டது",
     queued_offline: "ஆஃப்லைனில் வரிசைப்படுத்தப்பட்டது (சேவையகப் பிழை)"
   },
@@ -547,11 +547,11 @@ const TRANSLATIONS = {
     scan_gate: "ಗೇಟ್ ಸ್ಕ್ಯಾನ್",
     register_face: "ಮುಖವನ್ನು ನೋಂದಾಯಿಸಿ",
     roster_logs: "ರೋಸ್ಟರ್ ಮತ್ತು ಲಾಗ್‌ಗಳು",
-    zynghr: "ಜಿಂಗ್ ಎಚ್ಆರ್",
+    zinghr: "ಜಿಂಗ್ ಎಚ್ಆರ್",
     lock_hub: "ಹಬ್ ಲಾಕ್ ಮಾಡಿ",
     biometric_enroll: "ಬಯೋಮೆಟ್ರಿಕ್ ದಾಖಲಾತಿ",
     register_candidate: "ಮುಖ ಬಯೋಮೆಟ್ರಿಕ್ಸ್ ನೋಂದಾಯಿಸಿ",
-    zynghr_emp_id: "ಜಿಂಗ್ ಎಚ್ಆರ್ ಉದ್ಯೋಗಿ ಐಡಿ",
+    zinghr_emp_id: "ಜಿಂಗ್ ಎಚ್ಆರ್ ಉದ್ಯೋಗಿ ಐಡಿ",
     search: "ಹುಡುಕು",
     create_profile: "+ ಹೊಸ ಉದ್ಯೋಗಿ ಪ್ರೊಫೈಲ್ ರಚಿಸಿ",
     candidate_name: "ಅಭ್ಯರ್ಥಿಯ ಪೂರ್ಣ ಹೆಸರು",
@@ -564,10 +564,10 @@ const TRANSLATIONS = {
     total_swipes: "ಒಟ್ಟು ಸ್ವೈಪ್‌ಗಳು",
     roster_db: "ರೋಸ್ಟರ್ ಡೇಟಾಬೇಸ್",
     recent_swipes: "ಇತ್ತೀಚಿನ ಸ್ವೈಪ್ ಲಾಗ್‌ಗಳು",
-    zynghr_portal: "ಜಿಂಗ್ ಎಚ್ಆರ್ ಪೋರ್ಟಲ್",
+    zinghr_portal: "ಜಿಂಗ್ ಎಚ್ಆರ್ ಪೋರ್ಟಲ್",
     db_reports: "ಡೇಟಾಬೇಸ್ ಮತ್ತು ವರದಿಗಳು",
     add_profile: "+ ಪ್ರೊಫೈಲ್ ಸೇರಿಸಿ",
-    zynghr_roster: "ಜಿಂಗ್ ಎಚ್ಆರ್ ಕಂಪನಿ ರೋಸ್ಟರ್:",
+    zinghr_roster: "ಜಿಂಗ್ ಎಚ್ಆರ್ ಕಂಪನಿ ರೋಸ್ಟರ್:",
     back_to_directory: "← ಡೈರೆಕ್ಟರಿಗೆ ಹಿಂತಿರುಗಿ",
     job_role: "ಉದ್ಯೋಗ ಪಾತ್ರ",
     shift: "ಶಿಫ್ಟ್",
@@ -596,7 +596,7 @@ const TRANSLATIONS = {
     access_denied_shift: "ಪ್ರವೇಶ ನಿರಾಕರಿಸಲಾಗಿದೆ (ತಪ್ಪು ಶಿಫ್ಟ್)",
     checkin_blocked_duplicate: "ಚೆಕ್-ಇನ್ ತಡೆಯಲಾಗಿದೆ (ಡೂಪ್ಲಿಕೇಟ್)",
     checkout_blocked_duplicate: "ಚೆಕ್-ಔಟ್ ತಡೆಯಲಾಗಿದೆ (ಡೂಪ್ಲಿಕೇಟ್)",
-    syncing_zynghr: "ಜಿಂಗ್ ಎಚ್ಆರ್ ಜೊತೆ ಸಿಂಕ್ ಆಗುತ್ತಿದೆ...",
+    syncing_zinghr: "ಜಿಂಗ್ ಎಚ್ಆರ್ ಜೊತೆ ಸಿಂಕ್ ಆಗುತ್ತಿದೆ...",
     checked_in: "ಚೆಕ್ ಇನ್ ಆಗಿದೆ",
     queued_offline: "ಆಫ್‌ಲೈನ್ ಕ್ಯೂನಲ್ಲಿದೆ (ಸರ್ವರ್ ದೋಷ)"
   }
@@ -931,7 +931,7 @@ function initApp() {
     if (mobileMonthSelect) {
       mobileMonthSelect.addEventListener("change", () => {
         if (appState.currentSelectedEmployee) {
-          openMobileZyngHRDossier(appState.currentSelectedEmployee);
+          openMobileZingHRDossier(appState.currentSelectedEmployee);
         }
       });
     }
@@ -1031,10 +1031,10 @@ function initApp() {
     document.getElementById("reg-btn-save").addEventListener("click", enrollNewCandidate);
     document.getElementById("bulk-roster-import").addEventListener("change", handleBulkRosterImport);
     
-    // Zyng HR search listeners
-    document.getElementById("reg-btn-search").addEventListener("click", searchEmployeeZyngHR);
+    // Zing HR search listeners
+    document.getElementById("reg-btn-search").addEventListener("click", searchEmployeeZingHR);
     document.getElementById("reg-emp-id").addEventListener("keypress", (e) => {
-      if (e.key === "Enter") searchEmployeeZyngHR();
+      if (e.key === "Enter") searchEmployeeZingHR();
     });
 
     // Setup tab navigator listeners
@@ -1050,25 +1050,25 @@ function initApp() {
       logsBackBtn.addEventListener("click", () => switchTab("scan"));
     }
     
-    const zynghrTab = document.getElementById("nav-zynghr-tab");
-    if (zynghrTab) {
-      zynghrTab.addEventListener("click", () => switchTab("zynghr"));
+    const zinghrTab = document.getElementById("nav-zinghr-tab");
+    if (zinghrTab) {
+      zinghrTab.addEventListener("click", () => switchTab("zinghr"));
     }
-    const zynghrBackBtn = document.getElementById("mobile-zynghr-back-btn");
-    if (zynghrBackBtn) {
-      zynghrBackBtn.addEventListener("click", () => switchTab("scan"));
+    const zinghrBackBtn = document.getElementById("mobile-zinghr-back-btn");
+    if (zinghrBackBtn) {
+      zinghrBackBtn.addEventListener("click", () => switchTab("scan"));
     }
-    const dossierBackBtn = document.getElementById("mobile-zynghr-dossier-back");
+    const dossierBackBtn = document.getElementById("mobile-zinghr-dossier-back");
     if (dossierBackBtn) {
       dossierBackBtn.addEventListener("click", () => {
-        document.getElementById("mobile-zynghr-dossier-sect").classList.add("hidden");
-        document.getElementById("mobile-zynghr-main-sect").classList.remove("hidden");
+        document.getElementById("mobile-zinghr-dossier-sect").classList.add("hidden");
+        document.getElementById("mobile-zinghr-main-sect").classList.remove("hidden");
       });
     }
-    const createZingBtn = document.getElementById("mobile-zynghr-create-btn");
+    const createZingBtn = document.getElementById("mobile-zinghr-create-btn");
     if (createZingBtn) {
       createZingBtn.addEventListener("click", () => {
-        const drawer = document.getElementById("app-create-zynghr-drawer");
+        const drawer = document.getElementById("app-create-zinghr-drawer");
         if (drawer) drawer.classList.remove("hidden");
       });
     }
@@ -1077,7 +1077,7 @@ function initApp() {
 
     // Initialize backend network IP configuration panel and admin tabs
     initSettingsDrawer();
-    initCreateZyngHRDrawer();
+    initCreateZingHRDrawer();
     initEmployeeProfileDrawer();
     initAdminTabs();
 
@@ -1335,24 +1335,24 @@ function switchTab(tabName) {
   const scanTab = document.getElementById("nav-scan-tab");
   const regTab = document.getElementById("nav-register-tab");
   const logsTab = document.getElementById("nav-logs-tab");
-  const zynghrTab = document.getElementById("nav-zynghr-tab");
+  const zinghrTab = document.getElementById("nav-zinghr-tab");
   
   if (scanTab) scanTab.classList.toggle("active", tabName === "scan");
   if (regTab) regTab.classList.toggle("active", tabName === "register");
   if (logsTab) logsTab.classList.toggle("active", tabName === "logs");
-  if (zynghrTab) zynghrTab.classList.toggle("active", tabName === "zynghr");
+  if (zinghrTab) zinghrTab.classList.toggle("active", tabName === "zinghr");
   
   // Toggle UI screen layers
   const scanView = document.getElementById("app-scan-view");
   const registerView = document.getElementById("app-register-view");
   const logsView = document.getElementById("app-logs-view");
-  const zynghrView = document.getElementById("app-zynghr-view");
+  const zinghrView = document.getElementById("app-zinghr-view");
   
   if (tabName === "scan") {
     scanView.classList.remove("hidden");
     registerView.classList.add("hidden");
     if (logsView) logsView.classList.add("hidden");
-    if (zynghrView) zynghrView.classList.add("hidden");
+    if (zinghrView) zinghrView.classList.add("hidden");
     shutdownActiveStream();
     showCameraFallback();
     hideManualAttendanceOption();
@@ -1364,7 +1364,7 @@ function switchTab(tabName) {
     scanView.classList.add("hidden");
     registerView.classList.remove("hidden");
     if (logsView) logsView.classList.add("hidden");
-    if (zynghrView) zynghrView.classList.add("hidden");
+    if (zinghrView) zinghrView.classList.add("hidden");
     
     // Stop scanner scan mode
     appState.isScanningMode = false;
@@ -1379,7 +1379,7 @@ function switchTab(tabName) {
     scanView.classList.add("hidden");
     registerView.classList.add("hidden");
     if (logsView) logsView.classList.remove("hidden");
-    if (zynghrView) zynghrView.classList.add("hidden");
+    if (zinghrView) zinghrView.classList.add("hidden");
     
     // Stop scanner scan mode
     appState.isScanningMode = false;
@@ -1392,11 +1392,11 @@ function switchTab(tabName) {
     
     renderMobileLogs();
     renderMobileRoster();
-  } else if (tabName === "zynghr") {
+  } else if (tabName === "zinghr") {
     scanView.classList.add("hidden");
     registerView.classList.add("hidden");
     if (logsView) logsView.classList.add("hidden");
-    if (zynghrView) zynghrView.classList.remove("hidden");
+    if (zinghrView) zinghrView.classList.remove("hidden");
     
     // Stop scanner scan mode
     appState.isScanningMode = false;
@@ -1407,7 +1407,7 @@ function switchTab(tabName) {
     
     shutdownActiveStream();
     
-    renderMobileZyngHRDirectory();
+    renderMobileZingHRDirectory();
   }
 }
 
@@ -1745,7 +1745,7 @@ function toggleOfflineMode(e) {
   } else {
     statusPill.innerText = "ONLINE";
     statusPill.classList.remove("offline");
-    logTerminal("INFO", "Network link restored. Ready to post directly to ZyngHR.");
+    logTerminal("INFO", "Network link restored. Ready to post directly to ZingHR.");
     
     if (appState.syncQueue.length > 0) {
       logTerminal("INFO", `Detected ${appState.syncQueue.length} unsynced attendance logs. Starting background integration sync...`);
@@ -1913,12 +1913,12 @@ async function submitManualAttendanceFromScan() {
   const button = document.getElementById("btn-manual-attendance");
   button.disabled = true;
   
-  logTerminal("INFO", `Manual Override: Redirecting to ZyngHR dossier for Employee ID: ${empId}...`);
+  logTerminal("INFO", `Manual Override: Redirecting to ZingHR dossier for Employee ID: ${empId}...`);
   
   try {
-    const response = await fetch(getApiUrl(`/api/zynghr/employee/${empId}`));
+    const response = await fetch(getApiUrl(`/api/zinghr/employee/${empId}`));
     if (!response.ok) {
-      throw new Error("Employee not found in ZyngHR database");
+      throw new Error("Employee not found in ZingHR database");
     }
     const data = await response.json();
     
@@ -1942,9 +1942,9 @@ async function submitManualAttendanceFromScan() {
     if (card) card.classList.remove("active");
     if (viewport) viewport.classList.remove("error", "success");
     
-    // Navigate to the ZyngHR tab and open the employee's dossier page
-    switchTab("zynghr");
-    openMobileZyngHRDossier(empDossier);
+    // Navigate to the ZingHR tab and open the employee's dossier page
+    switchTab("zinghr");
+    openMobileZingHRDossier(empDossier);
     
   } catch (error) {
     logTerminal("ERROR", `Failed to load employee dossier: ${error.message}`);
@@ -2250,7 +2250,7 @@ function triggerManualScan() {
 
             // Step 4: Sync integration
             setTimeout(() => {
-              highlightFlowNode("node-zynghr");
+              highlightFlowNode("node-zinghr");
               recordAttendanceSuccess(emp, timestamp);
             }, 150);
 
@@ -2287,7 +2287,7 @@ function runLocalSimulationFallback(subject, location, timestamp) {
           logTerminal("INFO", `Verification Engine: Rostered location matches [${location}]. Shift checks OK.`);
           
           setTimeout(() => {
-            highlightFlowNode("node-zynghr");
+            highlightFlowNode("node-zinghr");
             recordAttendanceSuccess(emp, timestamp);
           }, 800);
 
@@ -2339,7 +2339,7 @@ function performLocalFaceRecognition(base64Image, location, timestamp) {
       setTimeout(() => {
         highlightFlowNode("node-verification");
         setTimeout(() => {
-          highlightFlowNode("node-zynghr");
+          highlightFlowNode("node-zinghr");
           recordAttendanceSuccess(emp, timestamp);
         }, 150);
       }, 150);
@@ -2662,7 +2662,7 @@ function recordAttendanceSuccess(emp, timestamp) {
     viewport.classList.remove("success", "error");
     viewport.classList.add("success");
     card.className = "verification-card active success-theme";
-    statusLabel.innerText = getTranslation("syncing_zynghr", "Syncing with Zyng HR...");
+    statusLabel.innerText = getTranslation("syncing_zinghr", "Syncing with Zing HR...");
     
     iconBox.innerHTML = `
       <svg class="svg-icon pulse" style="width:24px; height:24px;" viewBox="0 0 24 24">
@@ -2690,7 +2690,7 @@ function recordAttendanceSuccess(emp, timestamp) {
       const isBackendDuplicate = data && data.warning === 'ALREADY_MARKED';
       const isDub = isBackendDuplicate || isDuplicatePunch;
       
-      logTerminal("SUCCESS", `ZyngHR Server Response: ${direction} accepted for Employee ${emp.id} (${emp.name})`);
+      logTerminal("SUCCESS", `ZingHR Server Response: ${direction} accepted for Employee ${emp.id} (${emp.name})`);
       logTerminal("SUCCESS", `API Server: Log synced successfully for ${emp.name}.`);
       
       viewport.classList.remove("error");
@@ -2986,7 +2986,7 @@ function forceSyncOfflineQueue() {
     return;
   }
 
-  logTerminal("INFO", `Initializing sync transmission: posting ${appState.syncQueue.length} queue records to ZyngHR gateway...`);
+  logTerminal("INFO", `Initializing sync transmission: posting ${appState.syncQueue.length} queue records to ZingHR gateway...`);
   
   const queue = [...appState.syncQueue];
   appState.syncQueue = [];
@@ -3016,7 +3016,7 @@ function forceSyncOfflineQueue() {
       appState.counters.offline = Math.max(0, appState.counters.offline - 1);
       appState.counters.approved++;
       
-      logTerminal("SUCCESS", `Reconciled: Offline record verified & posted to ZyngHR for ID: ${record.empId} (${record.name})`);
+      logTerminal("SUCCESS", `Reconciled: Offline record verified & posted to ZingHR for ID: ${record.empId} (${record.name})`);
       
       renderAttendanceTable();
       updateDashboardStats();
@@ -3074,8 +3074,8 @@ async function bootRegistrationCamera() {
 }
 
 // Capture current webcam image frame onto canvas
-// Search employee from Zyng HR database
-function searchEmployeeZyngHR() {
+// Search employee from Zing HR database
+function searchEmployeeZingHR() {
   const empIdInput = document.getElementById("reg-emp-id");
   if (!empIdInput) return;
   const query = empIdInput.value.trim().toUpperCase();
@@ -3120,17 +3120,17 @@ function searchEmployeeZyngHR() {
 function fetchEmployeeForRegistration(empId) {
   const results = document.getElementById("reg-employee-search-results");
   if (results) results.classList.add("hidden");
-  logTerminal("INFO", `Querying Zyng HR database for Employee ID: ${empId}...`);
+  logTerminal("INFO", `Querying Zing HR database for Employee ID: ${empId}...`);
 
-  fetch(getApiUrl(`/api/zynghr/employee/${encodeURIComponent(empId)}`))
+  fetch(getApiUrl(`/api/zinghr/employee/${encodeURIComponent(empId)}`))
     .then(res => {
       if (!res.ok) {
-        throw new Error("Employee ID not found in Zyng HR");
+        throw new Error("Employee ID not found in Zing HR");
       }
       return res.json();
     })
     .then(employee => {
-      appState.currentZyngHREmployee = employee;
+      appState.currentZingHREmployee = employee;
       
       // Populate fields
       document.getElementById("reg-name").value = employee.name;
@@ -3146,14 +3146,14 @@ function fetchEmployeeForRegistration(empId) {
       document.getElementById("reg-emp-address").innerText = employee.address;
       document.getElementById("reg-emp-contact").innerText = employee.contact;
       
-      logTerminal("SUCCESS", `Zyng HR Record retrieved for: ${employee.name}`);
+      logTerminal("SUCCESS", `Zing HR Record retrieved for: ${employee.name}`);
     })
     .catch(err => {
-      logTerminal("ERROR", `Zyng HR Sync Error: Employee ID ${empId} not found.`);
+      logTerminal("ERROR", `Zing HR Sync Error: Employee ID ${empId} not found.`);
       alert(`No employee matches "${empId}".`);
       
       // Clear fields
-      appState.currentZyngHREmployee = null;
+      appState.currentZingHREmployee = null;
       document.getElementById("reg-name").value = "";
       document.getElementById("reg-employee-details").classList.add("hidden");
     });
@@ -3268,8 +3268,8 @@ function captureRegistrationPhoto() {
 
 // Enroll face data and save to localStorage
 function enrollNewCandidate() {
-  if (!appState.currentZyngHREmployee) {
-    alert("Please search and fetch a valid Zyng HR Employee record before registering biometrics!");
+  if (!appState.currentZingHREmployee) {
+    alert("Please search and fetch a valid Zing HR Employee record before registering biometrics!");
     return;
   }
   
@@ -3278,9 +3278,9 @@ function enrollNewCandidate() {
     return;
   }
   
-  const finalKey = appState.currentZyngHREmployee.id;
+  const finalKey = appState.currentZingHREmployee.id;
   const cleanFinalKey = finalKey.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const name = appState.currentZyngHREmployee.name;
+  const name = appState.currentZingHREmployee.name;
   const firstPhoto = appState.capturedPhotos[0];
 
   logTerminal("INFO", `Biometric Security: Checking for duplicate face embeddings in database...`);
@@ -3315,7 +3315,7 @@ function finishEnrollment(finalKey, name) {
   const initials = name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2);
   const avatarUrl = (appState.capturedPhotos && appState.capturedPhotos.length > 0) 
     ? appState.capturedPhotos[0] 
-    : appState.currentZyngHREmployee.avatar;
+    : appState.currentZingHREmployee.avatar;
 
   const employeeObject = {
     id: finalKey,
@@ -3323,8 +3323,8 @@ function finishEnrollment(finalKey, name) {
     avatar: avatarUrl, // Captured gate snapshot or fallback profile pic
     gatePhotos: appState.capturedPhotos, // The 3 gate photos taken at registration
     initials: initials,
-    role: appState.currentZyngHREmployee.role,
-    shift: appState.currentZyngHREmployee.shift,
+    role: appState.currentZingHREmployee.role,
+    shift: appState.currentZingHREmployee.shift,
     status: "Active",
     location: appState.selectedLocation,
     faceVector: `[Gate Registered: 3 Photos]`,
@@ -3364,7 +3364,7 @@ function finishEnrollment(finalKey, name) {
     document.getElementById("reg-emp-id").value = "";
     document.getElementById("reg-name").value = "";
     document.getElementById("reg-employee-details").classList.add("hidden");
-    appState.currentZyngHREmployee = null;
+    appState.currentZingHREmployee = null;
     appState.capturedPhotos = [];
     appState.capturedPhotoBase64 = null;
     document.getElementById("reg-btn-capture").innerText = "Take Snapshot 1";
@@ -3413,19 +3413,19 @@ function initAdminTabs() {
       viewLive.classList.add("hidden");
       viewReports.classList.remove("hidden");
       
-      renderZyngHRReports();
+      renderZingHRReports();
     });
   }
 }
 
-// Render Zyng HR reports list in admin view
-function renderZyngHRReports() {
+// Render Zing HR reports list in admin view
+function renderZingHRReports() {
   const listContainer = document.getElementById("report-employee-list");
   if (!listContainer) return;
   
-  listContainer.innerHTML = `<span style="color: var(--color-text-muted); font-size: 0.75rem; margin: auto;">Loading Zyng HR reports...</span>`;
+  listContainer.innerHTML = `<span style="color: var(--color-text-muted); font-size: 0.75rem; margin: auto;">Loading Zing HR reports...</span>`;
   
-  fetch(getApiUrl('/api/zynghr/report'))
+  fetch(getApiUrl('/api/zinghr/report'))
     .then(res => res.json())
     .then(data => {
       listContainer.innerHTML = "";
@@ -4282,7 +4282,7 @@ function initEmployeeProfileDrawer() {
       if (emp.gatePhotos.length > 3) emp.gatePhotos = emp.gatePhotos.slice(0, 3);
       emp.avatar = profileDrawerCapturedPhoto;
       
-      logTerminal("INFO", `ZyngHR Sync: Dispatching facial updates for ID ${emp.id}...`);
+      logTerminal("INFO", `ZingHR Sync: Dispatching facial updates for ID ${emp.id}...`);
       
       fetch(getApiUrl('/api/roster'), {
         method: 'POST',
@@ -4290,20 +4290,20 @@ function initEmployeeProfileDrawer() {
         body: JSON.stringify({ key: currentProfileEmployeeKey, employee: emp })
       }).then(res => {
         if (res.ok) {
-          logTerminal("SUCCESS", `ZyngHR Database Sync: Secondary facial photograph linked for ID ${emp.id}.`);
-          alert("Additional face photograph synchronized with ZyngHR database successfully!");
+          logTerminal("SUCCESS", `ZingHR Database Sync: Secondary facial photograph linked for ID ${emp.id}.`);
+          alert("Additional face photograph synchronized with ZingHR database successfully!");
           
           renderRoster();
           renderMobileRoster();
-          if (typeof renderZyngHRReports === "function") {
-            renderZyngHRReports();
+          if (typeof renderZingHRReports === "function") {
+            renderZingHRReports();
           }
         } else {
-          logTerminal("ERROR", `ZyngHR Sync Failed for ID ${emp.id}.`);
+          logTerminal("ERROR", `ZingHR Sync Failed for ID ${emp.id}.`);
           alert("Error syncing updated face photo with server database.");
         }
       }).catch(err => {
-        logTerminal("WARN", `ZyngHR Database Server unreachable. Saved locally in browser storage.`);
+        logTerminal("WARN", `ZingHR Database Server unreachable. Saved locally in browser storage.`);
         alert("Server connection offline. Photograph cached on device.");
       });
       
@@ -4323,7 +4323,7 @@ function initSettingsDrawer() {
   const continuousScanCheck = document.getElementById("settings-continuous-scan");
   const rosterRuleCheck = document.getElementById("settings-roster-rule");
   
-  const openButtons = ["mobile-settings-btn", "mobile-scan-settings-btn", "mobile-reg-settings-btn", "mobile-logs-settings-btn", "mobile-zynghr-settings-btn"];
+  const openButtons = ["mobile-settings-btn", "mobile-scan-settings-btn", "mobile-reg-settings-btn", "mobile-logs-settings-btn", "mobile-zinghr-settings-btn"];
   
   // Set initial settings values
   const currentIp = localStorage.getItem("backend_server_ip") || "192.168.1.8:3000";
@@ -4380,31 +4380,31 @@ function initSettingsDrawer() {
   
   // Tab toggle logic
   const tabNetwork = document.getElementById("settings-tab-network");
-  const tabZyngHR = document.getElementById("settings-tab-zynghr");
+  const tabZingHR = document.getElementById("settings-tab-zinghr");
   const sectNetwork = document.getElementById("settings-sect-network");
-  const sectZyngHR = document.getElementById("settings-sect-zynghr");
+  const sectZingHR = document.getElementById("settings-sect-zinghr");
   
-  if (tabNetwork && tabZyngHR && sectNetwork && sectZyngHR) {
+  if (tabNetwork && tabZingHR && sectNetwork && sectZingHR) {
     tabNetwork.addEventListener("click", () => {
       tabNetwork.style.borderBottom = "2px solid var(--color-primary)";
       tabNetwork.style.color = "#fff";
-      tabZyngHR.style.borderBottom = "2px solid transparent";
-      tabZyngHR.style.color = "#94a3b8";
+      tabZingHR.style.borderBottom = "2px solid transparent";
+      tabZingHR.style.color = "#94a3b8";
       sectNetwork.classList.remove("hidden");
-      sectZyngHR.classList.add("hidden");
+      sectZingHR.classList.add("hidden");
     });
     
-    tabZyngHR.addEventListener("click", () => {
-      tabZyngHR.style.borderBottom = "2px solid var(--color-primary)";
-      tabZyngHR.style.color = "#fff";
+    tabZingHR.addEventListener("click", () => {
+      tabZingHR.style.borderBottom = "2px solid var(--color-primary)";
+      tabZingHR.style.color = "#fff";
       tabNetwork.style.borderBottom = "2px solid transparent";
       tabNetwork.style.color = "#94a3b8";
-      sectZyngHR.classList.remove("hidden");
+      sectZingHR.classList.remove("hidden");
       sectNetwork.classList.add("hidden");
     });
   }
   
-  // Load/Save ZyngHR config
+  // Load/Save ZingHR config
   const endpointInput = document.getElementById("settings-zing-endpoint");
   const tenantInput = document.getElementById("settings-zing-tenant");
   const clientIdInput = document.getElementById("settings-zing-clientid");
@@ -4413,19 +4413,42 @@ function initSettingsDrawer() {
   const zingTestBtn = document.getElementById("settings-zing-test-btn");
   const zingStatus = document.getElementById("settings-zing-status");
   
-  if (endpointInput) endpointInput.value = localStorage.getItem("zynghr_api_endpoint") || "https://api.zynghr.com/api/v1";
-  if (tenantInput) tenantInput.value = localStorage.getItem("zynghr_api_tenant") || "LYAMENTERPRISE";
-  if (clientIdInput) clientIdInput.value = localStorage.getItem("zynghr_api_clientid") || "client_lyam_prod_8829";
-  if (clientSecretInput) clientSecretInput.value = localStorage.getItem("zynghr_api_clientsecret") || "password123";
+  let savedSecret = localStorage.getItem("zinghr_api_clientsecret");
+  if (savedSecret === "3p12xij3mromu5d0bqa7s3hduc5ahv2xe7zw60b75zhgj08qbho53rtaq308hz7v") {
+    savedSecret = "21fqq370n70lx9y1igkieyhria9wfhigxleclt7rvbwt6rt2ofkz02eyuiewxpg1";
+    localStorage.setItem("zinghr_api_clientsecret", savedSecret);
+  }
+  if (endpointInput) endpointInput.value = localStorage.getItem("zinghr_api_endpoint") || "https://mservices.zinghr.com";
+  if (tenantInput) tenantInput.value = localStorage.getItem("zinghr_api_tenant") || "LAYAMGROUP";
+  if (clientIdInput) clientIdInput.value = localStorage.getItem("zinghr_api_clientid") || "qlkb0n1za4bna3g7rj8m5tye";
+  if (clientSecretInput) clientSecretInput.value = savedSecret || "21fqq370n70lx9y1igkieyhria9wfhigxleclt7rvbwt6rt2ofkz02eyuiewxpg1";
   
   if (zingSaveBtn) {
     zingSaveBtn.addEventListener("click", () => {
-      localStorage.setItem("zynghr_api_endpoint", endpointInput.value.trim());
-      localStorage.setItem("zynghr_api_tenant", tenantInput.value.trim());
-      localStorage.setItem("zynghr_api_clientid", clientIdInput.value.trim());
-      localStorage.setItem("zynghr_api_clientsecret", clientSecretInput.value.trim());
-      logTerminal("INFO", `ZyngHR API Gateway config saved to local storage.`);
-      alert("ZyngHR API configuration saved successfully!");
+      const endpoint = endpointInput.value.trim();
+      const tenant = tenantInput.value.trim();
+      const clientId = clientIdInput.value.trim();
+      const clientSecret = clientSecretInput.value.trim();
+
+      localStorage.setItem("zinghr_api_endpoint", endpoint);
+      localStorage.setItem("zinghr_api_tenant", tenant);
+      localStorage.setItem("zinghr_api_clientid", clientId);
+      localStorage.setItem("zinghr_api_clientsecret", clientSecret);
+
+      fetch(getApiUrl('/api/zinghr/config'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint, tenant, clientId, clientSecret })
+      })
+      .then(res => res.json())
+      .then(data => {
+        logTerminal("INFO", `ZingHR API Gateway configuration saved to server and local storage.`);
+        alert("ZingHR API configuration saved successfully!");
+      })
+      .catch(err => {
+        logTerminal("WARN", `Failed to sync configuration with server: ${err.message}`);
+        alert("ZingHR API configuration saved locally, but server sync failed.");
+      });
     });
   }
   
@@ -4435,16 +4458,53 @@ function initSettingsDrawer() {
         zingStatus.innerText = "AUTHENTICATING...";
         zingStatus.style.color = "var(--color-warning)";
       }
-      logTerminal("INFO", `[ZyngHR Sandbox] Outbound: Simulating authentication for Client ID '${clientIdInput.value.trim()}' with ZyngHR API Gateway at ${endpointInput.value.trim()}...`);
       
-      setTimeout(() => {
-        if (zingStatus) {
-          zingStatus.innerText = "SIMULATED (CONNECTED)";
-          zingStatus.style.color = "#22c55e";
+      const endpoint = endpointInput.value.trim();
+      const tenant = tenantInput.value.trim();
+      const clientId = clientIdInput.value.trim();
+      const clientSecret = clientSecretInput.value.trim();
+
+      logTerminal("INFO", `Outbound: Handshake connection to ZingHR API Gateway at ${endpoint}...`);
+      
+      fetch(getApiUrl('/api/zinghr/handshake'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint, tenant, clientId, clientSecret })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          if (zingStatus) {
+            zingStatus.innerText = "CONNECTED";
+            zingStatus.style.color = "#22c55e";
+          }
+          logTerminal("SUCCESS", `[ZingHR] Real-time Handshake completed. Message: ${data.message}`);
+          alert(`[ZingHR Integration Handshake]\n\n${data.message}`);
+          
+          // Re-render mobile ZingHR directory and synchronize entire database to show new employees pulled
+          if (typeof loadDatabaseFromServer === 'function') {
+            loadDatabaseFromServer();
+          }
+          if (typeof renderMobileZingHRDirectory === 'function') {
+            renderMobileZingHRDirectory();
+          }
+        } else {
+          if (zingStatus) {
+            zingStatus.innerText = "FAILED";
+            zingStatus.style.color = "#ef4444";
+          }
+          logTerminal("ERROR", `[ZingHR] Integration Handshake failed: ${data.message}`);
+          alert(`[ZingHR Integration Failure]\n\n${data.message}`);
         }
-        logTerminal("SUCCESS", `[ZyngHR Sandbox] Integration Handshake success: Mock connection established for Tenant ID '${tenantInput.value.trim()}'.`);
-        alert("[ZyngHR Sandbox Simulator]\nConnection simulated successfully! Secure handshake verification completed for demonstration purposes.");
-      }, 1000);
+      })
+      .catch(err => {
+        if (zingStatus) {
+          zingStatus.innerText = "ERROR";
+          zingStatus.style.color = "#ef4444";
+        }
+        logTerminal("ERROR", `Failed to contact handshake endpoint: ${err.message}`);
+        alert(`[Connection Error]\nCould not connect to server handshake API: ${err.message}`);
+      });
     });
   }
   
@@ -4489,10 +4549,10 @@ function initSettingsDrawer() {
   }
 }
 
-function initCreateZyngHRDrawer() {
-  const drawer = document.getElementById("app-create-zynghr-drawer");
-  const link = document.getElementById("reg-lnk-create-zynghr");
-  const closeBtn = document.getElementById("close-create-zynghr-btn");
+function initCreateZingHRDrawer() {
+  const drawer = document.getElementById("app-create-zinghr-drawer");
+  const link = document.getElementById("reg-lnk-create-zinghr");
+  const closeBtn = document.getElementById("close-create-zinghr-btn");
   const saveBtn = document.getElementById("new-emp-save-btn");
   
   if (link && drawer) {
@@ -4537,9 +4597,9 @@ function initCreateZyngHRDrawer() {
         contact: empContact
       };
       
-      logTerminal("INFO", `Posting new profile for ${empName} to Zyng HR database...`);
+      logTerminal("INFO", `Posting new profile for ${empName} to Zing HR database...`);
       
-      fetch(getApiUrl('/api/zynghr/employee'), {
+      fetch(getApiUrl('/api/zinghr/employee'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -4551,8 +4611,8 @@ function initCreateZyngHRDrawer() {
         return res.json();
       })
       .then(data => {
-        logTerminal("SUCCESS", `Zyng HR Profile created successfully for ${empName} (ID: ${empId})`);
-        alert(`Zyng HR Employee Profile created successfully for ${empName}!`);
+        logTerminal("SUCCESS", `Zing HR Profile created successfully for ${empName} (ID: ${empId})`);
+        alert(`Zing HR Employee Profile created successfully for ${empName}!`);
         
         // Clear new form fields
         document.getElementById("new-emp-id").value = "";
@@ -4566,7 +4626,7 @@ function initCreateZyngHRDrawer() {
         
         // Set search ID to the new ID and trigger search
         document.getElementById("reg-emp-id").value = empId;
-        searchEmployeeZyngHR();
+        searchEmployeeZingHR();
       })
       .catch(err => {
         logTerminal("ERROR", `Failed to create profile: ${err.message}`);
@@ -4632,22 +4692,22 @@ function startBackgroundSyncLoop() {
   }, 10000);
 }
 
-function renderMobileZyngHRDirectory() {
-  const container = document.getElementById("mobile-zynghr-list-container");
+function renderMobileZingHRDirectory() {
+  const container = document.getElementById("mobile-zinghr-list-container");
   if (!container) return;
   
-  container.innerHTML = `<div style="color:var(--color-text-muted); font-size:0.75rem; text-align:center; padding:12px;">Loading ZyngHR database...</div>`;
+  container.innerHTML = `<div style="color:var(--color-text-muted); font-size:0.75rem; text-align:center; padding:12px;">Loading ZingHR database...</div>`;
   
-  fetch(getApiUrl('/api/zynghr/report'))
+  fetch(getApiUrl('/api/zinghr/report'))
     .then(res => res.json())
     .then(data => {
       container.innerHTML = "";
       
-      const countEl = document.getElementById("mobile-zynghr-count");
+      const countEl = document.getElementById("mobile-zinghr-count");
       if (countEl) countEl.innerText = `${data.length} Employees`;
       
       if (data.length === 0) {
-        container.innerHTML = `<div style="color:var(--color-text-muted); font-size:0.75rem; text-align:center; padding:12px;">No ZyngHR records found.</div>`;
+        container.innerHTML = `<div style="color:var(--color-text-muted); font-size:0.75rem; text-align:center; padding:12px;">No ZingHR records found.</div>`;
         return;
       }
       
@@ -4676,22 +4736,22 @@ function renderMobileZyngHRDirectory() {
         `;
         
         card.addEventListener("click", () => {
-          openMobileZyngHRDossier(emp);
+          openMobileZingHRDossier(emp);
         });
         
         container.appendChild(card);
       });
     })
     .catch(err => {
-      container.innerHTML = `<div style="color:#ef4444; font-size:0.75rem; text-align:center; padding:12px;">Failed to load ZyngHR database.</div>`;
+      container.innerHTML = `<div style="color:#ef4444; font-size:0.75rem; text-align:center; padding:12px;">Failed to load ZingHR database.</div>`;
     });
 }
 
-function openMobileZyngHRDossier(emp) {
+function openMobileZingHRDossier(emp) {
   appState.currentSelectedEmployee = emp;
   
-  document.getElementById("mobile-zynghr-main-sect").classList.add("hidden");
-  document.getElementById("mobile-zynghr-dossier-sect").classList.remove("hidden");
+  document.getElementById("mobile-zinghr-main-sect").classList.add("hidden");
+  document.getElementById("mobile-zinghr-dossier-sect").classList.remove("hidden");
   
   document.getElementById("mobile-dossier-avatar").src = emp.avatar;
   document.getElementById("mobile-dossier-name").innerText = emp.name;
@@ -4791,7 +4851,7 @@ function submitManualAttendance(emp, direction) {
     updateDashboardStats();
     saveLocalStorage();
     
-    openMobileZyngHRDossier(emp);
+    openMobileZingHRDossier(emp);
     
     alert(`✅ Manually marked ${direction} offline for ${emp.name}.`);
   } else {
@@ -4805,7 +4865,7 @@ function submitManualAttendance(emp, direction) {
       throw new Error("HTTP error " + res.status);
     })
     .then(data => {
-      logTerminal("SUCCESS", `ZyngHR Server Response: Manual ${direction} accepted for ${emp.name}`);
+      logTerminal("SUCCESS", `ZingHR Server Response: Manual ${direction} accepted for ${emp.name}`);
       
       appState.attendanceLogs.unshift(record);
       appState.counters.total++;
@@ -4818,8 +4878,8 @@ function submitManualAttendance(emp, direction) {
       }
       
       loadDatabaseFromServer().then(() => {
-        renderMobileZyngHRDirectory();
-        openMobileZyngHRDossier(emp);
+        renderMobileZingHRDirectory();
+        openMobileZingHRDossier(emp);
       });
       
       alert(`✅ Manually marked ${direction} online for ${emp.name}.`);
@@ -4831,7 +4891,7 @@ function submitManualAttendance(emp, direction) {
   }
 }
 
-// Dynamically populate desktop and mobile ZyngHR dropdowns with all 12 months
+// Dynamically populate desktop and mobile ZingHR dropdowns with all 12 months
 function populateMonthDropdowns() {
   const months = [
     { value: "2026-01", label: "January 2026" },

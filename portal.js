@@ -2,7 +2,7 @@
 document.addEventListener("DOMContentLoaded", initPortal);
 
 // Global state variables
-let zynghrReportData = [];
+let zinghrReportData = [];
 let allLogsData = [];
 let dbStatusData = {};
 
@@ -153,10 +153,10 @@ async function refreshData() {
   if (refreshBtn) refreshBtn.textContent = "🔄 Loading...";
 
   try {
-    // 1. Fetch ZyngHR reports
-    const reportRes = await fetch("/api/zynghr/report");
+    // 1. Fetch ZingHR reports
+    const reportRes = await fetch("/api/zinghr/report");
     if (!reportRes.ok) throw new Error("HTTP " + reportRes.status);
-    zynghrReportData = await reportRes.json();
+    zinghrReportData = await reportRes.json();
 
     // 2. Fetch logs data
     const logsRes = await fetch("/api/logs");
@@ -170,7 +170,7 @@ async function refreshData() {
     }
 
     console.log("Portal Data loaded:", {
-      workforce: zynghrReportData.length,
+      workforce: zinghrReportData.length,
       logs: allLogsData.length,
       db: dbStatusData
     });
@@ -209,10 +209,10 @@ function renderDashboard() {
 
 // Calculate and render KPI metrics
 function renderKpiCards() {
-  const totalWorkforce = zynghrReportData.length;
+  const totalWorkforce = zinghrReportData.length;
   
   // Biometric registered rate
-  const registeredCount = zynghrReportData.filter(emp => emp.isGateRegistered).length;
+  const registeredCount = zinghrReportData.filter(emp => emp.isGateRegistered).length;
   const regPercentage = totalWorkforce > 0 ? Math.round((registeredCount / totalWorkforce) * 100) : 0;
   
   // Daily Attendance (Present today on selected date picker)
@@ -220,7 +220,7 @@ function renderKpiCards() {
   const locationFilter = document.getElementById("portal-location-filter").value;
   
   // Filter employees present on selectedDate at filtered location
-  const presentEmployees = zynghrReportData.filter(emp => {
+  const presentEmployees = zinghrReportData.filter(emp => {
     // Match date
     const hasAttended = emp.attendanceDates && emp.attendanceDates.includes(selectedDate);
     if (!hasAttended) return false;
@@ -239,7 +239,7 @@ function renderKpiCards() {
   let baseRegisteredCount = registeredCount;
   if (locationFilter !== "all") {
     // Count how many registered employees are rostered for this location
-    baseRegisteredCount = zynghrReportData.filter(emp => emp.isGateRegistered && emp.address && emp.address.includes(locationFilter.split(" - ")[0])).length;
+    baseRegisteredCount = zinghrReportData.filter(emp => emp.isGateRegistered && emp.address && emp.address.includes(locationFilter.split(" - ")[0])).length;
     // Fallback if zero mapping exists
     if (baseRegisteredCount === 0) baseRegisteredCount = registeredCount;
   }
@@ -310,7 +310,7 @@ function renderEmployeeAuditList() {
   if (!container) return;
 
   // Filter list
-  let filtered = zynghrReportData.filter(emp => {
+  let filtered = zinghrReportData.filter(emp => {
     // 1. Search Query filter
     const matchesSearch = 
       emp.name.toLowerCase().includes(currentSearchQuery) ||
@@ -327,8 +327,8 @@ function renderEmployeeAuditList() {
   });
 
   // Render counter headers
-  const totalCount = zynghrReportData.length;
-  const registeredCount = zynghrReportData.filter(emp => emp.isGateRegistered).length;
+  const totalCount = zinghrReportData.length;
+  const registeredCount = zinghrReportData.filter(emp => emp.isGateRegistered).length;
   const unregisteredCount = totalCount - registeredCount;
 
   document.getElementById("audit-tab-all").innerHTML = `All (${totalCount})`;
@@ -389,7 +389,7 @@ function renderAttendanceBoard() {
   const searchQuery = document.getElementById("attendance-search-input").value.toLowerCase();
 
   // Categorize entire workforce into Present vs Absent for selected date
-  const rosterStatus = zynghrReportData.map(emp => {
+  const rosterStatus = zinghrReportData.map(emp => {
     const isPresent = emp.attendanceDates && emp.attendanceDates.includes(selectedDate);
     const logDetails = isPresent ? findEmpCheckinLog(emp.id, selectedDate) : null;
     
@@ -413,7 +413,7 @@ function renderAttendanceBoard() {
       if (item.isPresent) {
         if (!item.log || item.log.location !== locationFilter) return false;
       } else {
-        // For absent employees, verify if their mapped ZyngHR deployment address matches location prefix
+        // For absent employees, verify if their mapped ZingHR deployment address matches location prefix
         const cleanAddr = (emp.address || "").toLowerCase();
         const cleanLoc = locationFilter.split(" - ")[0].toLowerCase();
         if (!cleanAddr.includes(cleanLoc)) return false;
@@ -542,7 +542,7 @@ function renderCharts() {
     "Night Shift (C)": 0
   };
 
-  zynghrReportData.forEach(emp => {
+  zinghrReportData.forEach(emp => {
     const shift = emp.shift || "Morning Shift (A)";
     const cleanShiftKey = Object.keys(shiftPresentCounts).find(k => k.includes(shift.split(" (")[0]));
     
@@ -623,7 +623,7 @@ function populateDossierEmployeeDropdown() {
   select.innerHTML = '<option value="">Select Employee...</option>';
 
   // Sort employees alphabetically
-  const sorted = [...zynghrReportData].sort((a, b) => a.name.localeCompare(b.name));
+  const sorted = [...zinghrReportData].sort((a, b) => a.name.localeCompare(b.name));
   
   sorted.forEach(emp => {
     const opt = document.createElement("option");
@@ -651,7 +651,7 @@ function handleDossierEmployeeChange() {
     return;
   }
 
-  const employee = zynghrReportData.find(e => e.id === empId);
+  const employee = zinghrReportData.find(e => e.id === empId);
   if (!employee) return;
 
   // Parse Year & Month
@@ -777,7 +777,7 @@ function handleDossierEmployeeChange() {
 
 // Alert nudge action
 function triggerEnrollAlert(empId) {
-  const employee = zynghrReportData.find(e => e.id === empId);
+  const employee = zinghrReportData.find(e => e.id === empId);
   if (!employee) return;
 
   const options = {
