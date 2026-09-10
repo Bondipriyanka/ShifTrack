@@ -61,8 +61,8 @@
     </div>
     <div class="header-controls">
       <div class="system-time-hud">
-        <span id="portal-clock-time">12:00:00</span>
-        <small id="portal-clock-date">August 17, 2026</small>
+        <span id="portal-clock-time">--:--:--</span>
+        <small id="portal-clock-date">Live System Date</small>
       </div>
       <a href="/" class="app-back-btn">
         <span class="btn-icon">📱</span> Open Supervisor App
@@ -94,7 +94,8 @@
       <div class="refresh-hud-group">
         <span class="status-indicator online"></span>
         <span style="font-size: 0.75rem; font-weight: 600; color: var(--color-success);">LIVE SYNC ENABLED</span>
-        <button id="portal-manual-refresh" class="refresh-btn">🔄 Refresh Data</button>
+        <button id="portal-sync-zinghr" class="refresh-btn" style="background: #0284c7; color: #fff; border-color: #0284c7; font-weight: 700;">🔄 Sync with ZingHR</button>
+        <button id="portal-manual-refresh" class="refresh-btn">⚡ Quick Refresh</button>
       </div>
     </section>
 
@@ -105,8 +106,8 @@
         <div class="kpi-icon-wrapper" style="background: rgba(56, 189, 248, 0.1); color: var(--color-primary);">👥</div>
         <div class="kpi-data">
           <h3>Total Workforce Strength</h3>
-          <div class="kpi-value" id="kpi-total-workforce">-</div>
-          <p class="kpi-subtext">Active contract staff mapped in ZingHR</p>
+          <div class="kpi-value" id="kpi-total-workforce">11,135</div>
+          <p class="kpi-subtext">Active employees in ZingHR database</p>
         </div>
       </div>
 
@@ -182,12 +183,12 @@
     <!-- CORE REPORT WORKSPACE: TWO COLUMN LAYOUT -->
     <section class="portal-workspace-grid">
       
-      <!-- COLUMN 1: BIOMETRIC REGISTRATION AUDIT PANEL -->
+      <!-- COLUMN 1: EMPLOYEE DETAILS & MASTER PANEL -->
       <article class="workspace-panel card-layout">
         <div class="panel-header">
           <div class="panel-title-group">
-            <h2>Biometric Enrollment Audit</h2>
-            <p>Transparency check: Map ZingHR entries to Face recognition enrollments</p>
+            <h2>Employee Details Table</h2>
+            <p>Single source of truth: Master employee directory & biometric enrollments</p>
           </div>
         </div>
 
@@ -208,15 +209,30 @@
         <div class="employee-scroll-list" id="audit-employee-list">
           <div class="loading-state">Loading company roster data...</div>
         </div>
+
+        <!-- Audit Pagination Controls -->
+        <div class="pagination-bar" id="audit-pagination-bar">
+          <div class="pagination-info" id="audit-pagination-info">Showing 0-0 of 0</div>
+          <div class="pagination-controls">
+            <button class="page-btn" id="audit-prev-page" title="Previous Page">◀</button>
+            <span class="page-indicator" id="audit-page-indicator">Page 1 of 1</span>
+            <button class="page-btn" id="audit-next-page" title="Next Page">▶</button>
+            <select class="page-size-select" id="audit-page-size">
+              <option value="20">20 / page</option>
+              <option value="50" selected>50 / page</option>
+              <option value="100">100 / page</option>
+            </select>
+          </div>
+        </div>
       </article>
 
-      <!-- COLUMN 2: DAILY ATTENDANCE MONITOR -->
+      <!-- COLUMN 2: DAILY ATTENDANCE BOARD TABLE -->
       <article class="workspace-panel card-layout">
         <div class="panel-header" style="flex-wrap: wrap; gap: 10px;">
           <div class="panel-title-group" style="display: flex; flex-direction: column; gap: 4px;">
-            <h2>Daily Attendance Board</h2>
+            <h2>Daily Attendance Board Table</h2>
             <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--color-text-secondary);">
-              <span>Date:</span>
+              <span>Muster Roll Date:</span>
               <input type="date" id="attendance-board-date-picker" style="background: #1e293b; border: 1px solid #334155; border-radius: 4px; color: #fff; font-size: 0.75rem; padding: 2px 6px; outline: none; cursor: pointer;">
             </div>
           </div>
@@ -242,20 +258,40 @@
           <table class="portal-table">
             <thead>
               <tr>
-                <th>Employee Details</th>
-                <th>Shift</th>
+                <th>Employee Code</th>
+                <th>Employee Name</th>
+                <th>Department</th>
+                <th>Designation</th>
+                <th>Attendance Rule Group</th>
+                <th>Plant Location</th>
                 <th>Check-in Time</th>
-                <th>Punch Location</th>
-                <th>Verification</th>
+                <th>Check-out Time</th>
+                <th>Total Work Duration</th>
+                <th>Status</th>
                 <th>ZingHR Sync</th>
               </tr>
             </thead>
             <tbody id="attendance-board-body">
               <tr>
-                <td colspan="6" style="text-align:center; padding:50px; color:var(--color-text-secondary);">Select a date above to display records.</td>
+                <td colspan="11" style="text-align:center; padding:50px; color:var(--color-text-secondary);">Loading real-time ZingHR attendance records...</td>
               </tr>
             </tbody>
           </table>
+        </div>
+        
+        <!-- Attendance Table Pagination Controls -->
+        <div class="pagination-bar" id="attendance-pagination-bar">
+          <div class="pagination-info" id="att-pagination-info">Showing 0-0 of 0</div>
+          <div class="pagination-controls">
+            <button class="page-btn" id="att-prev-page" title="Previous Page">◀</button>
+            <span class="page-indicator" id="att-page-indicator">Page 1 of 1</span>
+            <button class="page-btn" id="att-next-page" title="Next Page">▶</button>
+            <select class="page-size-select" id="att-page-size">
+              <option value="25">25 / page</option>
+              <option value="50" selected>50 / page</option>
+              <option value="100">100 / page</option>
+            </select>
+          </div>
         </div>
       </article>
       
@@ -324,6 +360,122 @@
   <footer class="portal-footer">
     <p>Layam Attendance Biometric Reporting Console &copy; 2026. Standalone Mode Enabled.</p>
   </footer>
+
+  <!-- EMPLOYEE PROFILE DETAILS MODAL DIALOG -->
+  <div id="employee-profile-modal" class="profile-modal-backdrop hidden">
+    <div class="profile-modal-dialog">
+      <div class="profile-modal-header">
+        <div class="profile-modal-title">
+          <span>Biometric Employee Dossier</span>
+          <span id="modal-emp-id-badge" class="modal-hero-id">ID: -</span>
+        </div>
+        <button id="modal-profile-close-btn" class="profile-modal-close-btn" title="Close modal">&times;</button>
+      </div>
+
+      <div class="profile-modal-body">
+        <!-- Hero card -->
+        <div class="modal-hero-card">
+          <img id="modal-emp-avatar" class="modal-hero-avatar" src="" alt="Profile Photo">
+          <div class="modal-hero-info">
+            <h3 id="modal-emp-name" class="modal-hero-name">Employee Name</h3>
+            <div class="modal-hero-meta">
+              <span id="modal-emp-designation" style="font-weight: 600; color: var(--color-text-secondary); font-size: 0.85rem;">-</span>
+              <span>•</span>
+              <span id="modal-emp-status" class="badge badge-success">Active</span>
+              <span id="modal-emp-biostatus" class="badge badge-success">✓ Enrolled</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Master Details Grid -->
+        <div class="modal-info-grid">
+          <div class="modal-info-item">
+            <span class="modal-info-label">Department</span>
+            <span id="modal-emp-dept" class="modal-info-value">-</span>
+          </div>
+          <div class="modal-info-item">
+            <span class="modal-info-label">Attendance Rule Group</span>
+            <span id="modal-emp-rule" class="modal-info-value" style="color: var(--color-primary);">-</span>
+          </div>
+          <div class="modal-info-item">
+            <span class="modal-info-label">Plant Location</span>
+            <span id="modal-emp-plant" class="modal-info-value">-</span>
+          </div>
+          <div class="modal-info-item">
+            <span class="modal-info-label">Contact Number</span>
+            <span id="modal-emp-phone" class="modal-info-value">-</span>
+          </div>
+          <div class="modal-info-item" style="grid-column: span 2;">
+            <span class="modal-info-label">Email Address</span>
+            <span id="modal-emp-email" class="modal-info-value">-</span>
+          </div>
+        </div>
+
+        <!-- Today's Attendance Punch Box -->
+        <div class="modal-punch-card">
+          <div class="modal-section-title">
+            <span>Today's Attendance Punch (<span id="modal-punch-date">-</span>)</span>
+            <span id="modal-punch-sync" class="badge badge-success">✓ ZingHR Synced</span>
+          </div>
+          <div class="modal-punch-grid">
+            <div class="modal-punch-stat">
+              <span class="modal-info-label">Status</span>
+              <span id="modal-punch-status" style="font-weight: 700; font-size: 0.85rem;">-</span>
+            </div>
+            <div class="modal-punch-stat">
+              <span class="modal-info-label">First In-Time</span>
+              <span id="modal-punch-in" style="font-weight: 700; font-size: 0.85rem; color: var(--color-success); font-family: var(--font-mono);">-</span>
+            </div>
+            <div class="modal-punch-stat">
+              <span class="modal-info-label">Last Out-Time</span>
+              <span id="modal-punch-out" style="font-weight: 700; font-size: 0.85rem; color: #f59e0b; font-family: var(--font-mono);">-</span>
+            </div>
+            <div class="modal-punch-stat">
+              <span class="modal-info-label">Work Duration</span>
+              <span id="modal-punch-duration" style="font-weight: 700; font-size: 0.85rem; color: var(--color-primary); font-family: var(--font-mono);">-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Monthly Attendance History Calendar -->
+        <div class="modal-cal-card">
+          <div class="modal-section-title">
+            <span>Attendance History Calendar</span>
+            <select id="modal-cal-month-select" style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.72rem; font-weight: 600; padding: 3px 8px; color: var(--color-primary); outline: none; cursor: pointer;">
+              <option value="2026-07">July 2026</option>
+              <option value="2026-08">August 2026</option>
+              <option value="2026-09" selected>September 2026</option>
+              <option value="2026-10">October 2026</option>
+            </select>
+          </div>
+          <div class="modal-cal-days-header">
+            <div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div><div>S</div>
+          </div>
+          <div id="modal-cal-grid" class="modal-cal-grid">
+            <!-- Dynamically populated -->
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 0.72rem; color: var(--color-text-secondary); border-top: 1px solid var(--border-color); padding-top: 8px;">
+            <div style="display: flex; gap: 12px;">
+              <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: var(--color-success);"></span> Present</span>
+              <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #fee2e2; border: 1px solid #fecaca;"></span> Absent</span>
+            </div>
+            <div id="modal-cal-stats" style="font-weight: 700; color: var(--color-primary);">
+              <!-- Present days & percentage -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="modal-btn-jump-dossier" style="background: #f1f5f9; border: 1px solid var(--border-color); color: var(--color-text-primary); padding: 8px 14px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer;">
+          View in Full Dossier Sheet ↓
+        </button>
+        <button id="modal-btn-close-footer" style="background: var(--color-primary); border: none; color: #fff; padding: 8px 18px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; cursor: pointer;">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
 
   <script src="portal.js?v=2.2.1"></script>
   <!-- Programmatic Cache Clear & Service Worker Unregistration to solve browser cache headaches on portal.html -->

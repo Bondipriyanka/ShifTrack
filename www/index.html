@@ -69,7 +69,7 @@
             <div class="login-form">
               <div class="select-group">
                 <label for="login-pin" style="margin-bottom: 10px; display: block; font-weight: 600; letter-spacing: 0.8px;" data-i18n="enter_pin">Enter Supervisor Pin</label>
-                <input type="password" id="login-pin" placeholder="PIN" maxlength="4" style="text-align: center; letter-spacing: 4px; font-size: 1.2rem; margin-top: 4px;">
+                <input type="password" id="login-pin" placeholder="PIN" maxlength="4" style="text-align: center; letter-spacing: 4px; font-size: 1.2rem; margin-top: 4px;" onkeydown="if(event.key==='Enter')handleSupervisorLogin()">
               </div>
               <div class="select-group" style="margin-top: 10px; margin-bottom: 12px;">
                 <label for="login-lang-select" style="margin-bottom: 6px; display: block; font-weight: 600; font-size: 0.75rem; color: #94a3b8;" data-i18n="select_language">Language / भाषा / భాష / மொழி / ಕನ್ನಡ</label>
@@ -81,7 +81,7 @@
                   <option value="kn">ಕನ್ನಡ (Kannada)</option>
                 </select>
               </div>
-              <button class="login-btn" id="login-submit-btn" data-i18n="authorize_access">Authorize Access</button>
+              <button class="login-btn" id="login-submit-btn" onclick="handleSupervisorLogin()" data-i18n="authorize_access">Authorize Access</button>
               <div class="login-hint" data-i18n="pin_hint">Passcode Hint: <strong>1234</strong></div>
             </div>
           </div>
@@ -122,6 +122,29 @@
                 
                 <!-- Graphic Overlay Canvas for Face Boxes -->
                 <canvas id="camera-canvas" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index: 12; pointer-events: none;"></canvas>
+
+                <!-- Night Vision Screen Illuminator / Soft Flash Ring -->
+                <div id="night-light-overlay" class="night-light-off"></div>
+
+                <!-- Camera Top Low-Light & Flash Controls Bar -->
+                <div class="camera-top-toolbar" id="camera-top-toolbar">
+                  <button id="btn-toggle-flash" title="Toggle Flash / Hardware Torch / Screen Light" class="cam-tool-btn">
+                    <span id="flash-icon">⚡</span> <span id="flash-status-text">Flash: Auto</span>
+                  </button>
+
+                  <div id="ambient-light-badge" class="ambient-badge">
+                    <span id="ambient-light-icon">☀️</span> <span id="ambient-light-val">Lux: --%</span>
+                  </div>
+
+                  <button id="btn-toggle-night-vision" title="Toggle Low-Light Night Assist Filter" class="cam-tool-btn">
+                    <span id="night-mode-icon">🌙</span> <span id="night-mode-text">Night Mode</span>
+                  </button>
+                </div>
+
+                <!-- Low Light Auto-Notification Banner -->
+                <div id="low-light-banner" class="low-light-banner hidden">
+                  <span>🌙 Low Light Detected — Screen Flash & AI Assist Active</span>
+                </div>
 
                 <!-- Camera Fallback when webcam is off or blocked -->
                 <div class="camera-fallback" id="camera-fallback">
@@ -189,7 +212,7 @@
 
                  <!-- Check-In / Check-Out Actions (Green & Red buttons) -->
                  <div id="check-in-out-actions" style="display: flex; gap: 10px; margin-top: 10px; width: 100%;">
-                   <button class="scan-btn" id="btn-check-out" disabled style="flex: 1; background: #ef4444; color: #fff; border: none; font-weight: bold; height: 45px; border-radius: 8px; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                   <button class="scan-btn" id="btn-check-out" style="flex: 1; background: #ef4444; color: #fff; border: none; font-weight: bold; height: 45px; border-radius: 8px; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;">
                      Check Out
                    </button>
                  </div>
@@ -456,23 +479,23 @@
 
           <!-- Bottom Navigation Bar inside mobile device UI -->
           <div class="phone-nav-bar hidden" id="app-bottom-navbar">
-            <div class="nav-item active" id="nav-scan-tab">
+            <div class="nav-item active" id="nav-scan-tab" onclick="switchTab('scan')">
               <svg class="svg-icon sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" fill="none"/></svg>
               <span data-i18n="scan_gate">Scan Gate</span>
             </div>
-            <div class="nav-item" id="nav-register-tab">
+            <div class="nav-item" id="nav-register-tab" onclick="switchTab('register')">
               <svg class="svg-icon sm" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2" fill="none"/><line x1="19" y1="8" x2="19" y2="14" stroke="currentColor" stroke-width="2"/><line x1="22" y1="11" x2="16" y2="11" stroke="currentColor" stroke-width="2"/></svg>
               <span data-i18n="register_face">Register Face</span>
             </div>
-            <div class="nav-item" id="nav-logs-tab">
+            <div class="nav-item" id="nav-logs-tab" onclick="switchTab('logs')">
               <svg class="svg-icon sm" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2" fill="none"/><line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2"/><line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2"/><polyline points="10 9 9 9 8 9" stroke="currentColor" stroke-width="2"/></svg>
               <span data-i18n="roster_logs">Roster & Logs</span>
             </div>
-            <div class="nav-item" id="nav-zinghr-tab">
+            <div class="nav-item" id="nav-zinghr-tab" onclick="switchTab('zinghr')">
               <svg class="svg-icon sm" viewBox="0 0 24 24" style="fill:none; stroke:currentColor; stroke-width:2;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
               <span data-i18n="zinghr">ZingHR</span>
             </div>
-            <div class="nav-item" id="nav-logout-tab">
+            <div class="nav-item" id="nav-logout-tab" onclick="lockAppSupervisor()">
               <svg class="svg-icon sm" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="16 17 21 12 16 7" stroke="currentColor" stroke-width="2" fill="none"/><line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="2"/></svg>
               <span data-i18n="lock_hub">Lock Hub</span>
             </div>
@@ -533,14 +556,34 @@
                 </div>
               </div>
               
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.75rem; color: #94a3b8;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.72rem; color: #94a3b8; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
                 <div>
-                  <span style="display: block; font-size: 0.65rem; color: #64748b;">JOB ROLE</span>
+                  <span style="display: block; font-size: 0.6rem; color: #64748b; font-weight: 700;">JOB ROLE</span>
                   <strong id="profile-drawer-role" style="color: #fff;">-</strong>
                 </div>
                 <div>
-                  <span style="display: block; font-size: 0.65rem; color: #64748b;">SHIFT</span>
+                  <span style="display: block; font-size: 0.6rem; color: #64748b; font-weight: 700;">SHIFT</span>
                   <strong id="profile-drawer-shift" style="color: #fff;">-</strong>
+                </div>
+                <div>
+                  <span style="display: block; font-size: 0.6rem; color: #64748b; font-weight: 700;">DEPARTMENT</span>
+                  <strong id="profile-drawer-dept" style="color: #fff;">-</strong>
+                </div>
+                <div>
+                  <span style="display: block; font-size: 0.6rem; color: #64748b; font-weight: 700;">PLANT LOCATION</span>
+                  <strong id="profile-drawer-plant" style="color: #fff;">-</strong>
+                </div>
+                <div>
+                  <span style="display: block; font-size: 0.6rem; color: #64748b; font-weight: 700;">CONTACT</span>
+                  <strong id="profile-drawer-contact" style="color: #fff;">-</strong>
+                </div>
+                <div>
+                  <span style="display: block; font-size: 0.6rem; color: #64748b; font-weight: 700;">BIOMETRIC STATUS</span>
+                  <strong id="profile-drawer-biostatus" style="color: #22c55e;">-</strong>
+                </div>
+                <div style="grid-column: span 2;">
+                  <span style="display: block; font-size: 0.6rem; color: #64748b; font-weight: 700;">EMAIL</span>
+                  <strong id="profile-drawer-email" style="color: #fff; word-break: break-all;">-</strong>
                 </div>
               </div>
               
@@ -780,179 +823,151 @@
             </div>
           </div>
           
-          <!-- Admin Tabs -->
-          <div class="admin-tabs" style="display: flex; gap: 4px; margin-top: 4px;">
-            <button id="admin-tab-live" class="admin-tab active" style="background: transparent; border: none; border-bottom: 2px solid var(--color-primary); color: #fff; padding: 6px 12px; cursor: pointer; font-weight: 700; font-size: 0.8rem; transition: all 0.2s;">
-              Live Roster & Logs
+          <!-- Admin Tabs: Two Core Tables Matching ZingHR -->
+          <div class="admin-tabs" style="display: flex; gap: 6px; margin-top: 4px;">
+            <button id="admin-tab-employees" class="admin-tab active" onclick="switchAdminTab('employees')" style="background: transparent; border: none; border-bottom: 2px solid var(--color-primary); color: #fff; padding: 8px 16px; cursor: pointer; font-weight: 700; font-size: 0.85rem; transition: all 0.2s;">
+              👥 Employee Details Table
             </button>
-            <button id="admin-tab-reports" class="admin-tab" style="background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--color-text-muted); padding: 6px 12px; cursor: pointer; font-weight: 700; font-size: 0.8rem; transition: all 0.2s;">
-              Zing HR Monthly Reports
+            <button id="admin-tab-attendance" class="admin-tab" onclick="switchAdminTab('attendance')" style="background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--color-text-muted); padding: 8px 16px; cursor: pointer; font-weight: 700; font-size: 0.85rem; transition: all 0.2s;">
+              📋 Attendance Board Table
             </button>
           </div>
         </div>
 
-        <!-- VIEW 1: Live Logs View -->
-        <div id="admin-view-live" style="display: flex; flex-direction: column; flex: 1;">
-          <!-- Dashboard Summary Indicators -->
-          <div class="stats-summary-row" style="margin-top: 15px;">
-            <div class="stat-box">
-              <div class="stat-label">Total Logs Today</div>
-              <div class="stat-value" id="stat-total-scans">0</div>
+        <!-- TABLE 1: Employee Details Table (Unified Employee Master & Registration) -->
+        <div id="admin-view-employees" style="display: flex; flex-direction: column; flex: 1; margin-top: 15px;">
+          
+          <!-- Employee Table Action Header -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; background: #ffffff; padding: 14px 18px; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04); flex-wrap: wrap; gap: 10px;">
+            <div>
+              <h4 style="margin: 0; font-size: 0.98rem; color: #0f172a; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 6px #10b981;"></span>
+                Employee Master Table (ZingHR Replica)
+              </h4>
+              <p style="margin: 3px 0 0 0; font-size: 0.74rem; color: #64748b; font-weight: 500;">
+                Single source of truth for all employee profiles, plant assignments, and biometric enrollments.
+              </p>
             </div>
-            <div class="stat-box">
-              <div class="stat-label">Approved Scans</div>
-              <div class="stat-value green" id="stat-approved">0</div>
-            </div>
-            <div class="stat-box">
-              <div class="stat-label">Access Denied</div>
-              <div class="stat-value" id="stat-denied" style="color:var(--color-error)">0</div>
-            </div>
-            <div class="stat-box">
-              <div class="stat-label">Offline Queued</div>
-              <div class="stat-value amber" id="stat-offline">0</div>
-            </div>
-          </div>
-
-          <!-- Bulk Spreadsheet Importer Section -->
-          <div class="bulk-import-card" style="background: rgba(30, 41, 59, 0.2); border: 2px dashed var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 20px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: all 0.3s; margin-top: 10px;">
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
-              <span style="font-size: 24px;">📊</span>
-              <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--color-primary); text-transform: uppercase; letter-spacing: 0.5px;">Bulk Employee Roster Database Import</h4>
-            </div>
-            <p style="color: var(--color-text-secondary); margin: 0 0 15px 0; font-size: 0.8rem; max-width: 650px; line-height: 1.4;">
-              Supervisors can upload an Excel CSV sheet or JSON roster document to automatically sync 100+ employees. Duplicate check will automatically skip already registered candidates.
-            </p>
-            <input type="file" id="bulk-roster-import" accept=".csv,.json" style="display: none;">
-            <button class="sim-trigger-btn" onclick="document.getElementById('bulk-roster-import').click()" style="background: var(--color-primary); color: #000; font-weight: 700; font-size: 0.85rem; padding: 10px 24px; border-radius: 8px; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); display: inline-block;">
-              Upload Roster Spreadsheet / CSV
-            </button>
-          </div>
-
-          <div class="db-dashboard-grid">
             
-            <!-- Registered Employee Roster & Plant Summary -->
-            <div class="employee-db-list" style="display: flex; flex-direction: column; gap: 20px;">
-              <div>
-                <h4 class="db-title-sm" style="margin-top: 0;">Registered Biometrics</h4>
-                <div id="roster-list-container">
-                  <!-- Rendered dynamically in app.js -->
-                </div>
-              </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <input type="text" id="admin-emp-search" placeholder="🔍 Search ID, Name, Role..." style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; color: #0f172a; padding: 6px 12px; font-size: 0.75rem; width: 200px; outline: none;">
               
-              <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;">
-                <h4 class="db-title-sm" style="margin-top: 0; color: var(--color-primary);">Plant-wise Attendance Summary</h4>
-                <div id="plant-summary-container" style="display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto; padding-right: 4px;">
-                  <!-- Rendered dynamically in app.js -->
-                </div>
-              </div>
-            </div>
+              <select id="admin-emp-plant-filter" style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; color: #0f172a; padding: 6px 10px; font-size: 0.75rem; font-weight: 600; outline: none; cursor: pointer;">
+                <option value="all">All Plant Locations</option>
+                <option value="tata">Tata Motors - Gate 1</option>
+                <option value="reliance">Reliance - Hazira</option>
+                <option value="adani">Adani - Port Gate</option>
+                <option value="l&t">L&T - Gate 3</option>
+                <option value="pantnagar">Pantnagar</option>
+              </select>
 
-            <!-- Attendance table records -->
-            <div class="table-container">
-              <table class="records-table">
-                <thead>
+              <button id="btn-sync-zinghr-live" class="sim-trigger-btn" style="background: #0284c7; color: #fff; font-weight: 700; border: none; border-radius: 6px; padding: 6px 14px; font-size: 0.75rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);">
+                <span id="sync-btn-icon">🔄</span> <span id="sync-btn-text">Sync with ZingHR</span>
+              </button>
+
+              <button class="sim-trigger-btn" onclick="document.getElementById('bulk-roster-import').click()" style="background: #1e293b; color: #fff; font-weight: 600; border: 1px solid #334155; border-radius: 6px; padding: 6px 12px; font-size: 0.75rem; cursor: pointer;">
+                📊 Upload CSV
+              </button>
+              <input type="file" id="bulk-roster-import" accept=".csv,.json" style="display: none;">
+            </div>
+          </div>
+
+          <!-- Employee Table Container -->
+          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.04); flex: 1;">
+            <div style="max-height: 480px; overflow-y: auto; overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.76rem;">
+                <thead style="background: #f8fafc; position: sticky; top: 0; z-index: 5; border-bottom: 1px solid #e2e8f0;">
                   <tr>
-                    <th>Employee</th>
-                    <th>Timestamp</th>
-                    <th>Client Location</th>
-                    <th>Geotag & Region</th>
-                    <th>Verification</th>
-                    <th>ZingHR Sync</th>
+                    <th style="padding: 10px 14px; color: #475569; font-weight: 700; white-space: nowrap;">Employee Code</th>
+                    <th style="padding: 10px 14px; color: #475569; font-weight: 700; white-space: nowrap;">Employee Name</th>
+                    <th style="padding: 10px 14px; color: #475569; font-weight: 700; white-space: nowrap;">Department</th>
+                    <th style="padding: 10px 14px; color: #475569; font-weight: 700; white-space: nowrap;">Designation</th>
+                    <th style="padding: 10px 14px; color: #475569; font-weight: 700; white-space: nowrap;">Attendance Rule Group</th>
+                    <th style="padding: 10px 14px; color: #475569; font-weight: 700; white-space: nowrap;">Plant Location</th>
+                    <th style="padding: 10px 14px; color: #475569; font-weight: 700; white-space: nowrap;">Contact & Email</th>
+                    <th style="padding: 10px 14px; color: #475569; font-weight: 700; white-space: nowrap;">Biometric Status</th>
+                    <th style="padding: 10px 14px; color: #475569; font-weight: 700; white-space: nowrap;">Status</th>
                   </tr>
                 </thead>
-                <tbody id="attendance-tbody">
-                  <!-- Records populated dynamically -->
-                  <tr id="empty-table-row">
-                    <td colspan="6" style="text-align: center; color: var(--color-text-muted); padding: 40px 0;">
-                      No attendance records captured for this session yet. Activate scan mode in the mobile emulator to check in candidates.
-                    </td>
+                <tbody id="admin-employees-tbody">
+                  <tr>
+                    <td colspan="9" style="text-align: center; padding: 40px; color: #64748b;">Loading Employee Table records...</td>
                   </tr>
                 </tbody>
               </table>
             </div>
-
+            
+            <!-- Employee Table Pagination Controls -->
+            <div id="admin-emp-pagination-bar" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #f8fafc; border-top: 1px solid #e2e8f0; font-size: 0.75rem; color: #475569; flex-wrap: wrap; gap: 8px;">
+              <div id="admin-emp-page-info">Showing 0-0 of 0 active employees</div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <button id="admin-emp-prev" style="padding: 4px 10px; border: 1px solid #cbd5e1; background: #fff; border-radius: 4px; cursor: pointer; font-size: 0.72rem;">◀ Prev</button>
+                <span id="admin-emp-indicator" style="font-weight: 700; color: #0f172a;">Page 1 of 1</span>
+                <button id="admin-emp-next" style="padding: 4px 10px; border: 1px solid #cbd5e1; background: #fff; border-radius: 4px; cursor: pointer; font-size: 0.72rem;">Next ▶</button>
+                <select id="admin-emp-page-size" style="padding: 3px 6px; border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; font-size: 0.72rem; cursor: pointer;">
+                  <option value="25">25 / page</option>
+                  <option value="50" selected>50 / page</option>
+                  <option value="100">100 / page</option>
+                </select>
+              </div>
+            </div>
           </div>
+
         </div>
 
-        <!-- VIEW 2: Zing HR Monthly Reports View (Hidden initially) -->
-        <div id="admin-view-reports" class="hidden" style="display: flex; flex-direction: column; flex: 1; margin-top: 15px;">
-          <!-- Report Header -->
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; background: #ffffff; padding: 12px 18px; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);">
+        <!-- TABLE 2: Attendance Board Table (Daily Attendance Register & Logs) -->
+        <div id="admin-view-attendance" class="hidden" style="display: flex; flex-direction: column; flex: 1; margin-top: 15px;">
+          
+          <!-- Attendance Board Action Header -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; background: #ffffff; padding: 12px 18px; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04); flex-wrap: wrap; gap: 10px;">
             <div>
               <h4 style="margin: 0; font-size: 0.95rem; color: #0f172a; font-weight: 800; display: flex; align-items: center; gap: 8px;">
-                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 6px #10b981;"></span>
-                Zing HR Monthly Attendance Portal
+                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #0284c7; box-shadow: 0 0 6px #0284c7;"></span>
+                Daily Attendance Board Table (ZingHR Muster Roll)
               </h4>
-              <p style="margin: 3px 0 0 0; font-size: 0.72rem; color: #64748b; font-weight: 500;">Corporate attendance reporting and validation console</p>
+              <p style="margin: 3px 0 0 0; font-size: 0.72rem; color: #64748b; font-weight: 500;">
+                Calculated directly from real-time biometric swipes and check-in / check-out timestamps.
+              </p>
             </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <label for="report-month-select" style="font-size: 0.75rem; color: #334155; font-weight: 600;">Month:</label>
-              <select id="report-month-select" style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; color: #0284c7; padding: 5px 12px; font-size: 0.75rem; font-weight: 700; outline: none; cursor: pointer;">
-                <option value="2026-07">July 2026</option>
-                <option value="2026-08">August 2026</option>
-              </select>
+            
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <span id="board-stat-present" class="badge" style="background: #dcfce7; color: #15803d; font-weight: 700; padding: 4px 10px; border-radius: 6px; border: 1px solid #bbf7d0;">Present: 0</span>
+              <span id="board-stat-absent" class="badge" style="background: #fee2e2; color: #b91c1c; font-weight: 700; padding: 4px 10px; border-radius: 6px; border: 1px solid #fecaca;">Absent: 0</span>
+
+              <label for="admin-register-date-picker" style="font-size: 0.75rem; color: #334155; font-weight: 600;">Date:</label>
+              <input type="date" id="admin-register-date-picker" style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; color: #0f172a; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; outline: none; cursor: pointer;">
+              <button id="admin-register-refresh-btn" style="background: var(--color-primary); color: #000; font-weight: 700; border: none; border-radius: 6px; padding: 6px 14px; font-size: 0.75rem; cursor: pointer; box-shadow: 0 2px 6px rgba(37,99,235,0.2);">🔄 Refresh</button>
             </div>
           </div>
 
-          <div class="db-dashboard-grid" style="display: grid; grid-template-columns: 1.2fr 1.1fr; gap: 16px;">
-            <!-- Left side: Employee Roster summary list -->
-            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; height: 360px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);">
-              <h4 class="db-title-sm" style="margin-top: 0; margin-bottom: 12px; color: #0f172a; font-weight: 800; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
-                <span>Zing HR Employees</span>
-                <span style="font-size: 0.7rem; color: #0284c7; font-weight: 600;">Select to view details</span>
-              </h4>
-              <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;" id="report-employee-list">
-                <!-- Loaded dynamically -->
-              </div>
-            </div>
-
-            <!-- Right side: Monthly Calendar visualizer -->
-            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; height: 360px; display: flex; flex-direction: column; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);" id="report-calendar-card">
-              <div id="report-calendar-placeholder" style="margin: auto; text-align: center; color: #64748b; display: flex; flex-direction: column; align-items: center; gap: 12px;">
-                <div style="width: 54px; height: 54px; border-radius: 50%; background: #e0f2fe; border: 1px solid #bae6fd; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; color: #0284c7;">📅</div>
-                <p style="font-size: 0.78rem; max-width: 240px; line-height: 1.5; margin: 0; color: #475569; font-weight: 500;">Select an employee from the list to view their detailed monthly check-in calendar grid.</p>
-              </div>
-              <div id="report-calendar-content" class="hidden" style="height: 100%; display: flex; flex-direction: column;">
-                <!-- Dark Blue Accent Banner for Selected Employee Header -->
-                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px; background: linear-gradient(135deg, #1e293b, #0f172a); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.2); box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);">
-                  <img id="cal-emp-avatar" src="" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid #10b981; background: #0f172a; box-shadow: 0 0 8px rgba(16, 185, 129, 0.35);">
-                  <div>
-                    <h4 id="cal-emp-name" style="margin: 0; color: #ffffff; font-size: 0.92rem; font-weight: 800; letter-spacing: 0.2px;">Priyanka M</h4>
-                    <p id="cal-emp-meta" style="margin: 3px 0 0 0; font-size: 0.74rem; color: #38bdf8; font-weight: 700;">EMP001 | 22 Days Attended</p>
-                  </div>
-                </div>
-                <!-- Employee Profile Info Grid -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 6px; font-size: 0.68rem; color: #334155; box-shadow: inset 0 1px 3px rgba(0,0,0,0.02);">
-                  <div><strong style="color: #64748b;">Role:</strong> <span id="cal-emp-role" style="font-weight: 700; color: #0f172a;">Contract Staff</span></div>
-                  <div><strong style="color: #64748b;">Shift:</strong> <span id="cal-emp-shift" style="font-weight: 700; color: #0f172a;">Morning Shift (A)</span></div>
-                  <div><strong style="color: #64748b;">Email:</strong> <span id="cal-emp-email" style="font-weight: 700; color: #0f172a;">priyanka.m@layam.com</span></div>
-                  <div><strong style="color: #64748b;">Contact:</strong> <span id="cal-emp-phone" style="font-weight: 700; color: #0f172a;">+91 98765 43210</span></div>
-                </div>
-                <!-- Calendar grid mapping -->
-                <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
-                  <div style="display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.72rem; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px; padding: 5px 0; background: #f1f5f9; border-radius: 6px; border: 1px solid #cbd5e1;">
-                    <div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div><div>S</div>
-                  </div>
-                  <div id="cal-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); grid-gap: 6px; flex: 1; align-content: start;">
-                    <!-- Calendar days loaded dynamically -->
-                  </div>
-                  <!-- Calendar Legend -->
-                  <div style="display: flex; justify-content: center; gap: 16px; margin-top: 8px; font-size: 0.72rem; border-top: 1px solid #e2e8f0; padding-top: 8px; background: #f8fafc; border-radius: 6px; border: 1px solid #f1f5f9;">
-                    <div style="display: flex; align-items: center; gap: 6px; color: #0f172a; font-weight: 700;">
-                      <span style="width: 10px; height: 10px; border-radius: 3px; background: #10b981; border: 1px solid #059669; box-shadow: 0 0 4px rgba(16, 185, 129, 0.4);"></span>
-                      Present
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 6px; color: #64748b; font-weight: 600;">
-                      <span style="width: 10px; height: 10px; border-radius: 3px; background: #f8fafc; border: 1px solid #cbd5e1;"></span>
-                      Absent / Off
-                    </div>
-                  </div>
-                </div>
-              </div>
+          <!-- Attendance Board Table Container (Exact 11 Columns Matching portal.html) -->
+          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.04); flex: 1;">
+            <div style="max-height: 480px; overflow-y: auto; overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.76rem; min-width: 1050px;">
+                <thead style="background: #f8fafc; position: sticky; top: 0; z-index: 5; border-bottom: 1px solid #e2e8f0;">
+                  <tr>
+                    <th style="padding: 10px 12px; color: #475569; font-weight: 700; white-space: nowrap;">Employee Code</th>
+                    <th style="padding: 10px 12px; color: #475569; font-weight: 700; white-space: nowrap;">Employee Name</th>
+                    <th style="padding: 10px 12px; color: #475569; font-weight: 700; white-space: nowrap;">Department</th>
+                    <th style="padding: 10px 12px; color: #475569; font-weight: 700; white-space: nowrap;">Designation</th>
+                    <th style="padding: 10px 12px; color: #475569; font-weight: 700; white-space: nowrap;">Attendance Rule Group</th>
+                    <th style="padding: 10px 12px; color: #475569; font-weight: 700; white-space: nowrap;">Plant Location</th>
+                    <th style="padding: 10px 12px; color: #475569; font-weight: 700; white-space: nowrap;">Check-in Time</th>
+                    <th style="padding: 10px 12px; color: #475569; font-weight: 700; white-space: nowrap;">Check-out Time</th>
+                    <th style="padding: 10px 12px; color: #475569; font-weight: 700; white-space: nowrap;">Total Work Duration</th>
+                    <th style="padding: 10px 12px; color: #475569; font-weight: 700; white-space: nowrap;">Status</th>
+                    <th style="padding: 10px 12px; color: #475569; font-weight: 700; white-space: nowrap;">ZingHR Sync</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-register-tbody">
+                  <tr>
+                    <td colspan="11" style="text-align: center; padding: 40px; color: #64748b;">Loading Daily Attendance Board...</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
-      </article>
 
       <!-- Panel 3: Live Developer logs & API payload stream -->
       <article class="admin-panel">

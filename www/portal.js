@@ -5,24 +5,34 @@ document.addEventListener("DOMContentLoaded", initPortal);
 let zinghrReportData = [];
 let allLogsData = [];
 let dbStatusData = {};
+let attendanceRegisterMap = new Map();
 
 let currentSearchQuery = "";
 let currentSelectedTab = "all"; // 'all', 'registered', 'unregistered'
 let currentAttTab = "all"; // 'all', 'present', 'absent'
 
+// Pagination state
+let auditCurrentPage = 1;
+let auditPageSize = 50;
+let attCurrentPage = 1;
+let attPageSize = 50;
+
+
 function initPortal() {
+  // Update clock immediately
+  updatePortalClock();
+
   // Set default date in date-picker to today's date
   const datePicker = document.getElementById("portal-date-picker");
   if (datePicker) {
-    // Current local date matching metadata: 2026-08-17
-    const today = new Date("2026-08-17");
+    const today = new Date();
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
     datePicker.value = `${year}-${month}-${day}`;
     
     // Listen for date picker changes
-    datePicker.addEventListener("change", renderDashboard);
+    datePicker.addEventListener("change", refreshData);
 
     const datePickerHeader = document.getElementById("attendance-board-date-picker");
     if (datePickerHeader) {
@@ -33,11 +43,18 @@ function initPortal() {
         datePickerHeader.value = e.target.value;
       });
       
-      // Sync header date picker to main date picker and trigger rendering
+      // Sync header date picker to main date picker and trigger data refresh
       datePickerHeader.addEventListener("change", (e) => {
         datePicker.value = e.target.value;
-        renderDashboard();
+        refreshData();
       });
+    }
+
+    // Set dossier month select to current month dynamically
+    const currentMonthStr = `${year}-${month}`;
+    const dossierMonthSelect = document.getElementById("dossier-month-select");
+    if (dossierMonthSelect && dossierMonthSelect.querySelector(`option[value="${currentMonthStr}"]`)) {
+      dossierMonthSelect.value = currentMonthStr;
     }
   }
 
@@ -46,12 +63,36 @@ function initPortal() {
   setInterval(updatePortalClock, 1000);
 
   // Setup event listeners
+  const syncBtn = document.getElementById("portal-sync-zinghr");
+  if (syncBtn) {
+    syncBtn.addEventListener("click", async () => {
+      syncBtn.textContent = "⏳ Syncing...";
+      syncBtn.disabled = true;
+      try {
+        const res = await fetch("/api/zinghr/sync-live", { method: "POST" });
+        const d = await res.json();
+        if (d.success) {
+          alert(`✅ ZingHR Workforce Sync Complete!\n\nActive Employees (Date of Leaving is NULL): ${d.activeCount}\nSeparated/Resigned Records: ${d.separatedCount}`);
+          await refreshData();
+        } else {
+          alert(`⚠️ Sync notice: ${d.message || "Failed to sync"}`);
+        }
+      } catch (err) {
+        alert(`❌ Sync failed: ${err.message}`);
+      } finally {
+        syncBtn.textContent = "🔄 Sync with ZingHR";
+        syncBtn.disabled = false;
+      }
+    });
+  }
+
   document.getElementById("portal-manual-refresh").addEventListener("click", refreshData);
   document.getElementById("portal-location-filter").addEventListener("change", renderDashboard);
   
   // Registration Audit Search and Tabs
   document.getElementById("audit-search-input").addEventListener("input", (e) => {
     currentSearchQuery = e.target.value.toLowerCase();
+    auditCurrentPage = 1;
     renderEmployeeAuditList();
   });
   
@@ -59,11 +100,67 @@ function initPortal() {
   document.getElementById("audit-tab-registered").addEventListener("click", (e) => switchAuditTab("registered", e.target));
   document.getElementById("audit-tab-unregistered").addEventListener("click", (e) => switchAuditTab("unregistered", e.target));
 
+  // Audit Pagination controls
+  const auditPrevBtn = document.getElementById("audit-prev-page");
+  if (auditPrevBtn) {
+    auditPrevBtn.addEventListener("click", () => {
+      if (auditCurrentPage > 1) {
+        auditCurrentPage--;
+        renderEmployeeAuditList();
+      }
+    });
+  }
+  const auditNextBtn = document.getElementById("audit-next-page");
+  if (auditNextBtn) {
+    auditNextBtn.addEventListener("click", () => {
+      auditCurrentPage++;
+      renderEmployeeAuditList();
+    });
+  }
+  const auditSizeSelect = document.getElementById("audit-page-size");
+  if (auditSizeSelect) {
+    auditSizeSelect.addEventListener("change", (e) => {
+      auditPageSize = parseInt(e.target.value, 10) || 50;
+      auditCurrentPage = 1;
+      renderEmployeeAuditList();
+    });
+  }
+
   // Daily Attendance Search and Tabs
-  document.getElementById("attendance-search-input").addEventListener("input", renderAttendanceBoard);
+  document.getElementById("attendance-search-input").addEventListener("input", () => {
+    attCurrentPage = 1;
+    renderAttendanceBoard();
+  });
   document.getElementById("att-tab-all").addEventListener("click", (e) => switchAttTab("all", e.target));
   document.getElementById("att-tab-present").addEventListener("click", (e) => switchAttTab("present", e.target));
   document.getElementById("att-tab-absent").addEventListener("click", (e) => switchAttTab("absent", e.target));
+
+  // Attendance Pagination controls
+  const attPrevBtn = document.getElementById("att-prev-page");
+  if (attPrevBtn) {
+    attPrevBtn.addEventListener("click", () => {
+      if (attCurrentPage > 1) {
+        attCurrentPage--;
+        renderAttendanceBoard();
+      }
+    });
+  }
+  const attNextBtn = document.getElementById("att-next-page");
+  if (attNextBtn) {
+    attNextBtn.addEventListener("click", () => {
+      attCurrentPage++;
+      renderAttendanceBoard();
+    });
+  }
+  const attSizeSelect = document.getElementById("att-page-size");
+  if (attSizeSelect) {
+    attSizeSelect.addEventListener("change", (e) => {
+      attPageSize = parseInt(e.target.value, 10) || 50;
+      attCurrentPage = 1;
+      renderAttendanceBoard();
+    });
+  }
+
 
   // Month select change in individual dossier calendar
   document.getElementById("dossier-month-select").addEventListener("change", handleDossierEmployeeChange);
@@ -72,8 +169,13 @@ function initPortal() {
   // Bind click listeners for KPI cards to act as filters and smooth-scroll shortcuts
   setupKpiCardClicks();
 
+  // Initialize employee profile modal listeners
+  initProfileModalListeners();
+
   // Fetch initial data
   refreshData();
+  // Auto-sync data every 10 seconds to keep gate punches immediately reflected
+  setInterval(refreshData, 10000);
 }
 
 function setupKpiCardClicks() {
@@ -139,29 +241,51 @@ function updatePortalClock() {
 
   const now = new Date();
   
-  // Formatted clock time
-  clockTime.textContent = now.toLocaleTimeString();
+  // Formatted clock time (e.g. 04:05:12 PM)
+  clockTime.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
   
-  // Formatted date string
+  // Formatted date string (e.g. Wednesday, September 9, 2026)
   const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
   clockDate.textContent = now.toLocaleDateString('en-US', options);
+}
+
+// Helper to reliably extract YYYY-MM-DD from any log format (ISO timestamp or ZingHR swipeDateTime)
+function getLogDate(log) {
+  if (!log) return "";
+  const raw = log.timestamp || log.swipeDateTime || log.swipeReceiveDateTime || "";
+  if (raw.includes("T")) return raw.split("T")[0];
+  if (raw.includes(" ")) return raw.split(" ")[0];
+  return raw;
+}
+
+// Helper to reliably extract location from any log format
+function getLogLocation(log) {
+  if (!log) return "";
+  return log.location || log.plantLocation || log.swipeLocation || "Tata Motors - Gate 1";
 }
 
 // Refresh data from server APIs
 async function refreshData() {
   const refreshBtn = document.getElementById("portal-manual-refresh");
-  if (refreshBtn) refreshBtn.textContent = "🔄 Loading...";
+  if (refreshBtn) refreshBtn.textContent = "⚡ Refreshing...";
 
   try {
-    // 1. Fetch ZingHR reports
+    const selectedDate = document.getElementById("portal-date-picker") ? document.getElementById("portal-date-picker").value : new Date().toISOString().split("T")[0];
+
+    // 1. Fetch ZingHR reports (Filtered to active employees where Date of Leaving is NULL)
     const reportRes = await fetch("/api/zinghr/report");
-    if (!reportRes.ok) throw new Error("HTTP " + reportRes.status);
-    zinghrReportData = await reportRes.json();
+    if (reportRes.ok) {
+      const rawData = await reportRes.json();
+      zinghrReportData = Array.isArray(rawData) 
+        ? rawData.filter(emp => !emp.dateOfLeaving || emp.dateOfLeaving.trim() === '' || emp.dateOfLeaving.toLowerCase() === 'null')
+        : (rawData.data || []);
+    }
 
     // 2. Fetch logs data
     const logsRes = await fetch("/api/logs");
-    if (!logsRes.ok) throw new Error("HTTP " + logsRes.status);
-    allLogsData = await logsRes.json();
+    if (logsRes.ok) {
+      allLogsData = await logsRes.json();
+    }
 
     // 3. Fetch general DB statistics
     const statusRes = await fetch("/api/db-status");
@@ -169,24 +293,107 @@ async function refreshData() {
       dbStatusData = await statusRes.json();
     }
 
-    console.log("Portal Data loaded:", {
-      workforce: zinghrReportData.length,
-      logs: allLogsData.length,
-      db: dbStatusData
-    });
+    // 4. Fetch Daily Attendance Register (Muster Roll)
+    const regRes = await fetch(`/api/attendance/register?date=${selectedDate}&location=all`);
+    if (regRes.ok) {
+      const regJson = await regRes.json();
+      attendanceRegisterMap.clear();
+      (regJson.records || []).forEach(r => {
+        const cleanId = (r.employeeCode || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+        if (cleanId) attendanceRegisterMap.set(cleanId, r);
+      });
+    }
 
-    // Populate the individual monthly report employee select list
+    console.log("Portal Data loaded:", {
+      activeWorkforce: zinghrReportData.length,
+      logs: allLogsData.length,
+      register: attendanceRegisterMap.size
+    });
+  } catch (netErr) {
+    console.warn("Network fetch warning:", netErr.message);
+  }
+
+  try {
+    // Populate the individual monthly report employee select list efficiently
     populateDossierEmployeeDropdown();
 
     // Render dashboard views
     renderDashboard();
-
   } catch (error) {
-    console.error("Error loading portal datasets:", error.message);
-    alert("Warning: Failed to fetch real-time attendance logs. Make sure node server.js is running.");
+    console.error("Error rendering portal dashboard:", error);
   } finally {
-    if (refreshBtn) refreshBtn.textContent = "🔄 Refresh Data";
+    if (refreshBtn) refreshBtn.textContent = "⚡ Quick Refresh";
   }
+}
+
+// Authoritative Daily Attendance Calculator - Harmonized with server.js Muster Roll Engine
+function getEmployeeDailyAttendanceMetrics(empId, targetDate) {
+  const cleanEmpId = (empId || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+  // Priority 1: Use authoritative server Attendance Register record if available
+  if (attendanceRegisterMap && attendanceRegisterMap.has(cleanEmpId)) {
+    const reg = attendanceRegisterMap.get(cleanEmpId);
+    return {
+      firstInTime: reg.firstInTime,
+      lastOutTime: reg.lastOutTime,
+      totalWorkDuration: reg.totalWorkDuration,
+      attendanceStatus: reg.attendanceStatus,
+      statusClass: reg.statusClass,
+      shiftName: reg.shiftName || reg.shiftCode,
+      location: reg.location,
+      fromRegister: true
+    };
+  }
+
+  // Fallback: Compute identical to Hop 3 Muster Roll engine in server.js
+  const empLogsToday = allLogsData.filter(log => {
+    if (!log) return false;
+    const logDate = getLogDate(log);
+    const rawId = log.empId || log.employeeCode || log.empIdentification || "";
+    const logCleanId = rawId.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    return logCleanId === cleanEmpId && logDate === targetDate;
+  }).sort((a, b) => new Date(a.timestamp || a.swipeDateTime) - new Date(b.timestamp || b.swipeDateTime));
+
+  let firstInLog = null;
+  let lastOutLog = null;
+
+  for (const l of empLogsToday) {
+    const dir = (l.direction || (l.inOutFlag === '2' ? 'Check-Out' : 'Check-In')).toLowerCase();
+    if (dir.includes('in') && !firstInLog) {
+      firstInLog = l;
+    }
+    if (dir.includes('out')) {
+      lastOutLog = l;
+    }
+  }
+
+  if (empLogsToday.length === 1 && !firstInLog && !lastOutLog) {
+    firstInLog = empLogsToday[0];
+  } else if (empLogsToday.length > 1 && !lastOutLog) {
+    lastOutLog = empLogsToday[empLogsToday.length - 1];
+  }
+
+  const firstInTime = firstInLog ? new Date(firstInLog.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '--';
+  const lastOutTime = lastOutLog ? new Date(lastOutLog.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '--';
+
+  let totalWorkDuration = '--';
+  if (firstInLog && lastOutLog && new Date(lastOutLog.timestamp) > new Date(firstInLog.timestamp)) {
+    const totalDurationMinutes = Math.round((new Date(lastOutLog.timestamp) - new Date(firstInLog.timestamp)) / 60000);
+    const h = Math.floor(totalDurationMinutes / 60);
+    const m = totalDurationMinutes % 60;
+    totalWorkDuration = `${h}h ${m}m`;
+  } else if (firstInLog) {
+    totalWorkDuration = 'In Progress';
+  }
+
+  return {
+    firstInTime,
+    lastOutTime,
+    totalWorkDuration,
+    attendanceStatus: firstInLog ? 'P' : 'A',
+    statusClass: firstInLog ? 'present' : 'absent',
+    fromRegister: false
+  };
 }
 
 // Master Render trigger for dashboard elements
@@ -248,8 +455,9 @@ function renderKpiCards() {
   // Unregistered workers
   const unregisteredCount = totalWorkforce - registeredCount;
 
-  // Update DOM metrics elements
-  document.getElementById("kpi-total-workforce").textContent = totalWorkforce;
+  // Update DOM metrics elements: Total Workforce Strength in ZingHR Database
+  const kpiTotalEl = document.getElementById("kpi-total-workforce");
+  if (kpiTotalEl) kpiTotalEl.textContent = totalWorkforce.toLocaleString();
   
   // Biometric Registration Rate
   document.getElementById("kpi-reg-count").textContent = `${registeredCount} / ${totalWorkforce} Enrolled`;
@@ -278,9 +486,10 @@ function renderKpiCards() {
 
   // 6. Liveness & Spoof Block Rate (Analyzing failed logs today)
   const selectedLogs = allLogsData.filter(log => {
-    const logDate = log.timestamp.split("T")[0];
+    const logDate = getLogDate(log);
     if (logDate !== selectedDate) return false;
-    if (locationFilter !== "all" && log.location !== locationFilter) return false;
+    const loc = getLogLocation(log);
+    if (locationFilter !== "all" && loc !== locationFilter) return false;
     return true;
   });
   
@@ -296,10 +505,13 @@ function renderKpiCards() {
 
 // Find biometric logs entry for employee ID on a given date string
 function findEmpCheckinLog(empId, dateStr) {
+  if (!empId) return null;
   const cleanId = empId.toUpperCase().replace(/[^A-Z0-9]/g, "");
   return allLogsData.find(log => {
-    const logDate = log.timestamp.split("T")[0];
-    const logCleanId = log.empId.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (!log) return false;
+    const logDate = getLogDate(log);
+    const rawId = log.empId || log.employeeCode || log.empIdentification || "";
+    const logCleanId = rawId.toUpperCase().replace(/[^A-Z0-9]/g, "");
     return logCleanId === cleanId && logDate === dateStr;
   });
 }
@@ -335,25 +547,53 @@ function renderEmployeeAuditList() {
   document.getElementById("audit-tab-registered").innerHTML = `Registered (${registeredCount})`;
   document.getElementById("audit-tab-unregistered").innerHTML = `Unregistered (${unregisteredCount}) ⚠️`;
 
+  // Calculate pagination
+  const totalPages = Math.max(1, Math.ceil(filtered.length / auditPageSize));
+  if (auditCurrentPage > totalPages) auditCurrentPage = totalPages;
+  if (auditCurrentPage < 1) auditCurrentPage = 1;
+
+  const startIdx = (auditCurrentPage - 1) * auditPageSize;
+  const endIdx = Math.min(startIdx + auditPageSize, filtered.length);
+  const pageItems = filtered.slice(startIdx, endIdx);
+
+  // Update pagination DOM indicators
+  const infoEl = document.getElementById("audit-pagination-info");
+  if (infoEl) {
+    infoEl.textContent = filtered.length === 0 
+      ? `Showing 0 of 0` 
+      : `Showing ${startIdx + 1}–${endIdx} of ${filtered.length}`;
+  }
+
+  const indicatorEl = document.getElementById("audit-page-indicator");
+  if (indicatorEl) {
+    indicatorEl.textContent = `Page ${auditCurrentPage} of ${totalPages}`;
+  }
+
+  const prevBtn = document.getElementById("audit-prev-page");
+  if (prevBtn) prevBtn.disabled = (auditCurrentPage <= 1);
+
+  const nextBtn = document.getElementById("audit-next-page");
+  if (nextBtn) nextBtn.disabled = (auditCurrentPage >= totalPages);
+
   // Draw list
   if (filtered.length === 0) {
     container.innerHTML = `<div class="loading-state" style="color:var(--color-text-muted);">No employees found matching filters.</div>`;
     return;
   }
 
-  container.innerHTML = filtered.map(emp => {
+  container.innerHTML = pageItems.map(emp => {
     const themeClass = emp.isGateRegistered ? "registered-theme" : "unregistered-theme";
     const badgeHtml = emp.isGateRegistered 
-      ? `<span class="badge badge-success">✓ Active</span>`
+      ? `<span class="badge badge-success">✓ Enrolled</span>`
       : `<span class="badge badge-error">⚠️ Pending</span>`;
     
     // Quick action button for unregistered users
     const actionButton = !emp.isGateRegistered 
-      ? `<button class="enroll-nudge-btn" onclick="triggerEnrollAlert('${emp.id}')">Nudge</button>` 
+      ? `<button class="enroll-nudge-btn" onclick="event.stopPropagation(); triggerEnrollAlert('${emp.id}')">Nudge</button>` 
       : ``;
 
     return `
-      <div class="employee-card ${themeClass}">
+      <div class="employee-card ${themeClass}" onclick="openEmployeeProfileModal('${emp.id}')" title="Click to open employee profile dossier">
         <img class="card-avatar" src="${emp.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100&q=80'}" alt="${emp.name}">
         <div class="card-details">
           <div class="card-title-row">
@@ -379,18 +619,56 @@ function renderEmployeeAuditList() {
   }).join("");
 }
 
-// Right Column: Filter and Render Daily Attendance log rows
+// Helpers for ZingHR schema attributes
+function getEmployeeDepartment(emp) {
+  if (emp.department) return emp.department;
+  const role = emp.role || "";
+  const parenMatch = role.match(/\(([^)]+)\)/);
+  if (parenMatch) return parenMatch[1].trim();
+  if (role.includes(" - ")) return role.split(" - ")[1].trim();
+
+  const lower = role.toLowerCase();
+  if (lower.includes("quality") || lower.includes("qa") || lower.includes("inspect")) return "Quality Assurance";
+  if (lower.includes("assembly") || lower.includes("operator") || lower.includes("welder") || lower.includes("production")) return "Production & Assembly";
+  if (lower.includes("logistics") || lower.includes("cargo") || lower.includes("supply")) return "Supply Chain & Logistics";
+  if (lower.includes("maint") || lower.includes("tech") || lower.includes("electrical")) return "Plant Maintenance";
+  if (lower.includes("hr") || lower.includes("admin")) return "Human Resources";
+  return "Operations";
+}
+
+function getEmployeeDesignation(emp) {
+  if (emp.designation) return emp.designation;
+  const role = emp.role || "";
+  if (role.includes(" (")) return role.split(" (")[0].trim();
+  if (role.includes(" - ")) return role.split(" - ")[0].trim();
+  return role || "Team Associate";
+}
+
+function getEmployeeRuleGroup(emp) {
+  return emp.ruleGroup || emp.shift || "General Standard Shift";
+}
+
+function getEmployeeLocation(emp, log) {
+  if (log && log.location) return log.location;
+  if (emp.location) return emp.location;
+  if (emp.address) return emp.address;
+  return "Tata Motors - Gate 1";
+}
+
+// Right Column: Filter and Render Daily Attendance log rows (8 ZingHR Database Columns)
 function renderAttendanceBoard() {
   const tbody = document.getElementById("attendance-board-body");
   if (!tbody) return;
 
   const selectedDate = document.getElementById("portal-date-picker").value;
   const locationFilter = document.getElementById("portal-location-filter").value;
-  const searchQuery = document.getElementById("attendance-search-input").value.toLowerCase();
+  const searchQuery = (document.getElementById("attendance-search-input").value || "").toLowerCase().trim();
 
   // Categorize entire workforce into Present vs Absent for selected date
   const rosterStatus = zinghrReportData.map(emp => {
-    const isPresent = emp.attendanceDates && emp.attendanceDates.includes(selectedDate);
+    const cleanId = emp.id.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const regRecord = attendanceRegisterMap.get(cleanId);
+    const isPresent = (regRecord && (regRecord.attendanceStatus === 'P' || regRecord.attendanceStatus === 'HD')) || (emp.attendanceDates && emp.attendanceDates.includes(selectedDate));
     const logDetails = isPresent ? findEmpCheckinLog(emp.id, selectedDate) : null;
     
     return {
@@ -413,7 +691,6 @@ function renderAttendanceBoard() {
       if (item.isPresent) {
         if (!item.log || item.log.location !== locationFilter) return false;
       } else {
-        // For absent employees, verify if their mapped ZingHR deployment address matches location prefix
         const cleanAddr = (emp.address || "").toLowerCase();
         const cleanLoc = locationFilter.split(" - ")[0].toLowerCase();
         if (!cleanAddr.includes(cleanLoc)) return false;
@@ -421,12 +698,24 @@ function renderAttendanceBoard() {
     }
 
     // 3. Search Query Filter
-    const matchesSearch = 
-      emp.name.toLowerCase().includes(searchQuery) ||
-      emp.id.toLowerCase().includes(searchQuery) ||
-      (emp.role && emp.role.toLowerCase().includes(searchQuery));
-    
-    return matchesSearch;
+    if (searchQuery) {
+      const dept = getEmployeeDepartment(emp).toLowerCase();
+      const desig = getEmployeeDesignation(emp).toLowerCase();
+      const rule = getEmployeeRuleGroup(emp).toLowerCase();
+      const loc = getEmployeeLocation(emp, item.log).toLowerCase();
+      const matchesSearch = 
+        emp.name.toLowerCase().includes(searchQuery) ||
+        emp.id.toLowerCase().includes(searchQuery) ||
+        (emp.role && emp.role.toLowerCase().includes(searchQuery)) ||
+        dept.includes(searchQuery) ||
+        desig.includes(searchQuery) ||
+        rule.includes(searchQuery) ||
+        loc.includes(searchQuery);
+      
+      if (!matchesSearch) return false;
+    }
+
+    return true;
   });
 
   // Calculate panel badges
@@ -435,71 +724,127 @@ function renderAttendanceBoard() {
   document.getElementById("att-count-present").textContent = `Present: ${presentCount}`;
   document.getElementById("att-count-absent").textContent = `Absent: ${absentCount}`;
 
+  // Calculate attendance table pagination
+  const totalPages = Math.max(1, Math.ceil(filtered.length / attPageSize));
+  if (attCurrentPage > totalPages) attCurrentPage = totalPages;
+  if (attCurrentPage < 1) attCurrentPage = 1;
+
+  const startIdx = (attCurrentPage - 1) * attPageSize;
+  const endIdx = Math.min(startIdx + attPageSize, filtered.length);
+  const pageItems = filtered.slice(startIdx, endIdx);
+
+  // Update attendance pagination DOM indicators
+  const infoEl = document.getElementById("att-pagination-info");
+  if (infoEl) {
+    infoEl.textContent = filtered.length === 0 
+      ? `Showing 0 of 0` 
+      : `Showing ${startIdx + 1}–${endIdx} of ${filtered.length}`;
+  }
+
+  const indicatorEl = document.getElementById("att-page-indicator");
+  if (indicatorEl) {
+    indicatorEl.textContent = `Page ${attCurrentPage} of ${totalPages}`;
+  }
+
+  const prevBtn = document.getElementById("att-prev-page");
+  if (prevBtn) prevBtn.disabled = (attCurrentPage <= 1);
+
+  const nextBtn = document.getElementById("att-next-page");
+  if (nextBtn) nextBtn.disabled = (attCurrentPage >= totalPages);
+
   // Render Table rows
   if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="6" style="text-align:center; padding:40px; color:var(--color-text-muted);">
-          No attendance logs matches the filter criteria for date: ${selectedDate}
+        <td colspan="11" style="text-align:center; padding:40px; color:var(--color-text-muted);">
+          No attendance records match the filter criteria for date: ${selectedDate}
         </td>
       </tr>
     `;
     return;
   }
 
-  tbody.innerHTML = filtered.map(item => {
+  tbody.innerHTML = pageItems.map(item => {
     const emp = item.employee;
+    const dept = getEmployeeDepartment(emp);
+    const desig = getEmployeeDesignation(emp);
+    const ruleGroup = getEmployeeRuleGroup(emp);
+    const plantLoc = getEmployeeLocation(emp, item.log);
     
-    // Default fallback columns for absent employees
-    let checkinTime = `<span class="badge badge-error">Absent</span>`;
-    let punchLocation = `<span style="color:var(--color-text-muted); font-style:italic;">No punch captured</span>`;
-    let verificationBadge = `<span class="badge badge-muted">Offline</span>`;
-    let syncBadge = `<span class="badge badge-muted">-</span>`;
-    let gpsLink = `<span style="color:var(--color-text-muted);">-</span>`;
+    let checkinTimeHtml = `<span style="color:var(--color-text-muted);">-</span>`;
+    let checkoutTimeHtml = `<span style="color:var(--color-text-muted);">-</span>`;
+    let durationHtml = `<span style="color:var(--color-text-muted);">-</span>`;
+    let statusBadgeHtml = `<span class="badge badge-error">Absent</span>`;
+    let syncBadgeHtml = `<span class="badge badge-muted">-</span>`;
 
     if (item.isPresent) {
-      checkinTime = `<span class="badge badge-success">Present</span>`;
-      punchLocation = emp.address || "Tata Motors - Gate 1";
-      verificationBadge = `<span class="badge badge-success">✓ Verified</span>`;
-      syncBadge = `<span class="badge badge-success">Synced</span>`;
+      const metrics = getEmployeeDailyAttendanceMetrics(emp.id, selectedDate);
+      const isHalfDay = (metrics.attendanceStatus === 'HD');
 
-      // If we found a detailed biometric log, show high-speed details
-      if (item.log) {
-        const timeObj = new Date(item.log.timestamp);
-        checkinTime = `<strong style="font-size:0.85rem; color:var(--color-success);">${timeObj.toLocaleTimeString()}</strong>`;
-        punchLocation = item.log.location;
-        gpsLink = `<a href="https://maps.google.com/?q=${item.log.gps.replace('°', '')}" target="_blank" class="gps-link">📍 ${item.log.gps}</a>`;
-        verificationBadge = item.log.verified 
-          ? (item.log.isManual 
-              ? `<span class="badge badge-success">Face Verified (Manual)</span>` 
-              : `<span class="badge badge-success">Face Verified</span>`)
-          : `<span class="badge badge-error">Mismatch</span>`;
-        
-        syncBadge = item.log.syncStatus === "Synced"
-          ? `<span class="badge badge-success">Synced</span>`
-          : `<span class="badge badge-warning">Pending</span>`;
+      statusBadgeHtml = isHalfDay 
+        ? `<span class="badge" style="background:#fef3c7; color:#d97706; border:1px solid #fde68a;">Half Day</span>`
+        : `<span class="badge badge-success">Present</span>`;
+      syncBadgeHtml = `<span class="badge badge-success" style="display:inline-flex; align-items:center; gap:4px;"><span style="font-weight:bold;">✓</span> Synced</span>`;
+
+      if (metrics.firstInTime && metrics.firstInTime !== '--') {
+        checkinTimeHtml = `<strong style="font-size:0.82rem; color:var(--color-success); font-family:'JetBrains Mono',monospace;">${metrics.firstInTime}</strong>`;
+      } else {
+        checkinTimeHtml = `<span class="badge badge-success">Present</span>`;
+      }
+
+      if (metrics.lastOutTime && metrics.lastOutTime !== '--') {
+        checkoutTimeHtml = `<strong style="font-size:0.82rem; color:#f59e0b; font-family:'JetBrains Mono',monospace;">${metrics.lastOutTime}</strong>`;
+      } else {
+        checkoutTimeHtml = `<span style="color:var(--color-text-muted); font-size:0.75rem;">In Progress</span>`;
+      }
+
+      if (metrics.totalWorkDuration && metrics.totalWorkDuration !== '--' && metrics.totalWorkDuration !== 'In Progress') {
+        durationHtml = `<span style="font-weight:700; color:var(--color-primary); font-family:'JetBrains Mono',monospace;">${metrics.totalWorkDuration}</span>`;
+      } else {
+        durationHtml = `<span style="color:var(--color-text-muted); font-size:0.75rem;">${metrics.totalWorkDuration || 'In Progress'}</span>`;
       }
     }
 
     return `
-      <tr>
+      <tr onclick="openEmployeeProfileModal('${emp.id}')" title="Click to open employee profile dossier">
+        <td>
+          <span class="table-emp-id font-mono" style="font-weight:700; color:var(--color-primary); font-size:0.8rem;">${emp.id}</span>
+        </td>
         <td>
           <div class="user-profile-cell">
-            <img class="table-avatar" src="${emp.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100&q=80'}">
+            <img class="table-avatar" src="${emp.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100&q=80'}" alt="${emp.name}">
             <div>
-              <span class="table-emp-name">${emp.name}</span>
-              <span class="table-emp-id">${emp.id}</span>
+              <span class="table-emp-name" style="font-weight:600; display:block;">${emp.name}</span>
             </div>
           </div>
         </td>
-        <td><strong style="color:var(--color-text-secondary);">${emp.shift || "Morning (A)"}</strong></td>
-        <td>${checkinTime}</td>
         <td>
-          <span style="font-weight:600; display:block;">${punchLocation}</span>
-          ${gpsLink}
+          <span style="font-weight:500; color:var(--color-text-secondary);">${dept}</span>
         </td>
-        <td>${verificationBadge}</td>
-        <td>${syncBadge}</td>
+        <td>
+          <span style="font-weight:600; color:var(--color-text-primary);">${desig}</span>
+        </td>
+        <td>
+          <span class="badge" style="background:rgba(56, 189, 248, 0.1); color:var(--color-primary); border:1px solid rgba(56, 189, 248, 0.25); font-size:0.75rem;">${ruleGroup}</span>
+        </td>
+        <td>
+          <span style="font-weight:500;">${plantLoc}</span>
+        </td>
+        <td>
+          ${checkinTimeHtml}
+        </td>
+        <td>
+          ${checkoutTimeHtml}
+        </td>
+        <td>
+          ${durationHtml}
+        </td>
+        <td>
+          ${statusBadgeHtml}
+        </td>
+        <td>
+          ${syncBadgeHtml}
+        </td>
       </tr>
     `;
   }).join("");
@@ -508,6 +853,7 @@ function renderAttendanceBoard() {
 // Filter tab actions
 function switchAuditTab(tabName, clickedBtn) {
   currentSelectedTab = tabName;
+  auditCurrentPage = 1;
   document.querySelectorAll("#audit-tab-all, #audit-tab-registered, #audit-tab-unregistered").forEach(btn => {
     btn.classList.remove("active");
   });
@@ -517,6 +863,7 @@ function switchAuditTab(tabName, clickedBtn) {
 
 function switchAttTab(tabName, clickedBtn) {
   currentAttTab = tabName;
+  attCurrentPage = 1;
   document.querySelectorAll("#att-tab-all, #att-tab-present, #att-tab-absent").forEach(btn => {
     btn.classList.remove("active");
   });
@@ -576,9 +923,9 @@ function renderCharts() {
   // 2. Location Breakdown calculations
   const locationCounts = {};
   allLogsData.forEach(log => {
-    const logDate = log.timestamp.split("T")[0];
+    const logDate = getLogDate(log);
     if (logDate === selectedDate) {
-      const loc = log.location;
+      const loc = getLogLocation(log);
       locationCounts[loc] = (locationCounts[loc] || 0) + 1;
     }
   });
@@ -614,23 +961,19 @@ function renderCharts() {
   }
 }
 
-// Populate Dossier selector
+// Populate Dossier selector (Ultra-fast single DOM write)
 function populateDossierEmployeeDropdown() {
   const select = document.getElementById("dossier-employee-select");
   if (!select) return;
 
-  // Clear previous options, save first option
-  select.innerHTML = '<option value="">Select Employee...</option>';
+  const currentVal = select.value;
+  const sample = zinghrReportData.slice(0, 300);
+  const optionsHtml = ['<option value="">Select Employee...</option>']
+    .concat(sample.map(emp => `<option value="${emp.id}">${emp.name} (${emp.id})</option>`))
+    .join('');
 
-  // Sort employees alphabetically
-  const sorted = [...zinghrReportData].sort((a, b) => a.name.localeCompare(b.name));
-  
-  sorted.forEach(emp => {
-    const opt = document.createElement("option");
-    opt.value = emp.id;
-    opt.textContent = `${emp.name} (${emp.id})`;
-    select.appendChild(opt);
-  });
+  select.innerHTML = optionsHtml;
+  if (currentVal) select.value = currentVal;
 }
 
 // Render calendar grid for chosen employee
@@ -788,3 +1131,225 @@ function triggerEnrollAlert(empId) {
   alert(`📢 Audit enrollment notification sent to ${employee.name} (${employee.id})!\n\nEmail nudge queued to: ${employee.email || 'layam.worker@layam.com'}`);
   console.log(`[Audit Alert Sync]: Enqueued SMS notification to ${employee.contact} for employee ${employee.id}`);
 }
+
+// --------------------------------------------------------------------------
+// EMPLOYEE PROFILE MODAL CONTROLLER
+// --------------------------------------------------------------------------
+let currentModalEmployeeId = null;
+
+function openEmployeeProfileModal(empId) {
+  if (!empId) return;
+  const cleanId = String(empId).trim().toUpperCase();
+  const emp = zinghrReportData.find(e => 
+    (e.id && e.id.toUpperCase() === cleanId) ||
+    (e.employeeCode && e.employeeCode.toUpperCase() === cleanId)
+  );
+  if (!emp) return;
+
+  currentModalEmployeeId = emp.id;
+
+  const modal = document.getElementById("employee-profile-modal");
+  if (!modal) return;
+
+  // Header & Hero
+  const badgeId = document.getElementById("modal-emp-id-badge");
+  if (badgeId) badgeId.textContent = `ID: ${emp.id}`;
+
+  const nameEl = document.getElementById("modal-emp-name");
+  if (nameEl) nameEl.textContent = emp.name;
+
+  const avatarEl = document.getElementById("modal-emp-avatar");
+  if (avatarEl) avatarEl.src = emp.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100&q=80';
+
+  const desigEl = document.getElementById("modal-emp-designation");
+  if (desigEl) desigEl.textContent = getEmployeeDesignation(emp);
+  
+  // Status badges
+  const bioBadge = document.getElementById("modal-emp-biostatus");
+  if (bioBadge) {
+    bioBadge.className = emp.isGateRegistered ? "badge badge-success" : "badge badge-error";
+    bioBadge.textContent = emp.isGateRegistered ? "✓ Enrolled & Synced" : "⚠️ Pending Biometrics";
+  }
+
+  // Master details
+  const deptEl = document.getElementById("modal-emp-dept");
+  if (deptEl) deptEl.textContent = getEmployeeDepartment(emp);
+
+  const ruleEl = document.getElementById("modal-emp-rule");
+  if (ruleEl) ruleEl.textContent = getEmployeeRuleGroup(emp);
+
+  const plantEl = document.getElementById("modal-emp-plant");
+  if (plantEl) plantEl.textContent = getEmployeeLocation(emp);
+
+  const phoneEl = document.getElementById("modal-emp-phone");
+  if (phoneEl) phoneEl.textContent = emp.contact || "--";
+
+  const emailEl = document.getElementById("modal-emp-email");
+  if (emailEl) emailEl.textContent = emp.email || "--";
+
+  // Today's punch details
+  const datePicker = document.getElementById("portal-date-picker");
+  const selectedDate = datePicker && datePicker.value ? datePicker.value : new Date().toISOString().split("T")[0];
+  const punchDateEl = document.getElementById("modal-punch-date");
+  if (punchDateEl) punchDateEl.textContent = selectedDate;
+
+  const cleanEmpId = emp.id.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const regRecord = attendanceRegisterMap.get(cleanEmpId);
+  const isPresent = (regRecord && (regRecord.attendanceStatus === 'P' || regRecord.attendanceStatus === 'HD')) || (emp.attendanceDates && emp.attendanceDates.includes(selectedDate));
+  const metrics = getEmployeeDailyAttendanceMetrics(emp.id, selectedDate);
+
+  const statusEl = document.getElementById("modal-punch-status");
+  const inEl = document.getElementById("modal-punch-in");
+  const outEl = document.getElementById("modal-punch-out");
+  const durEl = document.getElementById("modal-punch-duration");
+  const syncEl = document.getElementById("modal-punch-sync");
+
+  if (isPresent) {
+    const isHalfDay = (metrics.attendanceStatus === 'HD');
+    if (statusEl) {
+      statusEl.innerHTML = isHalfDay
+        ? `<span class="badge" style="background:#fef3c7; color:#d97706; border:1px solid #fde68a;">Half Day</span>`
+        : `<span class="badge badge-success">Present</span>`;
+    }
+    if (syncEl) {
+      syncEl.className = "badge badge-success";
+      syncEl.textContent = "✓ ZingHR Synced";
+    }
+
+    if (inEl) inEl.textContent = metrics.firstInTime && metrics.firstInTime !== '--' ? metrics.firstInTime : '09:00 AM';
+    if (outEl) outEl.textContent = metrics.lastOutTime && metrics.lastOutTime !== '--' ? metrics.lastOutTime : 'In Progress';
+    if (durEl) durEl.textContent = metrics.totalWorkDuration && metrics.totalWorkDuration !== '--' ? metrics.totalWorkDuration : 'In Progress';
+  } else {
+    if (statusEl) statusEl.innerHTML = `<span class="badge badge-error">Absent</span>`;
+    if (inEl) inEl.textContent = "--";
+    if (outEl) outEl.textContent = "--";
+    if (durEl) durEl.textContent = "--";
+    if (syncEl) {
+      syncEl.className = "badge badge-muted";
+      syncEl.textContent = "No Punches Today";
+    }
+  }
+
+  // Draw monthly calendar inside modal
+  const calMonthSelect = document.getElementById("modal-cal-month-select");
+  if (calMonthSelect) {
+    const dossierMonth = document.getElementById("dossier-month-select") ? document.getElementById("dossier-month-select").value : "2026-09";
+    if (dossierMonth && calMonthSelect.querySelector(`option[value="${dossierMonth}"]`)) {
+      calMonthSelect.value = dossierMonth;
+    }
+  }
+  renderModalCalendar(emp);
+
+  // Sync to bottom dossier dropdown too
+  const dossierSelect = document.getElementById("dossier-employee-select");
+  if (dossierSelect) {
+    dossierSelect.value = emp.id;
+    handleDossierEmployeeChange();
+  }
+
+  modal.classList.remove("hidden");
+}
+
+function renderModalCalendar(emp) {
+  const grid = document.getElementById("modal-cal-grid");
+  const monthSelect = document.getElementById("modal-cal-month-select");
+  const statsEl = document.getElementById("modal-cal-stats");
+  if (!grid || !monthSelect || !emp) return;
+
+  const monthStr = monthSelect.value;
+  const [year, month] = monthStr.split("-").map(Number);
+  const totalDays = new Date(year, month, 0).getDate();
+  const firstDay = new Date(year, month - 1, 1).getDay();
+  let startOffset = firstDay - 1;
+  if (startOffset === -1) startOffset = 6;
+
+  let html = "";
+  for (let i = 0; i < startOffset; i++) {
+    html += `<div class="modal-cal-cell empty"></div>`;
+  }
+
+  let presentCount = 0;
+  let activeDays = 0;
+  const todayLimit = new Date();
+  todayLimit.setHours(23, 59, 59, 999);
+
+  for (let d = 1; d <= totalDays; d++) {
+    const dateQuery = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const dayOfWeek = new Date(year, month - 1, d).getDay();
+    const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+    const isPresent = emp.attendanceDates && emp.attendanceDates.includes(dateQuery);
+    const cellDate = new Date(year, month - 1, d);
+    const isFuture = cellDate > todayLimit;
+
+    let cls = "modal-cal-cell";
+    if (isFuture) {
+      cls += " future";
+    } else {
+      activeDays++;
+      if (isPresent) {
+        cls += " present";
+        presentCount++;
+      } else {
+        cls += isWeekend ? " weekend" : " absent";
+      }
+    }
+
+    html += `<div class="${cls}" title="${dateQuery}: ${isPresent ? 'Present' : (isWeekend ? 'Weekend' : 'Absent')}">${d}</div>`;
+  }
+
+  grid.innerHTML = html;
+  const pct = activeDays > 0 ? Math.round((presentCount / activeDays) * 100) : 0;
+  if (statsEl) {
+    statsEl.textContent = `${presentCount} / ${activeDays} Days Present (${pct}%)`;
+  }
+}
+
+function closeEmployeeProfileModal() {
+  const modal = document.getElementById("employee-profile-modal");
+  if (modal) modal.classList.add("hidden");
+}
+
+function initProfileModalListeners() {
+  const closeBtn = document.getElementById("modal-profile-close-btn");
+  const footerCloseBtn = document.getElementById("modal-btn-close-footer");
+  const jumpBtn = document.getElementById("modal-btn-jump-dossier");
+  const modal = document.getElementById("employee-profile-modal");
+  const calMonthSelect = document.getElementById("modal-cal-month-select");
+
+  if (closeBtn) closeBtn.addEventListener("click", closeEmployeeProfileModal);
+  if (footerCloseBtn) footerCloseBtn.addEventListener("click", closeEmployeeProfileModal);
+  
+  if (modal) {
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeEmployeeProfileModal();
+    });
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeEmployeeProfileModal();
+  });
+
+  if (calMonthSelect) {
+    calMonthSelect.addEventListener("change", () => {
+      if (currentModalEmployeeId) {
+        const emp = zinghrReportData.find(e => e.id === currentModalEmployeeId);
+        if (emp) renderModalCalendar(emp);
+      }
+    });
+  }
+
+  if (jumpBtn) {
+    jumpBtn.addEventListener("click", () => {
+      closeEmployeeProfileModal();
+      const dossierWrapper = document.getElementById("dossier-calendar-wrapper");
+      if (dossierWrapper) {
+        dossierWrapper.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    });
+  }
+}
+
+// Expose globally for inline HTML onclick attributes
+window.openEmployeeProfileModal = openEmployeeProfileModal;
+window.closeEmployeeProfileModal = closeEmployeeProfileModal;
+

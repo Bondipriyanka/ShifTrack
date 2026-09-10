@@ -253,14 +253,33 @@ const appState = {
   checkoutScanActive: false,
   checkoutScanTimer: null,
   manualAttendanceAvailable: false,
-  scanSessionId: 0
+  scanSessionId: 0,
+  
+  // Night Shift and Low-Light Flash State
+  flashMode: "auto", // "auto", "on", "off"
+  isNightModeActive: false,
+  ambientLuxPercent: 75,
+  isLowLightDetected: false,
+  lightMeterTimer: null
 };
+window.appState = appState;
+
+function safeDateString(raw) {
+  if (!raw) return "";
+  const d = (raw instanceof Date) ? raw : new Date(raw);
+  if (isNaN(d.getTime())) return "";
+  try {
+    return d.toISOString().split("T")[0];
+  } catch(e) {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+}
 
 function getLocalDateString(dateObj) {
-  const year = dateObj.getFullYear();
-  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-  const day = String(dateObj.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return safeDateString(dateObj);
 }
 
 // BCP-47 Translation mapping and utilities
@@ -315,7 +334,9 @@ const TRANSLATIONS = {
     checkout_marked: "Check-out marked successfully.",
     already_marked: "Attendance already marked for today.",
     already_checked_out: "Already checked out for today.",
+    checkin_required: "Check-in required before checkout.",
     wrong_shift: "Access denied. Shift roster violation.",
+    plant_mismatch: "Access denied. Employee is not assigned to this plant.",
     spoof_failed: "Liveness check failed. Spoof attempt blocked.",
     unauthorized: "Face not recognized. Access denied.",
     no_face_detected: "No face detected. Please try again.",
@@ -382,7 +403,9 @@ const TRANSLATIONS = {
     checkout_marked: "चेक-आउट सफलतापूर्वक दर्ज किया गया।",
     already_marked: "आज की उपस्थिति पहले ही दर्ज हो चुकी है।",
     already_checked_out: "आज के लिए चेक-आउट पहले ही दर्ज हो चुका है।",
+    checkin_required: "चेक-आउट से पहले चेक-इन आवश्यक है।",
     wrong_shift: "प्रवेश निषेध। शिफ्ट रोस्टर का उल्लंघन।",
+    plant_mismatch: "प्रवेश अस्वीकृत। कर्मचारी इस प्लांट के लिए असाइन नहीं है।",
     spoof_failed: "सजीवता जांच विफल। स्पूफ प्रयास अवरुद्ध।",
     unauthorized: "चेहरा नहीं पहचाना गया। प्रवेश निषेध।",
     no_face_detected: "कोई चेहरा नहीं मिला। कृपया पुनः प्रयास करें।",
@@ -449,7 +472,9 @@ const TRANSLATIONS = {
     checkout_marked: "చెక్-అవుట్ విజయవంతంగా నమోదైంది.",
     already_marked: "ఈరోజు హాజరు ఇప్పటికే నమోదైంది.",
     already_checked_out: "ఈరోజు చెక్-అవుట్ ఇప్పటికే నమోదైంది.",
+    checkin_required: "చెక్-అవుట్‌కు ముందు చెక్-ఇన్ అవసరం.",
     wrong_shift: "యాక్సెస్ తిరస్కరించబడింది. షిఫ్ట్ రోస్టర్ ఉల్లంఘన.",
+    plant_mismatch: "యాక్సెస్ నిరాకరించబడింది. ఉద్యోగి ఈ ప్లాంట్‌కు కేటాయించబడలేదు.",
     spoof_failed: "లైవ్‌నెస్ చెక్ విఫలమైంది. స్పూఫ్ ప్రయత్నం నిరోధించబడింది.",
     unauthorized: "ముఖం గుర్తించబడలేదు. యాక్సెస్ తిరస్కరించబడింది.",
     no_face_detected: "ముఖం గుర్తించబడలేదు. దయచేసి మళ్లీ ప్రయత్నించండి.",
@@ -516,7 +541,9 @@ const TRANSLATIONS = {
     checkout_marked: "செக்-அவுட் வெற்றிகரமாக பதிவு செய்யப்பட்டது.",
     already_marked: "இன்றைய வருகை ஏற்கனவே பதிவு செய்யப்பட்டுள்ளது.",
     already_checked_out: "இன்றைய செக்-அவுட் ஏற்கனவே பதிவு செய்யப்பட்டுள்ளது.",
+    checkin_required: "செக்-அவுட்டுக்கு முன் செக்-இன் தேவை.",
     wrong_shift: "அனுமதி மறுக்கப்பட்டது. ஷிப்ட் ரோஸ்டர் விதிமீறல்.",
+    plant_mismatch: "அனுமதி மறுக்கப்பட்டது. பணியாளர் இந்த ஆலைக்கு ஒதுக்கப்படவில்லை.",
     spoof_failed: "உயிரோட்ட சோதனை தோல்வி. ஏமாற்றும் முயற்சி தடுத்து நிறுத்தப்பட்டது.",
     unauthorized: "முகம் அடையாளம் காணப்படவில்லை. அனுமதி மறுக்கப்பட்டது.",
     no_face_detected: "முகம் கண்டறியப்படவில்லை. மீண்டும் முயற்சிக்கவும்.",
@@ -583,7 +610,9 @@ const TRANSLATIONS = {
     checkout_marked: "ಚೆಕ್-ಔಟ್ ಯಶಸ್ವಿಯಾಗಿ ದಾಖಲಾಗಿದೆ.",
     already_marked: "ಇಂದಿನ ಹಾಜರಾತಿ ಈಗಾಗಲೇ ದಾಖಲಾಗಿದೆ.",
     already_checked_out: "ಇಂದಿನ ಚೆಕ್-ಔಟ್ ಈಗಾಗಲೇ ದಾಖಲಾಗಿದೆ.",
+    checkin_required: "ಚೆಕ್-ಔಟ್‌ಗೆ ಮುನ್ನ ಚೆಕ್-ಇನ್ ಅಗತ್ಯವಿದೆ.",
     wrong_shift: "ಪ್ರವೇಶ ನಿರಾಕರಿಸಲಾಗಿದೆ. ಶಿಫ್ಟ್ ರೋಸ್ಟರ್ ನಿಯಮ ಉಲ್ಲಂಘನೆ.",
+    plant_mismatch: "ಪ್ರವೇಶ ನಿರಾಕರಿಸಲಾಗಿದೆ. ಉದ್ಯೋಗಿಯನ್ನು ಈ ಪ್ಲಾಂಟ್‌ಗೆ ನಿಯೋಜಿಸಲಾಗಿಲ್ಲ.",
     spoof_failed: "ಲೈವ್‌ನೆಸ್ ಪರಿಶೀಲನೆ ವಿಫಲವಾಗಿದೆ. ಸ್ಪೂಫ್ ಯತ್ನ ತಡೆಯಲಾಗಿದೆ.",
     unauthorized: "ಮುಖ ಗುರುತಿಸಲಾಗಿಲ್ಲ. ಪ್ರವೇಶ ನಿರಾಕರಿಸಲಾಗಿದೆ.",
     no_face_detected: "ಯಾವುದೇ ಮುಖ ಪತ್ತೆಯಾಗಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ.",
@@ -740,10 +769,8 @@ function speakVoiceMessage(textKey, fallbackText) {
       
       let ttsUrl;
       if (isMobile) {
-        // Direct HTTPS Google Translate URL to bypass local server requirements & mixed-content blocks on Android
         ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${langCode}&client=tw-ob&q=${encodeURIComponent(text)}`;
       } else {
-        // Call our secure, referrer-free local backend tts proxy API for desktop browsers
         ttsUrl = getApiUrl(`/api/tts?lang=${langCode}&text=${encodeURIComponent(text)}`);
       }
       
@@ -756,7 +783,6 @@ function speakVoiceMessage(textKey, fallbackText) {
           if (timeoutId) clearTimeout(timeoutId);
           console.warn(`TTS Fallback triggered due to: ${reason}`);
           
-          // Stop Web Audio API playback instantly if active
           if (appState.activeSourceNode) {
             try {
               appState.activeSourceNode.stop();
@@ -764,7 +790,6 @@ function speakVoiceMessage(textKey, fallbackText) {
             } catch (e) {}
           }
           
-          // Clear HTML5 audio callbacks and stop audio to prevent double voices
           const audio = appState.globalTtsAudio;
           if (audio) {
             audio.onplaying = null;
@@ -779,11 +804,12 @@ function speakVoiceMessage(textKey, fallbackText) {
         }
       };
 
+      // Fast 800ms timeout for instant fallback if online TTS is slow
       timeoutId = setTimeout(() => {
         triggerFallback("timeout");
-      }, 5000); // 5s timeout to prevent early fallbacks during screen sharing
+      }, 800);
       
-      // Try Web Audio API first (highly robust on Android WebView, bypasses range requests)
+      // Try Web Audio API first
       playAudioViaWebAudio(ttsUrl, () => fallbackTriggered)
         .then(() => {
           if (fallbackTriggered) return;
@@ -791,26 +817,7 @@ function speakVoiceMessage(textKey, fallbackText) {
         })
         .catch(err => {
           if (fallbackTriggered) return;
-          console.warn("Web Audio TTS failed, attempting HTML5 Audio fallback:", err);
-          
-          // Fallback to HTML5 audio element
-          const audio = appState.globalTtsAudio || document.createElement('audio');
-          appState.globalTtsAudio = audio;
-          audio.referrerPolicy = 'no-referrer';
-          audio.src = ttsUrl;
-          
-          audio.play()
-            .then(() => {
-              if (fallbackTriggered) {
-                try { audio.pause(); } catch(e) {}
-                return;
-              }
-              if (timeoutId) clearTimeout(timeoutId);
-            })
-            .catch(e => {
-              if (fallbackTriggered) return;
-              triggerFallback("html5_audio_failed");
-            });
+          triggerFallback("webaudio_failed");
         });
       return;
     } catch (e) {
@@ -828,27 +835,42 @@ function speakLocalVoice(text, lang) {
     return;
   }
   
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
+  try {
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    }
+    window.speechSynthesis.cancel();
+  } catch(e) {}
   
-  const langCodesLong = {
-    en: 'en-IN',
-    hi: 'hi-IN',
-    te: 'te-IN',
-    ta: 'ta-IN',
-    kn: 'kn-IN'
-  };
-  
-  utterance.lang = langCodesLong[lang] || 'en-US';
-  
-  // Asynchronously query voices
-  const voices = window.speechSynthesis.getVoices();
-  const matchedVoice = voices.find(v => v.lang.startsWith(utterance.lang) || v.lang.startsWith(lang));
-  if (matchedVoice) {
-    utterance.voice = matchedVoice;
-  }
-  
-  window.speechSynthesis.speak(utterance);
+  setTimeout(() => {
+    try {
+      const utterance = new SpeechSynthesisUtterance(text);
+      const langCodesLong = {
+        en: 'en-IN',
+        hi: 'hi-IN',
+        te: 'te-IN',
+        ta: 'ta-IN',
+        kn: 'kn-IN'
+      };
+      
+      utterance.lang = langCodesLong[lang] || 'en-US';
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+      
+      const voices = window.speechSynthesis.getVoices();
+      if (voices && voices.length > 0) {
+        const matchedVoice = voices.find(v => v.lang.startsWith(utterance.lang) || v.lang.startsWith(lang));
+        if (matchedVoice) {
+          utterance.voice = matchedVoice;
+        }
+      }
+      
+      window.speechSynthesis.speak(utterance);
+    } catch(err) {
+      console.error("Local speech synthesis error:", err);
+    }
+  }, 30);
 }
 
 // Initialize DOM elements safely (guards against DOMContentLoaded race condition)
@@ -858,56 +880,159 @@ if (document.readyState === "loading") {
   initApp();
 }
 
+function switchAdminTab(tabName) {
+  const tabEmployees = document.getElementById("admin-tab-employees");
+  const tabAttendance = document.getElementById("admin-tab-attendance");
+  const viewEmployees = document.getElementById("admin-view-employees");
+  const viewAttendance = document.getElementById("admin-view-attendance");
+
+  [tabEmployees, tabAttendance].forEach(t => {
+    if (t) {
+      t.classList.remove("active");
+      t.style.borderBottomColor = "transparent";
+      t.style.color = "var(--color-text-muted)";
+    }
+  });
+  [viewEmployees, viewAttendance].forEach(v => {
+    if (v) v.classList.add("hidden");
+  });
+
+  if (tabName === "attendance") {
+    if (tabAttendance) {
+      tabAttendance.classList.add("active");
+      tabAttendance.style.borderBottomColor = "var(--color-primary)";
+      tabAttendance.style.color = "#fff";
+    }
+    if (viewAttendance) viewAttendance.classList.remove("hidden");
+    renderAttendanceRegisterTable();
+  } else {
+    if (tabEmployees) {
+      tabEmployees.classList.add("active");
+      tabEmployees.style.borderBottomColor = "var(--color-primary)";
+      tabEmployees.style.color = "#fff";
+    }
+    if (viewEmployees) viewEmployees.classList.remove("hidden");
+    renderEmployeeMasterTable();
+  }
+}
+
+// Expose core action handlers to window globally for inline onclick fallbacks
+window.handleSupervisorLogin = handleSupervisorLogin;
+window.toggleScanMode = toggleScanMode;
+window.beginCheckoutScan = beginCheckoutScan;
+window.switchTab = switchTab;
+window.switchAdminTab = switchAdminTab;
+window.lockAppSupervisor = lockAppSupervisor;
+window.cycleFlashMode = cycleFlashMode;
+window.toggleNightModeManual = toggleNightModeManual;
+
 function initApp() {
+  // Unlock Web Audio & SpeechSynthesis on any user gesture to satisfy browser autoplay policy
   try {
-    // Update time initially & set interval
+    const unlockAudio = () => {
+      try {
+        if (window.speechSynthesis && window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          if (!appState.audioContext) appState.audioContext = new AudioContextClass();
+          if (appState.audioContext.state === "suspended") {
+            appState.audioContext.resume();
+          }
+        }
+      } catch(e) {}
+    };
+    document.addEventListener("click", unlockAudio, { passive: true });
+    document.addEventListener("touchstart", unlockAudio, { passive: true });
+  } catch(e) {}
+
+  try {
     updateClock();
     setInterval(updateClock, 1000);
+  } catch(e) {}
 
-    // Load custom data from localStorage if exists
+  try {
     loadLocalStorage();
+  } catch(e) {
+    console.warn("loadLocalStorage error:", e);
+  }
 
-    // Populate month dropdowns dynamically
+  try {
     populateMonthDropdowns();
+  } catch(e) {}
 
-    // Load registered roster in UI
+  try {
     renderRoster();
+  } catch(e) {}
 
-    // Load default spec node (mobile app)
+  try {
     updateSpecPanel("mobile");
+  } catch(e) {}
 
-    // Attach Event Listeners
-    document.getElementById("login-submit-btn").addEventListener("click", handleSupervisorLogin);
-    document.getElementById("login-pin").addEventListener("keypress", (e) => {
-      if (e.key === "Enter") handleSupervisorLogin();
-    });
+  try {
+    // Attach Event Listeners safely
+    const loginSubmitBtn = document.getElementById("login-submit-btn");
+    if (loginSubmitBtn) loginSubmitBtn.addEventListener("click", handleSupervisorLogin);
 
-    document.getElementById("scan-toggle").addEventListener("click", () => toggleScanMode("Check-In"));
+    const loginPinInput = document.getElementById("login-pin");
+    if (loginPinInput) {
+      loginPinInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") handleSupervisorLogin();
+      });
+      loginPinInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") handleSupervisorLogin();
+      });
+    }
+
+    const scanToggle = document.getElementById("scan-toggle");
+    if (scanToggle) scanToggle.addEventListener("click", () => toggleScanMode("Check-In"));
     
     // Check-in is automatic. Checkout starts a fresh supervisor-initiated scan.
     const checkOutBtn = document.getElementById("btn-check-out");
     if (checkOutBtn) {
       checkOutBtn.disabled = false;
+      if (checkOutBtn.removeAttribute) checkOutBtn.removeAttribute("disabled");
       checkOutBtn.addEventListener("click", beginCheckoutScan);
     }
-    document.getElementById("btn-manual-attendance").addEventListener("click", submitManualAttendanceFromScan);
+    const manualAttBtn = document.getElementById("btn-manual-attendance");
+    if (manualAttBtn) manualAttBtn.addEventListener("click", submitManualAttendanceFromScan);
     
-    document.getElementById("offline-switch").addEventListener("change", toggleOfflineMode);
-    document.getElementById("location-select").addEventListener("change", handleLocationChange);
-    document.getElementById("trigger-scan-btn").addEventListener("click", triggerManualScan);
-    document.getElementById("trigger-stranger-btn").addEventListener("click", () => {
-      appState.selectedSubject = "unauthorized";
-      updateWalkUpStatusText();
-      triggerManualScan();
-    });
-    document.getElementById("trigger-spoof-btn").addEventListener("click", () => {
-      appState.selectedSubject = "spoof";
-      updateWalkUpStatusText();
-      triggerManualScan();
-    });
-    document.getElementById("trigger-sync-btn").addEventListener("click", forceSyncOfflineQueue);
-    document.getElementById("clear-logs-btn").addEventListener("click", clearLogs);
-    document.getElementById("btn-camera-sim").addEventListener("click", startCameraSimulator);
+    const offlineSwitch = document.getElementById("offline-switch");
+    if (offlineSwitch) offlineSwitch.addEventListener("change", toggleOfflineMode);
+
+    const locationSelect = document.getElementById("location-select");
+    if (locationSelect) locationSelect.addEventListener("change", handleLocationChange);
+
+    const triggerScanBtn = document.getElementById("trigger-scan-btn");
+    if (triggerScanBtn) triggerScanBtn.addEventListener("click", () => triggerManualScan(true));
+
+    const triggerStrangerBtn = document.getElementById("trigger-stranger-btn");
+    if (triggerStrangerBtn) {
+      triggerStrangerBtn.addEventListener("click", () => {
+        appState.selectedSubject = "unauthorized";
+        updateWalkUpStatusText();
+        triggerManualScan(true);
+      });
+    }
+
+    const triggerSpoofBtn = document.getElementById("trigger-spoof-btn");
+    if (triggerSpoofBtn) {
+      triggerSpoofBtn.addEventListener("click", () => {
+        appState.selectedSubject = "spoof";
+        updateWalkUpStatusText();
+        triggerManualScan(true);
+      });
+    }
+
+    const triggerSyncBtn = document.getElementById("trigger-sync-btn");
+    if (triggerSyncBtn) triggerSyncBtn.addEventListener("click", forceSyncOfflineQueue);
+
+    const clearLogsBtn = document.getElementById("clear-logs-btn");
+    if (clearLogsBtn) clearLogsBtn.addEventListener("click", clearLogs);
+
+    const btnCameraSim = document.getElementById("btn-camera-sim");
+    if (btnCameraSim) btnCameraSim.addEventListener("click", startCameraSimulator);
 
     const loginLang = document.getElementById("login-lang-select");
     if (loginLang) loginLang.addEventListener("change", handleLanguageChange);
@@ -1027,19 +1152,28 @@ function initApp() {
     }
 
      // Registration button clickers
-    document.getElementById("reg-btn-capture").addEventListener("click", captureRegistrationPhoto);
-    document.getElementById("reg-btn-save").addEventListener("click", enrollNewCandidate);
-    document.getElementById("bulk-roster-import").addEventListener("change", handleBulkRosterImport);
+    const regBtnCapture = document.getElementById("reg-btn-capture");
+    if (regBtnCapture) regBtnCapture.addEventListener("click", captureRegistrationPhoto);
+    const regBtnSave = document.getElementById("reg-btn-save");
+    if (regBtnSave) regBtnSave.addEventListener("click", enrollNewCandidate);
+    const bulkRosterImport = document.getElementById("bulk-roster-import");
+    if (bulkRosterImport) bulkRosterImport.addEventListener("change", handleBulkRosterImport);
     
     // Zing HR search listeners
-    document.getElementById("reg-btn-search").addEventListener("click", searchEmployeeZingHR);
-    document.getElementById("reg-emp-id").addEventListener("keypress", (e) => {
-      if (e.key === "Enter") searchEmployeeZingHR();
-    });
+    const regBtnSearch = document.getElementById("reg-btn-search");
+    if (regBtnSearch) regBtnSearch.addEventListener("click", searchEmployeeZingHR);
+    const regEmpIdInput = document.getElementById("reg-emp-id");
+    if (regEmpIdInput) {
+      regEmpIdInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") searchEmployeeZingHR();
+      });
+    }
 
     // Setup tab navigator listeners
-    document.getElementById("nav-scan-tab").addEventListener("click", () => switchTab("scan"));
-    document.getElementById("nav-register-tab").addEventListener("click", () => switchTab("register"));
+    const navScanTab = document.getElementById("nav-scan-tab");
+    if (navScanTab) navScanTab.addEventListener("click", () => switchTab("scan"));
+    const navRegTab = document.getElementById("nav-register-tab");
+    if (navRegTab) navRegTab.addEventListener("click", () => switchTab("register"));
     
     const logsTab = document.getElementById("nav-logs-tab");
     if (logsTab) {
@@ -1061,8 +1195,10 @@ function initApp() {
     const dossierBackBtn = document.getElementById("mobile-zinghr-dossier-back");
     if (dossierBackBtn) {
       dossierBackBtn.addEventListener("click", () => {
-        document.getElementById("mobile-zinghr-dossier-sect").classList.add("hidden");
-        document.getElementById("mobile-zinghr-main-sect").classList.remove("hidden");
+        const dossierSect = document.getElementById("mobile-zinghr-dossier-sect");
+        const mainSect = document.getElementById("mobile-zinghr-main-sect");
+        if (dossierSect) dossierSect.classList.add("hidden");
+        if (mainSect) mainSect.classList.remove("hidden");
       });
     }
     const createZingBtn = document.getElementById("mobile-zinghr-create-btn");
@@ -1073,13 +1209,14 @@ function initApp() {
       });
     }
     
-    document.getElementById("nav-logout-tab").addEventListener("click", lockAppSupervisor);
+    const navLogoutTab = document.getElementById("nav-logout-tab");
+    if (navLogoutTab) navLogoutTab.addEventListener("click", lockAppSupervisor);
 
     // Initialize backend network IP configuration panel and admin tabs
-    initSettingsDrawer();
-    initCreateZingHRDrawer();
-    initEmployeeProfileDrawer();
-    initAdminTabs();
+    try { initSettingsDrawer(); } catch(e) { console.warn("initSettingsDrawer error:", e); }
+    try { initCreateZingHRDrawer(); } catch(e) { console.warn("initCreateZingHRDrawer error:", e); }
+    try { initEmployeeProfileDrawer(); } catch(e) { console.warn("initEmployeeProfileDrawer error:", e); }
+    try { initAdminTabs(); } catch(e) { console.warn("initAdminTabs error:", e); }
 
     // Setup architecture nodes click listeners
     document.querySelectorAll(".flow-node").forEach(node => {
@@ -1098,6 +1235,7 @@ function initApp() {
     logTerminal("INFO", "Biometric GateEntry Client Core Ready.");
     calculateEmployeeHashes();
     startBackgroundSyncLoop();
+    initNightModeAndFlashControls();
     lockAppSupervisor(); // Ensure we boot into locked/login state cleanly
   } catch (err) {
     console.error("Initialization Warning:", err);
@@ -1148,7 +1286,8 @@ function updateClock() {
   let minutes = now.getMinutes();
   hours = hours < 10 ? '0' + hours : hours;
   minutes = minutes < 10 ? '0' + minutes : minutes;
-  document.getElementById("phone-time").innerText = `${hours}:${minutes}`;
+  const phoneTimeEl = document.getElementById("phone-time");
+  if (phoneTimeEl) phoneTimeEl.innerText = `${hours}:${minutes}`;
 }
 
 // Log message to virtual developer console
@@ -1177,6 +1316,7 @@ function logTerminal(type, msg) {
 // Render registered candidates list on the Right Admin Dashboard
 function renderRoster() {
   const container = document.getElementById("roster-list-container");
+  if (!container) return;
   container.innerHTML = "";
 
   Object.keys(employeeDatabase).forEach(key => {
@@ -1237,27 +1377,35 @@ function updateSpecPanel(nodeKey) {
   const spec = architectureSpecs[nodeKey];
   if (!spec) return;
 
-  document.getElementById("spec-name").innerText = spec.name;
-  document.getElementById("spec-tech").innerText = spec.tech;
-  document.getElementById("spec-desc").innerText = spec.desc;
+  const specName = document.getElementById("spec-name");
+  if (specName) specName.innerText = spec.name;
+  const specTech = document.getElementById("spec-tech");
+  if (specTech) specTech.innerText = spec.tech;
+  const specDesc = document.getElementById("spec-desc");
+  if (specDesc) specDesc.innerText = spec.desc;
 
   const featuresList = document.getElementById("spec-features");
-  featuresList.innerHTML = "";
-  spec.features.forEach(f => {
-    const li = document.createElement("li");
-    li.innerText = f;
-    featuresList.appendChild(li);
-  });
+  if (featuresList) {
+    featuresList.innerHTML = "";
+    spec.features.forEach(f => {
+      const li = document.createElement("li");
+      li.innerText = f;
+      featuresList.appendChild(li);
+    });
+  }
 
   const securityList = document.getElementById("spec-security");
-  securityList.innerHTML = "";
-  spec.security.forEach(s => {
-    const li = document.createElement("li");
-    li.innerText = s;
-    securityList.appendChild(li);
-  });
+  if (securityList) {
+    securityList.innerHTML = "";
+    spec.security.forEach(s => {
+      const li = document.createElement("li");
+      li.innerText = s;
+      securityList.appendChild(li);
+    });
+  }
 
-  document.getElementById("spec-code").innerText = spec.code;
+  const specCode = document.getElementById("spec-code");
+  if (specCode) specCode.innerText = spec.code;
 }
 
 // Handle Supervisor Login authorization
@@ -1273,15 +1421,26 @@ function handleSupervisorLogin() {
       // Hide Login Overlay, Show App navbar + default scan page
       const loginScreen = document.getElementById("app-login-screen");
       const bottomNavbar = document.getElementById("app-bottom-navbar");
-      if (loginScreen) loginScreen.classList.add("hidden");
-      if (bottomNavbar) bottomNavbar.classList.remove("hidden");
+      if (loginScreen) {
+        loginScreen.classList.add("hidden");
+        loginScreen.style.display = "none";
+      }
+      if (bottomNavbar) {
+        bottomNavbar.classList.remove("hidden");
+        bottomNavbar.style.display = "flex";
+      }
+      const scanView = document.getElementById("app-scan-view");
+      if (scanView) {
+        scanView.classList.remove("hidden");
+        scanView.style.display = "flex";
+      }
       switchTab("scan");
       
       logTerminal("SUCCESS", "Supervisor credentials authorized. Turn on the gate camera to begin scanning.");
     } else {
       logTerminal("ERROR", "Access Denied: Invalid Supervisor PIN security passcode.");
       alert("Invalid passcode pin! Hint: 1234");
-      pinInput.value = "";
+      if (pinInput) pinInput.value = "";
     }
   } catch (err) {
     console.error("Login Error:", err);
@@ -1315,12 +1474,32 @@ function lockAppSupervisor() {
   const scanView = document.getElementById("app-scan-view");
   const registerView = document.getElementById("app-register-view");
   const logsView = document.getElementById("app-logs-view");
+  const zinghrView = document.getElementById("app-zinghr-view");
   
-  if (loginScreen) loginScreen.classList.remove("hidden");
-  if (bottomNavbar) bottomNavbar.classList.add("hidden");
-  if (scanView) scanView.classList.add("hidden");
-  if (registerView) registerView.classList.add("hidden");
-  if (logsView) logsView.classList.add("hidden");
+  if (loginScreen) {
+    loginScreen.classList.remove("hidden");
+    loginScreen.style.display = "flex";
+  }
+  if (bottomNavbar) {
+    bottomNavbar.classList.add("hidden");
+    bottomNavbar.style.display = "none";
+  }
+  if (scanView) {
+    scanView.classList.add("hidden");
+    scanView.style.display = "none";
+  }
+  if (registerView) {
+    registerView.classList.add("hidden");
+    registerView.style.display = "none";
+  }
+  if (logsView) {
+    logsView.classList.add("hidden");
+    logsView.style.display = "none";
+  }
+  if (zinghrView) {
+    zinghrView.classList.add("hidden");
+    zinghrView.style.display = "none";
+  }
   
   logTerminal("WARN", "Supervisor logged out. Biometric hub locked.");
 }
@@ -1348,11 +1527,26 @@ function switchTab(tabName) {
   const logsView = document.getElementById("app-logs-view");
   const zinghrView = document.getElementById("app-zinghr-view");
   
+  const allViews = [
+    { name: "scan", elem: scanView },
+    { name: "register", elem: registerView },
+    { name: "logs", elem: logsView },
+    { name: "zinghr", elem: zinghrView }
+  ];
+
+  allViews.forEach(v => {
+    if (v.elem) {
+      if (v.name === tabName) {
+        v.elem.classList.remove("hidden");
+        v.elem.style.display = "flex";
+      } else {
+        v.elem.classList.add("hidden");
+        v.elem.style.display = "none";
+      }
+    }
+  });
+  
   if (tabName === "scan") {
-    scanView.classList.remove("hidden");
-    registerView.classList.add("hidden");
-    if (logsView) logsView.classList.add("hidden");
-    if (zinghrView) zinghrView.classList.add("hidden");
     shutdownActiveStream();
     showCameraFallback();
     hideManualAttendanceOption();
@@ -1361,58 +1555,260 @@ function switchTab(tabName) {
     appState.pendingRecognitionId = null;
     appState.pendingRecognitionCount = 0;
   } else if (tabName === "register") {
-    scanView.classList.add("hidden");
-    registerView.classList.remove("hidden");
-    if (logsView) logsView.classList.add("hidden");
-    if (zinghrView) zinghrView.classList.add("hidden");
-    
     // Stop scanner scan mode
     appState.isScanningMode = false;
-    document.getElementById("scan-toggle").classList.remove("active");
-    document.getElementById("scan-btn-text").innerText = "Open Attendance Gate";
-    document.getElementById("viewport-container").classList.remove("scanning");
-    document.getElementById("verification-card").classList.remove("active");
+    const scanToggle = document.getElementById("scan-toggle");
+    if (scanToggle) scanToggle.classList.remove("active");
+    const scanBtnText = document.getElementById("scan-btn-text");
+    if (scanBtnText) scanBtnText.innerText = "Open Attendance Gate";
+    const vpContainer = document.getElementById("viewport-container");
+    if (vpContainer) vpContainer.classList.remove("scanning");
+    const verCard = document.getElementById("verification-card");
+    if (verCard) verCard.classList.remove("active");
     
     // Boot webcam preview inside registration box
     bootRegistrationCamera();
   } else if (tabName === "logs") {
-    scanView.classList.add("hidden");
-    registerView.classList.add("hidden");
-    if (logsView) logsView.classList.remove("hidden");
-    if (zinghrView) zinghrView.classList.add("hidden");
-    
     // Stop scanner scan mode
     appState.isScanningMode = false;
-    document.getElementById("scan-toggle").classList.remove("active");
-    document.getElementById("scan-btn-text").innerText = "Open Attendance Gate";
-    document.getElementById("viewport-container").classList.remove("scanning");
-    document.getElementById("verification-card").classList.remove("active");
+    const scanToggle = document.getElementById("scan-toggle");
+    if (scanToggle) scanToggle.classList.remove("active");
+    const scanBtnText = document.getElementById("scan-btn-text");
+    if (scanBtnText) scanBtnText.innerText = "Open Attendance Gate";
+    const vpContainer = document.getElementById("viewport-container");
+    if (vpContainer) vpContainer.classList.remove("scanning");
+    const verCard = document.getElementById("verification-card");
+    if (verCard) verCard.classList.remove("active");
     
     shutdownActiveStream();
     
-    renderMobileLogs();
-    renderMobileRoster();
+    try { renderMobileLogs(); } catch (e) { console.warn("renderMobileLogs error:", e); }
+    try { renderMobileRoster(); } catch (e) { console.warn("renderMobileRoster error:", e); }
   } else if (tabName === "zinghr") {
-    scanView.classList.add("hidden");
-    registerView.classList.add("hidden");
-    if (logsView) logsView.classList.add("hidden");
-    if (zinghrView) zinghrView.classList.remove("hidden");
-    
     // Stop scanner scan mode
     appState.isScanningMode = false;
-    document.getElementById("scan-toggle").classList.remove("active");
-    document.getElementById("scan-btn-text").innerText = "Open Attendance Gate";
-    document.getElementById("viewport-container").classList.remove("scanning");
-    document.getElementById("verification-card").classList.remove("active");
+    const scanToggle = document.getElementById("scan-toggle");
+    if (scanToggle) scanToggle.classList.remove("active");
+    const scanBtnText = document.getElementById("scan-btn-text");
+    if (scanBtnText) scanBtnText.innerText = "Open Attendance Gate";
+    const vpContainer = document.getElementById("viewport-container");
+    if (vpContainer) vpContainer.classList.remove("scanning");
+    const verCard = document.getElementById("verification-card");
+    if (verCard) verCard.classList.remove("active");
     
     shutdownActiveStream();
     
-    renderMobileZingHRDirectory();
+    // Ensure directory view is shown
+    const dossierSect = document.getElementById("mobile-zinghr-dossier-sect");
+    const mainSect = document.getElementById("mobile-zinghr-main-sect");
+    if (dossierSect) dossierSect.classList.add("hidden");
+    if (mainSect) mainSect.classList.remove("hidden");
+
+    try { renderMobileZingHRDirectory(); } catch (e) { console.warn("renderMobileZingHRDirectory error:", e); }
   }
+}
+
+// --------------------------------------------------------------------------
+// NIGHT SHIFT, LOW-LIGHT DETECTION & SCREEN FLASH CONTROLLER
+// --------------------------------------------------------------------------
+
+function setHardwareTorch(enable) {
+  try {
+    if (appState.webcamStream) {
+      const track = appState.webcamStream.getVideoTracks()[0];
+      if (track && typeof track.getCapabilities === "function") {
+        const caps = track.getCapabilities();
+        if (caps && caps.torch) {
+          track.applyConstraints({ advanced: [{ torch: Boolean(enable) }] }).catch(() => {});
+        }
+      }
+    }
+  } catch (e) {
+    // Ignore torch constraint errors on unsupported devices
+  }
+}
+
+function updateNightModeAndLightingUI() {
+  const overlay = document.getElementById("night-light-overlay");
+  const flashBtn = document.getElementById("btn-toggle-flash");
+  const flashText = document.getElementById("flash-status-text");
+  const nightBtn = document.getElementById("btn-toggle-night-vision");
+  const video = document.getElementById("camera-stream");
+  const banner = document.getElementById("low-light-banner");
+
+  const shouldIlluminate = 
+    appState.flashMode === "on" || 
+    appState.isNightModeActive || 
+    (appState.flashMode === "auto" && appState.isLowLightDetected);
+
+  if (overlay) {
+    if (shouldIlluminate) {
+      overlay.className = "night-light-ring-on";
+    } else {
+      overlay.className = "night-light-off";
+    }
+  }
+
+  // Toggle hardware torch if stream supports it
+  setHardwareTorch(shouldIlluminate);
+
+  // Apply CSS night vision boost to video feed if night mode is active
+  if (video) {
+    if (appState.isNightModeActive || shouldIlluminate) {
+      video.classList.add("night-vision-boost");
+    } else {
+      video.classList.remove("night-vision-boost");
+    }
+  }
+
+  // Update Toolbar Flash Button
+  if (flashBtn && flashText) {
+    flashBtn.classList.remove("active-flash");
+    if (appState.flashMode === "auto") {
+      flashText.textContent = "Flash: Auto";
+    } else if (appState.flashMode === "on") {
+      flashText.textContent = "Flash: ON";
+      flashBtn.classList.add("active-flash");
+    } else {
+      flashText.textContent = "Flash: OFF";
+    }
+  }
+
+  // Update Toolbar Night Mode Button
+  if (nightBtn) {
+    if (appState.isNightModeActive) {
+      nightBtn.classList.add("active-night");
+    } else {
+      nightBtn.classList.remove("active-night");
+    }
+  }
+
+  // Low Light Notification Banner
+  if (banner) {
+    if (appState.isLowLightDetected && appState.isScanningMode) {
+      banner.classList.remove("hidden");
+    } else {
+      banner.classList.add("hidden");
+    }
+  }
+}
+
+function cycleFlashMode() {
+  if (appState.flashMode === "auto") {
+    appState.flashMode = "on";
+    logTerminal("INFO", "Lighting Control: Flash turned ON (Continuous illumination).");
+  } else if (appState.flashMode === "on") {
+    appState.flashMode = "off";
+    logTerminal("INFO", "Lighting Control: Flash turned OFF.");
+  } else {
+    appState.flashMode = "auto";
+    logTerminal("INFO", "Lighting Control: Flash set to AUTO (Intelligent ambient light sensing).");
+  }
+  updateNightModeAndLightingUI();
+}
+
+function toggleNightModeManual() {
+  appState.isNightModeActive = !appState.isNightModeActive;
+  logTerminal("INFO", `Lighting Control: Night Shift Low-Light Mode ${appState.isNightModeActive ? "ENABLED" : "DISABLED"}.`);
+  updateNightModeAndLightingUI();
+}
+
+// Trigger intense soft screen flash pulse at the moment of taking a face scan
+function triggerScreenFlashPulse() {
+  const overlay = document.getElementById("night-light-overlay");
+  if (!overlay) return;
+  overlay.className = "night-light-flash-pulse";
+  setHardwareTorch(true);
+  setTimeout(() => {
+    updateNightModeAndLightingUI();
+  }, 400);
+}
+
+// Real-time Ambient Light Monitor (Runs every 500ms while scanning)
+let lightSampleCanvas = null;
+
+function startAmbientLightMonitor() {
+  stopAmbientLightMonitor();
+  if (!lightSampleCanvas) {
+    lightSampleCanvas = document.createElement("canvas");
+    lightSampleCanvas.width = 32;
+    lightSampleCanvas.height = 24;
+  }
+
+  appState.lightMeterTimer = setInterval(() => {
+    if (!appState.isScanningMode) return;
+    const video = document.getElementById("camera-stream");
+    const luxValEl = document.getElementById("ambient-light-val");
+    const luxIconEl = document.getElementById("ambient-light-icon");
+    const badgeEl = document.getElementById("ambient-light-badge");
+    if (!video || video.readyState < 2) return;
+
+    try {
+      const ctx = lightSampleCanvas.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(video, 0, 0, 32, 24);
+      const imgData = ctx.getImageData(0, 0, 32, 24).data;
+      
+      let sumLuminance = 0;
+      const totalPixels = imgData.length / 4;
+      for (let i = 0; i < imgData.length; i += 4) {
+        sumLuminance += 0.299 * imgData[i] + 0.587 * imgData[i + 1] + 0.114 * imgData[i + 2];
+      }
+      const avgLum = sumLuminance / totalPixels;
+      const luxPercent = Math.min(100, Math.max(0, Math.round((avgLum / 255) * 100)));
+      appState.ambientLuxPercent = luxPercent;
+
+      const isLow = luxPercent < 42; // Low light threshold
+      if (isLow !== appState.isLowLightDetected) {
+        appState.isLowLightDetected = isLow;
+        if (isLow) {
+          logTerminal("WARN", `Ambient Sensor: Low light detected (${luxPercent}% lux). Engaging screen soft flash.`);
+        } else {
+          logTerminal("INFO", `Ambient Sensor: Good lighting detected (${luxPercent}% lux).`);
+        }
+        updateNightModeAndLightingUI();
+      }
+
+      // Update badge UI
+      if (luxValEl) luxValEl.textContent = `Lux: ${luxPercent}%`;
+      if (badgeEl) {
+        badgeEl.classList.remove("ambient-dark", "ambient-optimal");
+        if (isLow) {
+          badgeEl.classList.add("ambient-dark");
+          if (luxIconEl) luxIconEl.textContent = "🌙";
+        } else {
+          badgeEl.classList.add("ambient-optimal");
+          if (luxIconEl) luxIconEl.textContent = "☀️";
+        }
+      }
+    } catch (e) {
+      // Ignore canvas read errors if context busy
+    }
+  }, 500);
+}
+
+function stopAmbientLightMonitor() {
+  if (appState.lightMeterTimer) {
+    clearInterval(appState.lightMeterTimer);
+    appState.lightMeterTimer = null;
+  }
+  setHardwareTorch(false);
+  const overlay = document.getElementById("night-light-overlay");
+  if (overlay) overlay.className = "night-light-off";
+  const banner = document.getElementById("low-light-banner");
+  if (banner) banner.classList.add("hidden");
+}
+
+function initNightModeAndFlashControls() {
+  const flashBtn = document.getElementById("btn-toggle-flash");
+  const nightBtn = document.getElementById("btn-toggle-night-vision");
+  if (flashBtn) flashBtn.addEventListener("click", cycleFlashMode);
+  if (nightBtn) nightBtn.addEventListener("click", toggleNightModeManual);
+  updateNightModeAndLightingUI();
 }
 
 // Shutdown webcam streams
 function shutdownActiveStream() {
+  stopAmbientLightMonitor();
   if (appState.webcamStream) {
     appState.webcamStream.getTracks().forEach(track => track.stop());
     appState.webcamStream = null;
@@ -1443,16 +1839,29 @@ async function startupCamera() {
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" } 
       });
+      // If user stopped the camera while stream was opening, immediately stop tracks
+      if (!appState.isScanningMode) {
+        stream.getTracks().forEach(track => track.stop());
+        shutdownActiveStream();
+        showCameraFallback();
+        return;
+      }
       appState.webcamStream = stream;
-      if (video) video.srcObject = stream;
-      if (video) video.style.display = "block";
+      if (video) {
+        video.srcObject = stream;
+        video.style.display = "block";
+        try { video.play(); } catch(e) {}
+      }
       if (fallback) fallback.style.display = "none";
       const camDot = document.getElementById("status-cam-dot");
       if (camDot) camDot.classList.add("active");
       logTerminal("INFO", "Hardware camera feed opened for scanning.");
       
       startCanvasOverlay();
+      startAmbientLightMonitor();
+      updateNightModeAndLightingUI();
     } catch (err) {
+      if (!appState.isScanningMode) return;
       logTerminal("WARN", "Hardware webcam not available or access denied. Falling back to simulator.");
       appState.isSimulatedCamera = true;
       startCameraSimulator();
@@ -1488,12 +1897,15 @@ function startCameraSimulator() {
   if (mobSnapBtn) mobSnapBtn.style.display = "flex";
   
   startCanvasOverlay();
+  updateNightModeAndLightingUI();
 }
 
 // Camera Canvas Bounding boxes and scanner graphics
 function startCanvasOverlay() {
   const canvas = document.getElementById("camera-canvas");
+  if (!canvas || !canvas.getContext) return;
   const ctx = canvas.getContext("2d");
+  if (!ctx) return;
   
   const resizeCanvas = () => {
     canvas.width = canvas.parentElement.clientWidth;
@@ -1623,23 +2035,31 @@ function startCanvasOverlay() {
   drawFrame();
 }
 
+let lastToggleScanTime = 0;
+
 // Toggle Scan Mode button
 function toggleScanMode(requestedDirection = "Check-In") {
+  const now = Date.now();
+  if (now - lastToggleScanTime < 450) {
+    return;
+  }
+  lastToggleScanTime = now;
+
   const btn = document.getElementById("scan-toggle");
   const btnText = document.getElementById("scan-btn-text");
   const viewport = document.getElementById("viewport-container");
   const checkInOutActions = document.getElementById("check-in-out-actions");
   
   if (!appState.isScanningMode) {
-    // Open stream
+    // Open stream & start scanning
     appState.isScanningMode = true;
     appState.scanSessionId += 1;
     appState.currentDirection = requestedDirection;
     appState.checkoutScanActive = requestedDirection === "Check-Out";
     hideManualAttendanceOption();
-    btn.classList.add("active");
-    btnText.innerText = "Stop Gate Camera";
-    viewport.classList.add("scanning");
+    if (btn) btn.classList.add("active");
+    if (btnText) btnText.innerText = "Stop Gate Camera";
+    if (viewport) viewport.classList.add("scanning");
     logTerminal("INFO", `Scan channel opened at plant gate: [${appState.selectedLocation}]`);
     
     if (checkInOutActions) checkInOutActions.style.display = "flex";
@@ -1658,16 +2078,22 @@ function toggleScanMode(requestedDirection = "Check-In") {
     if (checkOutBtn) checkOutBtn.disabled = false;
     appState.isScanInProgress = false;
     speakLocalVoice(requestedDirection === "Check-Out" ? "Checkout camera started. Please align your face." : "Starting gate camera. Please align your face.", appState.language || "en");
-    if (requestedDirection === "Check-In") setTimeout(autoScanCheck, 250);
+    if (requestedDirection === "Check-In") {
+      if (appState.autoScanInterval) clearInterval(appState.autoScanInterval);
+      setTimeout(autoScanCheck, 700);
+    }
   } else {
-    // Shutdown
+    // Shutdown & stop scanning
     appState.isScanningMode = false;
     appState.scanSessionId += 1;
-    btn.classList.remove("active");
-    btnText.innerText = "Start Gate Camera";
-    viewport.classList.remove("scanning");
-    viewport.className = "camera-viewport";
-    document.getElementById("verification-card").classList.remove("active");
+    if (btn) btn.classList.remove("active");
+    if (btnText) btnText.innerText = "Start Gate Camera";
+    if (viewport) {
+      viewport.classList.remove("scanning");
+      viewport.className = "camera-viewport";
+    }
+    const verifCard = document.getElementById("verification-card");
+    if (verifCard) verifCard.classList.remove("active");
     hideManualAttendanceOption();
     
     if (checkInOutActions) checkInOutActions.style.display = "flex";
@@ -1680,12 +2106,19 @@ function toggleScanMode(requestedDirection = "Check-In") {
       clearInterval(appState.autoScanInterval);
       appState.autoScanInterval = null;
     }
-    document.getElementById("scan-timer-banner").classList.add("hidden");
-    document.getElementById("scan-countdown-overlay").classList.add("hidden");
+    if (appState.checkoutScanTimer) {
+      clearTimeout(appState.checkoutScanTimer);
+      appState.checkoutScanTimer = null;
+    }
+    const banner = document.getElementById("scan-timer-banner");
+    if (banner) banner.classList.add("hidden");
+    const overlay = document.getElementById("scan-countdown-overlay");
+    if (overlay) overlay.classList.add("hidden");
     
     shutdownActiveStream();
     showCameraFallback();
     logTerminal("INFO", "Gate scanner deactivated.");
+    speakLocalVoice("Gate camera stopped.", appState.language || "en");
     
     appState.isScanInProgress = false;
     appState.checkoutCandidate = null;
@@ -1954,6 +2387,66 @@ async function submitManualAttendanceFromScan() {
   }
 }
 
+function getPlantKeyword(locStr) {
+  if (!locStr) return "";
+  const s = String(locStr).toLowerCase();
+  if (s.includes("tata")) return "tata";
+  if (s.includes("reliance")) return "reliance";
+  if (s.includes("adani")) return "adani";
+  if (s.includes("l&t")) return "l&t";
+  if (s.includes("pantnagar")) return "pantnagar";
+  if (s.includes("pune")) return "pune";
+  return s.split(" - ")[0].split("(")[0].trim();
+}
+
+function checkPlantLocationMatch(empLocation, gateLocation) {
+  const empKw = getPlantKeyword(empLocation);
+  const gateKw = getPlantKeyword(gateLocation);
+  if (!empKw || !gateKw) return true;
+  return empKw === gateKw;
+}
+
+function showPlantMismatchError(emp) {
+  const viewport = document.getElementById("viewport-container");
+  const card = document.getElementById("verification-card");
+  setVerificationProfile(emp);
+  document.getElementById("verif-name").innerText = emp.name;
+  document.getElementById("verif-status").innerText = "Access Denied: Wrong Plant Location";
+  document.getElementById("verif-time").innerText = new Date().toLocaleTimeString();
+  viewport.classList.remove("success");
+  viewport.classList.add("error");
+  card.className = "verification-card active error-theme";
+
+  const iconBox = document.getElementById("verif-icon-box");
+  if (iconBox) {
+    iconBox.innerHTML = `
+      <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24" fill="none">
+        <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" fill="none"/>
+        <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" fill="none"/>
+      </svg>
+    `;
+  }
+
+  logTerminal("ERROR", `Plant Location Mismatch: ${emp.name} is assigned to [${emp.location || "Tata Motors"}], attempted scan at [${appState.selectedLocation}]. Access Denied.`);
+  speakVoiceMessage("plant_mismatch", "Access denied. Employee is not assigned to this plant.");
+
+  appState.counters.total++;
+  appState.counters.denied++;
+  updateDashboardStats();
+  saveLocalStorage();
+
+  setTimeout(() => {
+    viewport.classList.remove("error");
+    card.classList.remove("active");
+    appState.currentDirection = "Check-In";
+    appState.cooldownActive = true;
+    appState.isScanInProgress = false;
+    setTimeout(() => {
+      appState.cooldownActive = false;
+    }, 3000);
+  }, 2500);
+}
+
 function showCheckoutReady(emp) {
   const viewport = document.getElementById("viewport-container");
   const card = document.getElementById("verification-card");
@@ -1964,6 +2457,9 @@ function showCheckoutReady(emp) {
   viewport.classList.remove("error");
   viewport.classList.add("success");
   card.className = "verification-card active success-theme";
+
+  // Voice announcement: "Attendance already marked for today."
+  speakVoiceMessage("already_marked", "Attendance already marked for today.");
 
   const iconBox = document.getElementById("verif-icon-box");
   if (iconBox) {
@@ -1978,10 +2474,15 @@ function showCheckoutReady(emp) {
     card.classList.remove("active");
     appState.checkoutCandidate = null;
     appState.currentDirection = "Check-In";
-  }, 1000);
+  }, 2500);
 }
 
+let lastCheckoutClickTime = 0;
 function beginCheckoutScan() {
+  const now = Date.now();
+  if (now - lastCheckoutClickTime < 450) return;
+  lastCheckoutClickTime = now;
+
   appState.scanSessionId += 1;
   if (!appState.isScanningMode) {
     toggleScanMode("Check-Out");
@@ -2025,7 +2526,7 @@ async function runPresenceGatedScan() {
   }
   appState.presenceScanInFlight = true;
   const abortController = new AbortController();
-  const requestTimeout = setTimeout(() => abortController.abort(), 1800);
+  const requestTimeout = setTimeout(() => abortController.abort(), 5000);
   try {
     const presenceResponse = await fetch(getApiUrl("/api/biometric/detect-person"), {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image }), signal: abortController.signal
@@ -2033,9 +2534,7 @@ async function runPresenceGatedScan() {
     const presence = await presenceResponse.json();
     if (scanSessionId !== appState.scanSessionId || scanDirection !== appState.currentDirection) return;
     if (!presenceResponse.ok || !presence.personDetected) {
-      // Once a person is seen, tolerate intermittent body detection while they
-      // adjust their face, mask, cap, or glasses before reporting a failure.
-      if (appState.personFirstSeenAt && Date.now() - appState.personFirstSeenAt >= 3000) {
+      if (appState.personFirstSeenAt && Date.now() - appState.personFirstSeenAt >= 6000) {
         showManualAttendanceOption();
       }
       return;
@@ -2043,11 +2542,11 @@ async function runPresenceGatedScan() {
 
     if (!appState.personFirstSeenAt) {
       appState.personFirstSeenAt = Date.now();
-      logTerminal("INFO", "Person detected. Waiting briefly for the candidate to settle.");
+      logTerminal("INFO", "Person detected in camera frame. Aligning face...");
       return;
     }
 
-    if (Date.now() - appState.personFirstSeenAt < 1250) return;
+    if (Date.now() - appState.personFirstSeenAt < 400) return;
 
     const scanResponse = await fetch(getApiUrl("/api/biometric/scan"), {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image }), signal: abortController.signal
@@ -2055,23 +2554,33 @@ async function runPresenceGatedScan() {
     const scan = await scanResponse.json();
     if (scanSessionId !== appState.scanSessionId || scanDirection !== appState.currentDirection) return;
     if (!scanResponse.ok) throw new Error("Face recognition service unavailable");
+    
     appState.faceRecognitionAttempts += 1;
     if (scan.reason === "NO_FACE_DETECTED") {
-      if (appState.faceRecognitionAttempts >= 2) showManualAttendanceOption();
+      if (appState.faceRecognitionAttempts >= 6) showManualAttendanceOption();
       return;
     }
     if (scan.reason === "SPOOF_FAILED" || !scan.match) {
       appState.pendingRecognitionId = null;
       appState.pendingRecognitionCount = 0;
-      if (scan.reason !== "SPOOF_FAILED" && appState.faceRecognitionAttempts >= 2) showManualAttendanceOption();
+      if (scan.reason !== "SPOOF_FAILED" && appState.faceRecognitionAttempts >= 6) showManualAttendanceOption();
       return;
     }
 
-    const emp = employeeDatabase[scan.employeeId] || { id: scan.employeeId, name: scan.name, role: scan.role };
+    const scanEmpId = scan.employeeId || "";
+    const cleanScanId = scanEmpId.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    let emp = employeeDatabase[scanEmpId] || employeeDatabase[scanEmpId.toLowerCase()] || employeeDatabase[scanEmpId.toUpperCase()];
+    if (!emp) {
+      emp = Object.values(employeeDatabase).find(e => (e.id || "").toUpperCase().replace(/[^A-Z0-9]/g, "") === cleanScanId);
+    }
+    if (!emp) {
+      emp = { id: scanEmpId, name: scan.name || "Employee", role: scan.role || "Staff", location: appState.selectedLocation };
+    }
+
     if (appState.pendingRecognitionId !== emp.id) {
       appState.pendingRecognitionId = emp.id;
       appState.pendingRecognitionCount = 1;
-      logTerminal("INFO", `Candidate ${emp.name} detected. Confirming identity...`);
+      logTerminal("INFO", `Candidate ${emp.name} detected (${Math.round(scan.confidence || 95)}%). Confirming identity...`);
       return;
     }
 
@@ -2082,6 +2591,13 @@ async function runPresenceGatedScan() {
     appState.pendingRecognitionId = null;
     appState.pendingRecognitionCount = 0;
     appState.faceRecognitionAttempts = 0;
+    
+    // Check Plant Location Mismatch BEFORE anything else!
+    if (!checkPlantLocationMatch(emp.location, appState.selectedLocation)) {
+      showPlantMismatchError(emp);
+      return;
+    }
+
     if (scanDirection === "Check-In" && getTodayAttendanceDirection(emp.id) === "Check-In") {
       showCheckoutReady(emp);
       return;
@@ -2090,7 +2606,7 @@ async function runPresenceGatedScan() {
     appState.currentDirection = scanDirection;
     recordAttendanceSuccess(emp, new Date().toISOString());
   } catch (error) {
-    logTerminal("WARN", `Presence-gated scan unavailable: ${error.message}`);
+    logTerminal("WARN", `Presence-gated scan notice: ${error.message}`);
   } finally {
     clearTimeout(requestTimeout);
     appState.presenceScanInFlight = false;
@@ -2100,14 +2616,14 @@ async function runPresenceGatedScan() {
   }
 }
 
-function triggerManualScan() {
-  if (!appState.isSimulatedCamera) {
+function triggerManualScan(forceSimulation = false) {
+  if (!appState.isSimulatedCamera && !forceSimulation) {
     runPresenceGatedScan();
     return;
   }
   if (!appState.isScanningMode) {
     toggleScanMode();
-    setTimeout(triggerManualScan, 1200);
+    setTimeout(() => triggerManualScan(forceSimulation), 1200);
     return;
   }
 
@@ -2142,7 +2658,17 @@ function triggerManualScan() {
       // Mirror draw
       ctx.translate(canvas.width, 0);
       ctx.scale(-1, 1);
+      
+      // Check if low light or night mode is active - trigger screen flash & canvas contrast boost
+      const isLowLight = appState.isLowLightDetected || appState.isNightModeActive || appState.flashMode === "on";
+      if (isLowLight) {
+        triggerScreenFlashPulse();
+        ctx.filter = "brightness(1.32) contrast(1.2)";
+        logTerminal("INFO", "Scan Flash Pulse: Screen ring-light illumination burst fired.");
+      }
+      
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      ctx.filter = "none";
       
       base64Image = canvas.toDataURL("image/jpeg", 0.85);
     }
@@ -2474,33 +3000,44 @@ function recordAttendanceSuccess(emp, timestamp) {
   }
 
   let isBlocked = false;
+  let blockText = "";
+  let blockVoiceKey = "";
+  let blockVoiceText = "";
+
   if (lastDirection === null) {
     if (direction === 'Check-Out') {
       isBlocked = true;
+      blockText = "Check-in required before checkout";
+      blockVoiceKey = "checkin_required";
+      blockVoiceText = "Check-in required before checkout.";
     }
   } else if (lastDirection === 'Check-In') {
     if (direction === 'Check-In') {
       isBlocked = true;
+      blockText = "Attendance already marked for today";
+      blockVoiceKey = "already_marked";
+      blockVoiceText = "Attendance already marked for today.";
     }
   } else if (lastDirection === 'Check-Out') {
     if (direction === 'Check-Out') {
       isBlocked = true;
+      blockText = "Already checked out for today";
+      blockVoiceKey = "already_checked_out";
+      blockVoiceText = "Already checked out for today.";
     }
   }
 
   if (isBlocked) {
-    logTerminal("WARN", `Attendance Blocked: ${emp.name} state conflict (Requested: ${direction}, Last: ${lastDirection || 'None'}).`);
+    logTerminal("WARN", `Attendance Blocked: ${emp.name} state conflict (Requested: ${direction}, Last: ${lastDirection || 'None'}). Reason: ${blockText}`);
     
     viewport.classList.remove("success", "error");
     viewport.classList.add("error");
     
     card.className = "verification-card active error-theme";
-    statusLabel.innerText = direction === 'Check-In' ? "Attendance already marked" : "Already checked out";
+    statusLabel.innerText = blockText;
     statusLabel.style.color = "var(--color-error)";
     
-    const voiceKey = direction === 'Check-In' ? "already_marked" : "already_checked_out";
-    const voiceText = direction === 'Check-In' ? "Attendance already marked for today." : "Already checked out for today.";
-    speakVoiceMessage(voiceKey, voiceText);
+    speakVoiceMessage(blockVoiceKey, blockVoiceText);
     
     iconBox.innerHTML = `
       <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24" fill="none">
@@ -2589,6 +3126,12 @@ function recordAttendanceSuccess(emp, timestamp) {
     }
   }
 
+  // Plant Location Validation Check
+  if (!checkPlantLocationMatch(emp.location, appState.selectedLocation)) {
+    showPlantMismatchError(emp);
+    return;
+  }
+
   // Define check-in record payload
   const record = {
     empId: emp.id,
@@ -2616,9 +3159,15 @@ function recordAttendanceSuccess(emp, timestamp) {
     
     logTerminal("SUCCESS", `Biometrics Approved: ${emp.name} logged ${direction} offline.`);
     
-    // Original voice triggers ONLY
-    const voiceKey = isDuplicatePunch ? "already_marked" : "attendance_marked";
-    const voiceText = isDuplicatePunch ? "Attendance already marked for today." : "Attendance marked successfully.";
+    // Voice triggers with proper direction differentiation
+    let voiceKey, voiceText;
+    if (isDuplicatePunch) {
+      voiceKey = direction === 'Check-In' ? "already_marked" : "already_checked_out";
+      voiceText = direction === 'Check-In' ? "Attendance already marked for today." : "Already checked out for today.";
+    } else {
+      voiceKey = direction === 'Check-In' ? "attendance_marked" : "checkout_marked";
+      voiceText = direction === 'Check-In' ? "Attendance marked successfully." : "Check-out marked successfully.";
+    }
     speakVoiceMessage(voiceKey, voiceText);
     
     iconBox.innerHTML = `
@@ -2678,6 +3227,15 @@ function recordAttendanceSuccess(emp, timestamp) {
       body: JSON.stringify(record)
     }).then(res => {
       return res.json().then(data => {
+        // Handle server duplicate notification cleanly without failing to offline
+        if (data.error === 'CHECKIN_REQUIRED') {
+          data.isCheckinRequired = true;
+          return data;
+        }
+        if (data.error === 'ALREADY_MARKED_CHECKIN' || data.error === 'ALREADY_MARKED_CHECKOUT' || data.error === 'ALREADY_MARKED') {
+          data.isDuplicateOnline = true;
+          return data;
+        }
         if (!res.ok || data.success === false) {
           const error = new Error(data.message || "Attendance was not accepted.");
           error.code = data.error;
@@ -2686,24 +3244,46 @@ function recordAttendanceSuccess(emp, timestamp) {
         return data;
       });
     }).then(data => {
-      // Backend returns warning: 'ALREADY_MARKED' if duplicate
-      const isBackendDuplicate = data && data.warning === 'ALREADY_MARKED';
+      // Backend returns checkin required
+      if (data && data.isCheckinRequired) {
+        logTerminal("WARN", `Attendance Blocked: ${emp.name} has not checked in yet today.`);
+        viewport.classList.remove("success");
+        viewport.classList.add("error");
+        card.className = "verification-card active error-theme";
+        statusLabel.innerText = getTranslation("checkin_required", "Check-in required before checkout.");
+        statusLabel.style.color = "var(--color-error)";
+        speakVoiceMessage("checkin_required", "Check-in required before checkout.");
+        return;
+      }
+
+      // Backend returns duplicate status
+      const isBackendDuplicate = data && (data.warning === 'ALREADY_MARKED' || data.isDuplicateOnline);
       const isDub = isBackendDuplicate || isDuplicatePunch;
-      
-      logTerminal("SUCCESS", `ZingHR Server Response: ${direction} accepted for Employee ${emp.id} (${emp.name})`);
-      logTerminal("SUCCESS", `API Server: Log synced successfully for ${emp.name}.`);
       
       viewport.classList.remove("error");
       viewport.classList.add("success");
       card.className = "verification-card active success-theme";
       
       if (isDub) {
-        statusLabel.innerText = direction === 'Check-In' ? "Attendance already marked" : "Already checked out";
+        const isCheckIn = direction === 'Check-In';
+        statusLabel.innerText = isCheckIn ? getTranslation("already_marked", "Attendance already marked for today.") : getTranslation("already_checked_out", "Already checked out for today.");
         statusLabel.style.color = "var(--color-success)";
         
-        speakVoiceMessage("already_marked", "Attendance already marked for today.");
+        const voiceKey = isCheckIn ? "already_marked" : "already_checked_out";
+        const voiceText = isCheckIn ? "Attendance already marked for today." : "Already checked out for today.";
+        speakVoiceMessage(voiceKey, voiceText);
+        
+        iconBox.innerHTML = `
+          <svg class="svg-icon" style="width:24px; height:24px;" viewBox="0 0 24 24" fill="none">
+            <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" fill="none"/>
+          </svg>
+        `;
+        return;
       } else {
-        statusLabel.innerText = direction === 'Check-In' ? getTranslation("attendance_marked", "Attendance marked successfully.") : "Check-out marked successfully.";
+        logTerminal("SUCCESS", `ZingHR Server Response: ${direction} accepted for Employee ${emp.id} (${emp.name})`);
+        logTerminal("SUCCESS", `API Server: Log synced successfully for ${emp.name}.`);
+
+        statusLabel.innerText = direction === 'Check-In' ? getTranslation("attendance_marked", "Attendance marked successfully.") : getTranslation("checkout_marked", "Check-out marked successfully.");
         statusLabel.style.color = "var(--color-success)";
         
         const voiceKey = direction === 'Check-In' ? "attendance_marked" : "checkout_marked";
@@ -2722,6 +3302,9 @@ function recordAttendanceSuccess(emp, timestamp) {
       appState.counters.total++;
       
       renderAttendanceTable();
+      if (typeof renderAttendanceRegisterTable === "function") {
+        renderAttendanceRegisterTable();
+      }
       updateDashboardStats();
       saveLocalStorage();
     }).catch(err => {
@@ -2732,6 +3315,7 @@ function recordAttendanceSuccess(emp, timestamp) {
         card.className = "verification-card active error-theme";
         statusLabel.innerText = err.message;
         statusLabel.style.color = "var(--color-error)";
+        speakVoiceMessage("plant_mismatch", "Access denied. Employee not assigned to this plant.");
         return;
       }
       logTerminal("WARN", "API Server: Unreachable. Log cached locally on browser.");
@@ -2741,12 +3325,16 @@ function recordAttendanceSuccess(emp, timestamp) {
       card.className = "verification-card active success-theme";
       
       if (isDuplicatePunch) {
-        statusLabel.innerText = direction === 'Check-In' ? "Attendance already marked (Offline)" : "Already checked out (Offline)";
+        const isCheckIn = direction === 'Check-In';
+        statusLabel.innerText = isCheckIn ? `${getTranslation("already_marked", "Attendance already marked")} (Offline)` : `${getTranslation("already_checked_out", "Already checked out")} (Offline)`;
         statusLabel.style.color = "var(--color-warning)";
         
-        speakVoiceMessage("already_marked", "Attendance already marked for today.");
+        const voiceKey = isCheckIn ? "already_marked" : "already_checked_out";
+        const voiceText = isCheckIn ? "Attendance already marked for today." : "Already checked out for today.";
+        speakVoiceMessage(voiceKey, voiceText);
+        return;
       } else {
-        statusLabel.innerText = direction === 'Check-In' ? `${getTranslation("attendance_marked", "Attendance marked")} (Offline)` : "Check-out marked (Offline)";
+        statusLabel.innerText = direction === 'Check-In' ? `${getTranslation("attendance_marked", "Attendance marked")} (Offline)` : `${getTranslation("checkout_marked", "Check-out marked")} (Offline)`;
         statusLabel.style.color = "var(--color-warning)";
         
         const voiceKey = direction === 'Check-In' ? "attendance_marked" : "checkout_marked";
@@ -2814,14 +3402,16 @@ function renderAttendanceTable() {
   if (emptyRow) emptyRow.style.display = "none";
   
   tbody.innerHTML = "";
-  appState.attendanceLogs.forEach(log => {
+  (appState.attendanceLogs || []).forEach(log => {
+    if (!log) return;
     const row = document.createElement("tr");
     
-    const formattedDate = new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const parsedDate = new Date(log.timestamp);
+    const formattedDate = isNaN(parsedDate.getTime()) ? '--:--:--' : parsedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const isSynced = log.syncStatus === "Synced";
     
     let placeName = "Pune, Maharashtra";
-    const locLower = log.location.toLowerCase();
+    const locLower = (log.location || "").toLowerCase();
     if (locLower.includes("adani")) {
       placeName = "Mundra Port, Gujarat";
     } else if (locLower.includes("reliance")) {
@@ -2843,16 +3433,16 @@ function renderAttendanceTable() {
 
     row.innerHTML = `
       <td>
-        <strong style="color:var(--color-text-primary);">${log.name}</strong><br>
-        <span style="font-family:var(--font-mono); font-size:0.65rem; color:var(--color-text-muted);">${log.empId}</span>
+        <strong style="color:var(--color-text-primary);">${log.name || 'Unknown'}</strong><br>
+        <span style="font-family:var(--font-mono); font-size:0.65rem; color:var(--color-text-muted);">${log.empId || ''}</span>
       </td>
       <td style="font-family:var(--font-mono);">${formattedDate}</td>
       <td>
-        ${log.location}<br>
+        ${log.location || 'Site Gate'}<br>
         <span style="font-size:0.65rem; font-weight:bold; color:${log.direction === 'Check-Out' ? '#ef4444' : '#22c55e'}">${(log.direction || 'Check-In').toUpperCase()}${log.isManual ? ' (MANUAL)' : ''}</span>
       </td>
       <td>
-        <span style="font-family:var(--font-mono); font-size:0.75rem;">${log.gps}</span><br>
+        <span style="font-family:var(--font-mono); font-size:0.75rem;">${log.gps || '0.000, 0.000'}</span><br>
         <span style="font-size:0.65rem; color:var(--color-text-muted);">${placeName}</span>
       </td>
       <td>
@@ -2873,9 +3463,9 @@ function renderPlantSummary() {
   const container = document.getElementById("plant-summary-container");
   if (!container) return;
   
-  const nowStr = new Date().toISOString().split("T")[0];
-  const todayLogs = appState.attendanceLogs.filter(l => {
-    return new Date(l.timestamp).toISOString().split("T")[0] === nowStr;
+  const nowStr = safeDateString(new Date());
+  const todayLogs = (appState.attendanceLogs || []).filter(l => {
+    return safeDateString(l.timestamp) === nowStr;
   });
   
   const locationCheckedIn = {};
@@ -2937,7 +3527,7 @@ function renderPlantSummary() {
 
 // Update UI statistics boxes
 function updateDashboardStats() {
-  const nowStr = new Date().toISOString().split("T")[0];
+  const nowStr = safeDateString(new Date());
   if (!appState.counters || appState.counters.date !== nowStr) {
     appState.counters = {
       date: nowStr,
@@ -2949,28 +3539,31 @@ function updateDashboardStats() {
   }
 
   // Filter logs matching current local date
-  const todayLogs = appState.attendanceLogs.filter(l => {
-    return new Date(l.timestamp).toISOString().split("T")[0] === nowStr;
+  const todayLogs = (appState.attendanceLogs || []).filter(l => {
+    return safeDateString(l.timestamp) === nowStr;
   });
 
   const approvedToday = todayLogs.filter(l => l.verified).length;
-  const totalToday = approvedToday + appState.counters.denied;
-  const offlineQueued = appState.syncQueue.length;
-
-  document.getElementById("stat-total-scans").innerText = totalToday;
-  document.getElementById("stat-approved").innerText = approvedToday;
-  document.getElementById("stat-denied").innerText = appState.counters.denied;
-  document.getElementById("stat-offline").innerText = offlineQueued;
+  const totalToday = approvedToday + (appState.counters.denied || 0);
+  const elTotal = document.getElementById("stat-total-scans");
+  if (elTotal) elTotal.innerText = totalToday;
+  const elApproved = document.getElementById("stat-approved");
+  if (elApproved) elApproved.innerText = approvedToday;
+  const elDenied = document.getElementById("stat-denied");
+  if (elDenied) elDenied.innerText = appState.counters.denied || 0;
+  const elOffline = document.getElementById("stat-offline");
+  if (elOffline) elOffline.innerText = appState.counters.offline || 0;
   
   const queueCount = appState.syncQueue.length;
   const countPill = document.getElementById("queue-count-pill");
-  
-  if (queueCount > 0) {
-    countPill.innerText = `${queueCount} Pending`;
-    countPill.style.color = "var(--color-warning)";
-  } else {
-    countPill.innerText = `0 Pending`;
-    countPill.style.color = "var(--color-success)";
+  if (countPill) {
+    if (queueCount > 0) {
+      countPill.innerText = `${queueCount} Pending`;
+      countPill.style.color = "var(--color-warning)";
+    } else {
+      countPill.innerText = `0 Pending`;
+      countPill.style.color = "var(--color-success)";
+    }
   }
 }
 
@@ -3380,42 +3973,303 @@ function finishEnrollment(finalKey, name) {
   img.src = avatarUrl;
 }
 
-// Initialize Admin Portal panel tabs (Live Logs vs Reports)
+// Initialize Admin Portal panel tabs: 2 Core Tables (Employee Table vs Attendance Board Table)
 function initAdminTabs() {
-  const tabLive = document.getElementById("admin-tab-live");
-  const tabReports = document.getElementById("admin-tab-reports");
-  const viewLive = document.getElementById("admin-view-live");
-  const viewReports = document.getElementById("admin-view-reports");
+  const tabEmployees = document.getElementById("admin-tab-employees");
+  const tabAttendance = document.getElementById("admin-tab-attendance");
+  const viewEmployees = document.getElementById("admin-view-employees");
+  const viewAttendance = document.getElementById("admin-view-attendance");
   
-  if (tabLive && tabReports && viewLive && viewReports) {
-    tabLive.addEventListener("click", () => {
-      tabLive.classList.add("active");
-      tabLive.style.borderBottomColor = "var(--color-primary)";
-      tabLive.style.color = "#fff";
-      
-      tabReports.classList.remove("active");
-      tabReports.style.borderBottomColor = "transparent";
-      tabReports.style.color = "var(--color-text-muted)";
-      
-      viewLive.classList.remove("hidden");
-      viewReports.classList.add("hidden");
+  const resetTabs = () => {
+    [tabEmployees, tabAttendance].forEach(t => {
+      if (t) {
+        t.classList.remove("active");
+        t.style.borderBottomColor = "transparent";
+        t.style.color = "var(--color-text-muted)";
+      }
     });
-    
-    tabReports.addEventListener("click", () => {
-      tabReports.classList.add("active");
-      tabReports.style.borderBottomColor = "var(--color-primary)";
-      tabReports.style.color = "#fff";
-      
-      tabLive.classList.remove("active");
-      tabLive.style.borderBottomColor = "transparent";
-      tabLive.style.color = "var(--color-text-muted)";
-      
-      viewLive.classList.add("hidden");
-      viewReports.classList.remove("hidden");
-      
-      renderZingHRReports();
+    [viewEmployees, viewAttendance].forEach(v => {
+      if (v) v.classList.add("hidden");
+    });
+  };
+
+  if (tabEmployees) {
+    tabEmployees.addEventListener("click", () => {
+      resetTabs();
+      tabEmployees.classList.add("active");
+      tabEmployees.style.borderBottomColor = "var(--color-primary)";
+      tabEmployees.style.color = "#fff";
+      if (viewEmployees) viewEmployees.classList.remove("hidden");
+      renderEmployeeMasterTable();
     });
   }
+
+  if (tabAttendance) {
+    tabAttendance.addEventListener("click", () => {
+      resetTabs();
+      tabAttendance.classList.add("active");
+      tabAttendance.style.borderBottomColor = "var(--color-primary)";
+      tabAttendance.style.color = "#fff";
+      if (viewAttendance) viewAttendance.classList.remove("hidden");
+      renderAttendanceRegisterTable();
+    });
+  }
+
+  // Setup Employee Search & Filter
+  const empSearch = document.getElementById("admin-emp-search");
+  // Global pagination state for Admin Employee Master
+  window.adminEmpCurrentPage = window.adminEmpCurrentPage || 1;
+  window.adminEmpPageSize = window.adminEmpPageSize || 50;
+  window.adminEmpTotalPages = 1;
+
+  if (empSearch) {
+    let timeout = null;
+    empSearch.addEventListener("input", () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        window.adminEmpCurrentPage = 1;
+        renderEmployeeMasterTable();
+      }, 300);
+    });
+  }
+  const empPlantFilter = document.getElementById("admin-emp-plant-filter");
+  if (empPlantFilter) {
+    empPlantFilter.addEventListener("change", () => {
+      window.adminEmpCurrentPage = 1;
+      renderEmployeeMasterTable();
+    });
+  }
+
+  // Employee Table Pagination controls
+  const empPrevBtn = document.getElementById("admin-emp-prev");
+  if (empPrevBtn && !empPrevBtn.dataset.bound) {
+    empPrevBtn.dataset.bound = "true";
+    empPrevBtn.addEventListener("click", () => {
+      if (window.adminEmpCurrentPage > 1) {
+        window.adminEmpCurrentPage--;
+        renderEmployeeMasterTable();
+      }
+    });
+  }
+
+  const empNextBtn = document.getElementById("admin-emp-next");
+  if (empNextBtn && !empNextBtn.dataset.bound) {
+    empNextBtn.dataset.bound = "true";
+    empNextBtn.addEventListener("click", () => {
+      if (window.adminEmpCurrentPage < window.adminEmpTotalPages) {
+        window.adminEmpCurrentPage++;
+        renderEmployeeMasterTable();
+      }
+    });
+  }
+
+  const empPageSizeSelect = document.getElementById("admin-emp-page-size");
+  if (empPageSizeSelect && !empPageSizeSelect.dataset.bound) {
+    empPageSizeSelect.dataset.bound = "true";
+    empPageSizeSelect.addEventListener("change", (e) => {
+      window.adminEmpPageSize = parseInt(e.target.value, 10) || 50;
+      window.adminEmpCurrentPage = 1;
+      renderEmployeeMasterTable();
+    });
+  }
+
+  // Sync with ZingHR Live button
+  const syncLiveBtn = document.getElementById("btn-sync-zinghr-live");
+  if (syncLiveBtn && !syncLiveBtn.dataset.bound) {
+    syncLiveBtn.dataset.bound = "true";
+    syncLiveBtn.addEventListener("click", async () => {
+      const icon = document.getElementById("sync-btn-icon");
+      const text = document.getElementById("sync-btn-text");
+      if (icon) icon.textContent = "⏳";
+      if (text) text.textContent = "Syncing ZingHR...";
+      syncLiveBtn.disabled = true;
+
+      try {
+        const res = await fetch(getApiUrl('/api/zinghr/sync-live'), { method: 'POST' });
+        const result = await res.json();
+        if (result.success) {
+          alert(`✅ ZingHR Workforce Sync Complete!\n\nActive Employees (Date of Leaving is NULL): ${result.activeCount}\nSeparated/Resigned Records: ${result.separatedCount}`);
+          window.adminEmpCurrentPage = 1;
+          renderEmployeeMasterTable();
+        } else {
+          alert(`⚠️ Sync notice: ${result.message || 'Unable to complete full sync.'}`);
+        }
+      } catch (err) {
+        alert(`❌ Sync failed: ${err.message}`);
+      } finally {
+        if (icon) icon.textContent = "🔄";
+        if (text) text.textContent = "Sync with ZingHR";
+        syncLiveBtn.disabled = false;
+      }
+    });
+  }
+
+  // Setup Date Picker in Attendance Board View
+  const regDatePicker = document.getElementById("admin-register-date-picker");
+  if (regDatePicker) {
+    regDatePicker.value = new Date().toISOString().split("T")[0];
+    regDatePicker.addEventListener("change", () => renderAttendanceRegisterTable());
+  }
+  const regRefreshBtn = document.getElementById("admin-register-refresh-btn");
+  if (regRefreshBtn) {
+    regRefreshBtn.addEventListener("click", () => renderAttendanceRegisterTable());
+  }
+
+  // Initial load of Employee Table
+  renderEmployeeMasterTable();
+}
+
+// Render Unified Table 1: Employee Master Table (Fast Paginated & Filtered)
+function renderEmployeeMasterTable() {
+  const tbody = document.getElementById("admin-employees-tbody");
+  if (!tbody) return;
+
+  const searchInput = document.getElementById("admin-emp-search");
+  const plantFilter = document.getElementById("admin-emp-plant-filter");
+  const query = searchInput ? searchInput.value.trim() : "";
+  const plant = plantFilter ? plantFilter.value : "all";
+
+  const page = window.adminEmpCurrentPage || 1;
+  const limit = window.adminEmpPageSize || 50;
+
+  tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 30px; color: #64748b;">Loading active Employee Table records...</td></tr>`;
+
+  let url = getApiUrl(`/api/employees?plant=${encodeURIComponent(plant)}&page=${page}&limit=${limit}`);
+  if (query) url += `&q=${encodeURIComponent(query)}`;
+
+  fetch(url)
+    .then(res => res.json())
+    .then(data => {
+      const employees = data.employees || [];
+      const totalCount = data.totalCount || 0;
+      window.adminEmpTotalPages = data.totalPages || 1;
+      window.allEmployeesCache = employees;
+
+      // Update Pagination DOM indicators
+      const startIdx = totalCount === 0 ? 0 : (page - 1) * limit + 1;
+      const endIdx = Math.min(page * limit, totalCount);
+
+      const pageInfo = document.getElementById("admin-emp-page-info");
+      if (pageInfo) {
+        pageInfo.textContent = `Showing ${startIdx}–${endIdx} of ${totalCount.toLocaleString()} active employees (Date of Leaving is NULL)`;
+      }
+
+      const indicator = document.getElementById("admin-emp-indicator");
+      if (indicator) {
+        indicator.textContent = `Page ${page} of ${window.adminEmpTotalPages.toLocaleString()}`;
+      }
+
+      const prevBtn = document.getElementById("admin-emp-prev");
+      if (prevBtn) prevBtn.disabled = (page <= 1);
+
+      const nextBtn = document.getElementById("admin-emp-next");
+      if (nextBtn) nextBtn.disabled = (page >= window.adminEmpTotalPages);
+
+      if (employees.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px; color: #64748b;">No active employees matching criteria.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = employees.map(emp => {
+        const isEnrolled = emp.biometricStatus === 'Registered' || emp.faceVector;
+        const bioBadge = isEnrolled
+          ? `<span style="background: #dcfce7; color: #15803d; font-weight: 700; padding: 2px 8px; border-radius: 4px; border: 1px solid #bbf7d0; font-size: 0.72rem;">✓ Registered</span>`
+          : `<span style="background: #fef3c7; color: #b45309; font-weight: 700; padding: 2px 8px; border-radius: 4px; border: 1px solid #fde68a; font-size: 0.72rem;">⚠️ Pending</span>`;
+
+        const isInactive = emp.employeeStatus === 'Resigned' || emp.employeeStatus === 'FnF Locked' || emp.employeeStatus === 'Inactive';
+        const statusBadge = isInactive
+          ? `<span style="background: #fee2e2; color: #b91c1c; font-weight: 600; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;">${emp.employeeStatus}</span>`
+          : `<span style="background: #f0fdf4; color: #166534; font-weight: 600; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;">Active</span>`;
+
+        const initials = (emp.employeeName || 'EM').split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase();
+
+        return `
+          <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s; cursor: pointer;" onclick="openEmployeeProfileDrawer('${emp.employeeCode}')" title="Click to view full employee profile">
+            <td style="padding: 10px 14px; font-weight: 700; font-family: var(--font-mono); color: #0284c7;">${emp.employeeCode}</td>
+            <td style="padding: 10px 14px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+              <span style="width: 26px; height: 26px; border-radius: 50%; background: #0284c7; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 0.68rem; font-weight: 700;">
+                ${initials}
+              </span>
+              ${emp.employeeName}
+            </td>
+            <td style="padding: 10px 14px; color: #475569;">${emp.Department || 'Operations'}</td>
+            <td style="padding: 10px 14px; color: #334155; font-weight: 600;">${emp.Designation || 'Staff'}</td>
+            <td style="padding: 10px 14px;"><span style="background: #f0f9ff; color: #0284c7; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 0.7rem;">${emp.AttendanceRuleGroup || 'General Shift'}</span></td>
+            <td style="padding: 10px 14px; color: #475569;">${emp.Location || 'Pantnagar'}</td>
+            <td style="padding: 10px 14px; font-size: 0.7rem; color: #64748b;">
+              <div>${emp.contact || '--'}</div>
+              <div style="color: #94a3b8;">${emp.email || '--'}</div>
+            </td>
+            <td style="padding: 10px 14px;">${bioBadge}</td>
+            <td style="padding: 10px 14px;">${statusBadge}</td>
+          </tr>
+        `;
+      }).join('');
+    })
+    .catch(err => {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px; color: #ef4444;">Failed to load Employee Table: ${err.message}</td></tr>`;
+    });
+}
+
+// Render Unified Table 2: Daily Attendance Board Table (Muster Roll)
+function renderAttendanceRegisterTable() {
+  const tbody = document.getElementById("admin-register-tbody");
+  if (!tbody) return;
+
+  const datePicker = document.getElementById("admin-register-date-picker");
+  const targetDate = datePicker && datePicker.value ? datePicker.value : new Date().toISOString().split("T")[0];
+
+  tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; padding: 40px; color: #64748b;">Loading Daily Attendance Board for ${targetDate}...</td></tr>`;
+
+  fetch(getApiUrl(`/api/attendance/register?date=${targetDate}&location=all`))
+    .then(res => res.json())
+    .then(data => {
+      const records = data.records || [];
+      const presentCount = records.filter(r => r.attendanceStatus === 'P' || r.attendanceStatus === 'HD').length;
+      const absentCount = records.filter(r => r.attendanceStatus === 'A' || r.attendanceStatus === 'WO').length;
+
+      const pStat = document.getElementById("board-stat-present");
+      const aStat = document.getElementById("board-stat-absent");
+      if (pStat) pStat.innerText = `Present: ${presentCount}`;
+      if (aStat) aStat.innerText = `Absent: ${absentCount}`;
+
+      if (records.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; padding: 40px; color: #64748b;">No attendance board records found for date ${targetDate}.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = records.map(r => {
+        const isPresent = r.attendanceStatus === 'P' || r.attendanceStatus === 'HD';
+        const statusBadge = isPresent 
+          ? `<span class="badge badge-success" style="background:#dcfce7; color:#15803d; font-weight:700; padding:2px 8px; border-radius:4px; border:1px solid #bbf7d0;">${r.attendanceStatus === 'P' ? 'Present' : 'Half Day'}</span>`
+          : (r.attendanceStatus === 'WO' 
+              ? `<span class="badge" style="background:#f1f5f9; color:#475569; font-weight:700; padding:2px 8px; border-radius:4px;">Weekly Off</span>`
+              : `<span class="badge badge-error" style="background:#fee2e2; color:#b91c1c; font-weight:700; padding:2px 8px; border-radius:4px; border:1px solid #fecaca;">Absent</span>`);
+        
+        const syncBadge = isPresent
+          ? `<span style="color:#10b981; font-weight:700;">✓ Synced (Live)</span>`
+          : `<span style="color:#94a3b8;">-</span>`;
+
+        return `
+          <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s; cursor: pointer;" onclick="openEmployeeProfileDrawer('${r.employeeCode}')" title="Click to view full employee profile">
+            <td style="padding: 10px 12px; font-weight: 700; font-family: var(--font-mono); color: #0284c7;">${r.employeeCode}</td>
+            <td style="padding: 10px 12px; font-weight: 700; color: #0f172a;">${r.employeeName}</td>
+            <td style="padding: 10px 12px; color: #475569;">${r.department || 'Operations'}</td>
+            <td style="padding: 10px 12px; color: #475569;">${r.designation || 'Staff'}</td>
+            <td style="padding: 10px 12px;"><span style="background:#f0f9ff; color:#0284c7; padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:600;">${r.shiftName || 'Morning Shift'}</span></td>
+            <td style="padding: 10px 12px; color: #475569;">${r.location || 'Tata Motors - Gate 1'}</td>
+            <td style="padding: 10px 12px; font-weight: 700; color: ${isPresent ? '#15803d' : '#94a3b8'}; font-family: var(--font-mono);">${r.firstInTime}</td>
+            <td style="padding: 10px 12px; font-weight: 700; color: ${r.lastOutTime !== '--' ? '#f59e0b' : '#94a3b8'}; font-family: var(--font-mono);">${r.lastOutTime}</td>
+            <td style="padding: 10px 12px; font-weight: 600; color: #0f172a;">${r.totalWorkDuration}</td>
+            <td style="padding: 10px 12px;">${statusBadge}</td>
+            <td style="padding: 10px 12px;">${syncBadge}</td>
+          </tr>
+        `;
+      }).join('');
+    })
+    .catch(err => {
+      tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; padding: 40px; color: #ef4444;">Failed to load attendance board: ${err.message}</td></tr>`;
+    });
 }
 
 // Render Zing HR reports list in admin view
@@ -3609,13 +4463,13 @@ function loadLocalStorage() {
 
     if (logs) {
       const parsedLogs = JSON.parse(logs);
-      if (Array.isArray(parsedLogs)) {
-        appState.attendanceLogs = parsedLogs;
-      } else if (parsedLogs && Array.isArray(parsedLogs.logs)) {
-        appState.attendanceLogs = parsedLogs.logs;
-      } else {
-        appState.attendanceLogs = [];
-      }
+      const rawLogs = Array.isArray(parsedLogs) ? parsedLogs : (parsedLogs && Array.isArray(parsedLogs.logs) ? parsedLogs.logs : []);
+      appState.attendanceLogs = rawLogs.filter(l => {
+        if (!l || typeof l !== "object") return false;
+        if (!l.timestamp) return false;
+        const d = new Date(l.timestamp);
+        return !isNaN(d.getTime());
+      });
     }
     if (!Array.isArray(appState.attendanceLogs)) {
       appState.attendanceLogs = [];
@@ -3651,20 +4505,22 @@ function loadLocalStorage() {
     appState.syncQueue = [];
   }
   
-  const selectors = ["login-lang-select", "header-lang-select", "settings-lang-select"];
-  selectors.forEach(id => {
-    const elem = document.getElementById(id);
-    if (elem) elem.value = appState.language || "en";
-  });
-  translateUI(appState.language || "en");
+  try {
+    const selectors = ["login-lang-select", "header-lang-select", "settings-lang-select"];
+    selectors.forEach(id => {
+      const elem = document.getElementById(id);
+      if (elem) elem.value = appState.language || "en";
+    });
+    translateUI(appState.language || "en");
+  } catch(e) {}
 
-  saveLocalStorage();
-  renderAttendanceTable();
-  updateDashboardStats();
+  try { saveLocalStorage(); } catch(e) {}
+  try { renderAttendanceTable(); } catch(e) { console.warn("renderAttendanceTable error:", e); }
+  try { updateDashboardStats(); } catch(e) { console.warn("updateDashboardStats error:", e); }
   
   // Sync database from server if reachable
-  loadDatabaseFromServer();
-  calculateEmployeeHashes();
+  try { loadDatabaseFromServer(); } catch(e) {}
+  try { calculateEmployeeHashes(); } catch(e) {}
 }
 
 async function loadDatabaseFromServer() {
@@ -3709,9 +4565,20 @@ function formatServerUrl(rawHost) {
   return protocol + clean;
 }
 
+function isNativeMobileEnvironment() {
+  const loc = (typeof window !== 'undefined' && window.location) ? window.location : null;
+  if (!loc) return false;
+  return !!(
+    (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) ||
+    loc.protocol === 'file:' ||
+    loc.protocol === 'capacitor:' ||
+    (loc.hostname === 'localhost' && loc.port !== '2000' && loc.port !== '3443')
+  );
+}
+
 function getApiUrl(endpoint) {
-  if (!endpoint.startsWith('http') && (window.location.protocol === 'file:' || window.location.protocol === 'capacitor:')) {
-    const configuredHost = localStorage.getItem("backend_server_ip") || "localhost:2000";
+  if (!endpoint.startsWith('http') && isNativeMobileEnvironment()) {
+    const configuredHost = localStorage.getItem("backend_server_ip") || "192.168.31.55:2000";
     return formatServerUrl(configuredHost) + endpoint;
   }
   return endpoint;
@@ -4208,6 +5075,17 @@ function openEmployeeProfileDrawer(key) {
   document.getElementById("profile-drawer-role").innerText = emp.role || "Contract Staff";
   document.getElementById("profile-drawer-shift").innerText = emp.shift || "Morning Shift (A)";
   
+  const deptEl = document.getElementById("profile-drawer-dept");
+  if (deptEl) deptEl.innerText = emp.department || "Operations";
+  const plantEl = document.getElementById("profile-drawer-plant");
+  if (plantEl) plantEl.innerText = emp.location || "Tata Motors - Gate 1";
+  const contactEl = document.getElementById("profile-drawer-contact");
+  if (contactEl) contactEl.innerText = emp.contact || "+91 98765 43210";
+  const bioStatusEl = document.getElementById("profile-drawer-biostatus");
+  if (bioStatusEl) bioStatusEl.innerText = (emp.isGateRegistered || (emp.gatePhotos && emp.gatePhotos.length > 0)) ? "Enrolled ✓" : "Pending";
+  const emailEl = document.getElementById("profile-drawer-email");
+  if (emailEl) emailEl.innerText = emp.email || `${(emp.id || 'emp').toLowerCase()}@tatamotors.com`;
+  
   const displayAvatar = (emp.gatePhotos && emp.gatePhotos.length > 0) ? emp.gatePhotos[0] : emp.avatar;
   document.getElementById("profile-drawer-avatar").src = displayAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100&q=80";
   
@@ -4326,7 +5204,7 @@ function initSettingsDrawer() {
   const openButtons = ["mobile-settings-btn", "mobile-scan-settings-btn", "mobile-reg-settings-btn", "mobile-logs-settings-btn", "mobile-zinghr-settings-btn"];
   
   // Set initial settings values
-  const currentIp = localStorage.getItem("backend_server_ip") || "192.168.1.8:3000";
+  const currentIp = localStorage.getItem("backend_server_ip") || "192.168.31.55:2000";
   if (ipInput) ipInput.value = currentIp;
   if (continuousScanCheck) continuousScanCheck.checked = appState.isContinuousScan;
   if (rosterRuleCheck) rosterRuleCheck.checked = appState.isShiftRosterEnforced;
@@ -4335,7 +5213,7 @@ function initSettingsDrawer() {
     const btn = document.getElementById(id);
     if (btn) {
       btn.addEventListener("click", () => {
-        const freshIp = localStorage.getItem("backend_server_ip") || "192.168.1.8:3000";
+        const freshIp = localStorage.getItem("backend_server_ip") || "192.168.31.55:2000";
         if (ipInput) ipInput.value = freshIp;
         if (continuousScanCheck) continuousScanCheck.checked = appState.isContinuousScan;
         if (rosterRuleCheck) rosterRuleCheck.checked = appState.isShiftRosterEnforced;
@@ -4642,7 +5520,7 @@ function startBackgroundSyncLoop() {
     // If the device is hard-toggled to offline mode in the UI, do not sync
     if (appState.isOffline) return;
     
-    const serverIp = localStorage.getItem("backend_server_ip") || "192.168.1.8:3000";
+    const serverIp = localStorage.getItem("backend_server_ip") || "192.168.31.55:2000";
     try {
       const ping = await fetch(getApiUrl('/api/roster'), { mode: 'cors' });
       if (ping.ok) {
@@ -4701,45 +5579,106 @@ function renderMobileZingHRDirectory() {
   fetch(getApiUrl('/api/zinghr/report'))
     .then(res => res.json())
     .then(data => {
-      container.innerHTML = "";
+      const activeData = Array.isArray(data)
+        ? data.filter(e => !e.dateOfLeaving || e.dateOfLeaving.trim() === '' || e.dateOfLeaving.toLowerCase() === 'null')
+        : [];
       
       const countEl = document.getElementById("mobile-zinghr-count");
-      if (countEl) countEl.innerText = `${data.length} Employees`;
+      if (countEl) countEl.innerText = `${activeData.length.toLocaleString()} Active Staff`;
       
-      if (data.length === 0) {
-        container.innerHTML = `<div style="color:var(--color-text-muted); font-size:0.75rem; text-align:center; padding:12px;">No ZingHR records found.</div>`;
+      if (activeData.length === 0) {
+        container.innerHTML = `<div style="color:var(--color-text-muted); font-size:0.75rem; text-align:center; padding:12px;">No active ZingHR records found.</div>`;
         return;
       }
       
-      data.forEach(emp => {
-        const card = document.createElement("div");
-        card.style.cssText = "background:var(--bg-card); border:1px solid var(--border-color); padding:10px; border-radius:6px; display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:0.75rem; margin-bottom:6px; cursor:pointer;";
-        
-        const avatarImg = emp.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=40&h=40&q=80";
-        
-        const regBadge = emp.isGateRegistered 
-          ? `<span style="color:#22c55e; font-size:0.6rem; border:1px solid rgba(34,197,94,0.2); padding:1px 4px; border-radius:3px; background:rgba(34,197,94,0.05);">Registered</span>`
-          : `<span style="color:#ef4444; font-size:0.6rem; border:1px solid rgba(239,68,68,0.2); padding:1px 4px; border-radius:3px; background:rgba(239,68,68,0.05);">Not Sync</span>`;
-          
-        card.innerHTML = `
-          <div style="display:flex; align-items:center; gap:8px; flex:1;">
-            <img src="${avatarImg}" style="width:28px; height:28px; border-radius:50%; object-fit:cover; border: 1px solid var(--border-color);">
-            <div style="display:flex; flex-direction:column; gap:1px;">
-              <span style="font-weight:bold; color:#fff;">${emp.name}</span>
-              <span style="color:var(--color-text-muted); font-size:0.62rem;">ID: ${emp.id}</span>
-            </div>
-          </div>
-          <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:2px;">
-            <span style="font-size:0.65rem; color:var(--color-primary); font-weight:bold;">${emp.attendanceCount} Days</span>
-            ${regBadge}
-          </div>
-        `;
-        
-        card.addEventListener("click", () => {
-          openMobileZingHRDossier(emp);
+      // Store in memory for instant mobile search
+      window.mobileZingHRData = activeData;
+
+      // Render top 50 items with quick search box
+      const sample = activeData.slice(0, 50);
+      const html = `
+        <div style="margin-bottom:6px;">
+          <input type="text" id="mobile-zinghr-search-input" placeholder="🔍 Search by name, ID or department..." style="width:100%; background:var(--bg-card); border:1px solid var(--border-color); border-radius:6px; color:#fff; font-size:0.72rem; padding:6px 10px; outline:none; box-sizing:border-box;">
+        </div>
+        <div id="mobile-zinghr-cards-list" style="display:flex; flex-direction:column; gap:6px;">
+          ${sample.map(emp => {
+            const avatarImg = emp.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=40&h=40&q=80";
+            const regBadge = emp.isGateRegistered 
+              ? `<span style="color:#22c55e; font-size:0.6rem; border:1px solid rgba(34,197,94,0.2); padding:1px 4px; border-radius:3px; background:rgba(34,197,94,0.05);">Registered</span>`
+              : `<span style="color:#ef4444; font-size:0.6rem; border:1px solid rgba(239,68,68,0.2); padding:1px 4px; border-radius:3px; background:rgba(239,68,68,0.05);">Not Sync</span>`;
+
+            return `
+              <div class="mobile-zing-card" data-id="${emp.id}" style="background:var(--bg-card); border:1px solid var(--border-color); padding:8px 10px; border-radius:6px; display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:0.75rem; cursor:pointer;">
+                <div style="display:flex; align-items:center; gap:8px; flex:1;">
+                  <img src="${avatarImg}" style="width:28px; height:28px; border-radius:50%; object-fit:cover; border: 1px solid var(--border-color);">
+                  <div style="display:flex; flex-direction:column; gap:1px;">
+                    <span style="font-weight:bold; color:#fff; font-size:0.74rem;">${emp.name}</span>
+                    <span style="color:var(--color-text-muted); font-size:0.62rem;">${emp.id} • ${emp.department || emp.role || 'Staff'}</span>
+                  </div>
+                </div>
+                <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:2px;">
+                  <span style="font-size:0.65rem; color:var(--color-primary); font-weight:bold;">${emp.attendanceCount || 0} Days</span>
+                  ${regBadge}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+
+      container.innerHTML = html;
+
+      // Bind search input filter
+      const searchBox = document.getElementById("mobile-zinghr-search-input");
+      if (searchBox) {
+        searchBox.addEventListener("input", (e) => {
+          const q = e.target.value.toLowerCase().trim();
+          const filtered = q
+            ? activeData.filter(emp => (emp.name && emp.name.toLowerCase().includes(q)) || (emp.id && emp.id.toLowerCase().includes(q)) || (emp.department && emp.department.toLowerCase().includes(q))).slice(0, 50)
+            : activeData.slice(0, 50);
+
+          const cardsList = document.getElementById("mobile-zinghr-cards-list");
+          if (cardsList) {
+            cardsList.innerHTML = filtered.map(emp => {
+              const avatarImg = emp.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=40&h=40&q=80";
+              const regBadge = emp.isGateRegistered 
+                ? `<span style="color:#22c55e; font-size:0.6rem; border:1px solid rgba(34,197,94,0.2); padding:1px 4px; border-radius:3px; background:rgba(34,197,94,0.05);">Registered</span>`
+                : `<span style="color:#ef4444; font-size:0.6rem; border:1px solid rgba(239,68,68,0.2); padding:1px 4px; border-radius:3px; background:rgba(239,68,68,0.05);">Not Sync</span>`;
+
+              return `
+                <div class="mobile-zing-card" data-id="${emp.id}" style="background:var(--bg-card); border:1px solid var(--border-color); padding:8px 10px; border-radius:6px; display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:0.75rem; cursor:pointer;">
+                  <div style="display:flex; align-items:center; gap:8px; flex:1;">
+                    <img src="${avatarImg}" style="width:28px; height:28px; border-radius:50%; object-fit:cover; border: 1px solid var(--border-color);">
+                    <div style="display:flex; flex-direction:column; gap:1px;">
+                      <span style="font-weight:bold; color:#fff; font-size:0.74rem;">${emp.name}</span>
+                      <span style="color:var(--color-text-muted); font-size:0.62rem;">${emp.id} • ${emp.department || emp.role || 'Staff'}</span>
+                    </div>
+                  </div>
+                  <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:2px;">
+                    <span style="font-size:0.65rem; color:var(--color-primary); font-weight:bold;">${emp.attendanceCount || 0} Days</span>
+                    ${regBadge}
+                  </div>
+                </div>
+              `;
+            }).join('');
+
+            // Re-bind clicks
+            cardsList.querySelectorAll(".mobile-zing-card").forEach(c => {
+              c.addEventListener("click", () => {
+                const emp = activeData.find(e => e.id === c.dataset.id);
+                if (emp) openMobileZingHRDossier(emp);
+              });
+            });
+          }
         });
-        
-        container.appendChild(card);
+      }
+
+      // Bind card clicks
+      container.querySelectorAll(".mobile-zing-card").forEach(c => {
+        c.addEventListener("click", () => {
+          const emp = activeData.find(e => e.id === c.dataset.id);
+          if (emp) openMobileZingHRDossier(emp);
+        });
       });
     })
     .catch(err => {
@@ -4862,9 +5801,18 @@ function submitManualAttendance(emp, direction) {
     })
     .then(res => {
       if (res.ok) return res.json();
-      throw new Error("HTTP error " + res.status);
+      return res.json().then(errData => {
+        throw new Error(errData.message || ("HTTP error " + res.status));
+      }).catch(() => {
+        throw new Error("HTTP error " + res.status);
+      });
     })
     .then(data => {
+      if (data && data.success === false && data.message) {
+        logTerminal("INFO", `ZingHR Server: ${data.message}`);
+        alert(`ℹ️ ${data.message} for ${emp.name}.`);
+        return;
+      }
       logTerminal("SUCCESS", `ZingHR Server Response: Manual ${direction} accepted for ${emp.name}`);
       
       appState.attendanceLogs.unshift(record);
@@ -4940,3 +5888,4 @@ function populateMonthDropdowns() {
     });
   }
 }
+
