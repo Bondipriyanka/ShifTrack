@@ -262,7 +262,8 @@ header {
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  height: 0;
+  height: 100% !important;
+  min-height: 0 !important;
 }
 
 .app-page-view {
@@ -465,30 +466,56 @@ header {
 /* Floating Verification Banner Card (Green/Red Access) */
 .verification-card {
   position: absolute;
-  bottom: 20px;
-  left: 16px;
-  right: 16px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
+  bottom: 14px;
+  left: 12px;
+  right: 12px;
+  background: #ffffff;
+  color: #0f172a;
+  border: 1.5px solid #cbd5e1;
   border-radius: 16px;
-  padding: 16px;
+  padding: 12px 14px;
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 8px;
   z-index: 30;
-  backdrop-filter: blur(12px);
-  transform: translateY(120%);
-  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(16px);
+  transform: translateY(130%);
+  transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 10px 35px rgba(15, 23, 42, 0.14);
 }
 
 .verification-card.active {
   transform: translateY(0);
 }
 
+.verif-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+}
+
+.verif-profile-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+#verif-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid #cbd5e1;
+  flex-shrink: 0;
+}
+
 .verification-icon {
-  width: 44px;
-  height: 44px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -496,25 +523,76 @@ header {
   flex-shrink: 0;
 }
 
-.verification-info {
+.verif-title-group {
+  min-width: 0;
   flex: 1;
 }
 
-.verification-info h4 {
-  font-size: 0.9rem;
-  font-weight: 600;
+.verif-title-group h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
 }
 
-.verification-info p {
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
+.verif-title-group small {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #64748b;
+  display: block;
 }
 
 .verification-timestamp {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  color: var(--color-text-muted);
+  font-family: var(--font-mono, monospace);
   text-align: right;
+  flex-shrink: 0;
+}
+
+.verification-timestamp #verif-time {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.verification-timestamp #verif-loc {
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  max-width: 110px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.verif-status-box {
+  width: 100%;
+}
+
+.verif-status-box p {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #334155;
+  word-break: break-word;
+}
+
+#verif-shift-pill {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 6px;
+  text-align: center;
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 /* Success and Error Theme modifications for Card */

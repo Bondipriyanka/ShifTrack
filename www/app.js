@@ -1142,6 +1142,12 @@ function showCheckoutReady(emp) {
   const viewport = document.getElementById("viewport-container");
   const card = document.getElementById("verification-card");
   setVerificationProfile(emp);
+
+  // Strict Plant Location Validation Check at entry
+  if (!checkClientAndLocationMatch(emp, appState.selectedLocation)) {
+    showPlantMismatchError(emp);
+    return;
+  }
   document.getElementById("verif-name").innerText = emp.name;
   document.getElementById("verif-status").innerText = "Already Checked In";
   document.getElementById("verif-time").innerText = new Date().toLocaleTimeString();
@@ -1609,23 +1615,52 @@ function recordAttendanceSuccess(emp, timestamp) {
 
   // SHIFT ROSTER ENFORCEMENT POLICY
   if (appState.isShiftRosterEnforced) {
-    const checkInHour = checkInDate.getHours() + checkInDate.getMinutes() / 60;
+    const punchHour = checkInDate.getHours() + checkInDate.getMinutes() / 60;
     let isRosterValid = true;
     let allowedRangeText = "";
     const shiftStr = (emp.shift || "").toUpperCase();
+    const roleStr = (emp.role || "").toUpperCase();
+    const deptStr = (emp.department || emp.Department || "").toUpperCase();
     
-    if (shiftStr.includes("MORNING") || shiftStr.includes("(A)")) {
-      isRosterValid = (checkInHour >= 5.0 && checkInHour <= 14.5);
-      allowedRangeText = "Morning Shift (A) [05:00 - 14:30]";
-    } else if (shiftStr.includes("EVENING") || shiftStr.includes("(B)")) {
-      isRosterValid = (checkInHour >= 13.5 && checkInHour <= 22.5);
-      allowedRangeText = "Evening Shift (B) [13:30 - 22:30]";
-    } else if (shiftStr.includes("GENERAL") || shiftStr.includes("(G)")) {
-      isRosterValid = (checkInHour >= 8.0 && checkInHour <= 18.5);
-      allowedRangeText = "General Shift (G) [08:00 - 18:30]";
-    } else if (shiftStr.includes("NIGHT") || shiftStr.includes("(C)")) {
-      isRosterValid = (checkInHour >= 21.5 || checkInHour <= 6.5);
-      allowedRangeText = "Night Shift (C) [21:30 - 06:30]";
+    const isFlexibleStaff = roleStr.includes("HR") || roleStr.includes("EXECUTIVE") || 
+      roleStr.includes("MANAGER") || roleStr.includes("SUPERVISOR") || roleStr.includes("LEAD") ||
+      deptStr.includes("HR") || deptStr.includes("MANAGEMENT") || deptStr.includes("OPERATIONS") ||
+      shiftStr.includes("FLEX") || shiftStr.includes("ALL") || shiftStr === "";
+
+    if (direction === 'Check-Out') {
+      if (isFlexibleStaff || (typeof lastDirection !== 'undefined' && lastDirection === 'Check-In')) {
+        isRosterValid = true;
+      } else if (shiftStr.includes("MORNING") || shiftStr.includes("(A)")) {
+        isRosterValid = (punchHour >= 11.0 || punchHour <= 2.0);
+        allowedRangeText = "Morning Shift (A) Checkout [11:00 - 02:00]";
+      } else if (shiftStr.includes("EVENING") || shiftStr.includes("(B)")) {
+        isRosterValid = (punchHour >= 17.0 || punchHour <= 6.0);
+        allowedRangeText = "Evening Shift (B) Checkout [17:00 - 06:00]";
+      } else if (shiftStr.includes("GENERAL") || shiftStr.includes("(G)")) {
+        isRosterValid = (punchHour >= 12.0 || punchHour <= 6.0);
+        allowedRangeText = "General Shift (G) Checkout [12:00 - 06:00]";
+      } else if (shiftStr.includes("NIGHT") || shiftStr.includes("(C)")) {
+        isRosterValid = (punchHour >= 2.0 && punchHour <= 15.0);
+        allowedRangeText = "Night Shift (C) Checkout [02:00 - 15:00]";
+      } else {
+        isRosterValid = true;
+      }
+    } else {
+      if (isFlexibleStaff) {
+        isRosterValid = true;
+      } else if (shiftStr.includes("MORNING") || shiftStr.includes("(A)")) {
+        isRosterValid = (punchHour >= 5.0 && punchHour <= 15.0);
+        allowedRangeText = "Morning Shift (A) [05:00 - 15:00]";
+      } else if (shiftStr.includes("EVENING") || shiftStr.includes("(B)")) {
+        isRosterValid = (punchHour >= 13.0 && punchHour <= 23.0);
+        allowedRangeText = "Evening Shift (B) [13:00 - 23:00]";
+      } else if (shiftStr.includes("GENERAL") || shiftStr.includes("(G)")) {
+        isRosterValid = (punchHour >= 6.5 && punchHour <= 22.5);
+        allowedRangeText = "General Shift (G) [06:30 - 22:30]";
+      } else if (shiftStr.includes("NIGHT") || shiftStr.includes("(C)")) {
+        isRosterValid = (punchHour >= 20.0 || punchHour <= 8.0);
+        allowedRangeText = "Night Shift (C) [20:00 - 08:00]";
+      }
     }
     
     if (!isRosterValid) {

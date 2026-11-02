@@ -1,0 +1,722 @@
+[
+  {
+    "sno": 1,
+    "plantKey": "PLANT-01",
+    "plantName": "AL Chennai - Chennai",
+    "supervisorName": "No Supervisor Assigned",
+    "supervisorId": "UNASSIGNED-01",
+    "total": 144,
+    "active": 99,
+    "inactive": 45
+  },
+  {
+    "sno": 2,
+    "plantKey": "PLANT-02",
+    "plantName": "Mahindra (MSPT) - MSPT",
+    "supervisorName": "Chengettuvan J Jayachandran",
+    "supervisorId": "LTAF38307INT23",
+    "total": 603,
+    "active": 517,
+    "inactive": 86
+  },
+  {
+    "sno": 3,
+    "plantKey": "PLANT-03",
+    "plantName": "Mahindra (MWC) - Mahindra World City",
+    "supervisorName": "Muthuraj A",
+    "supervisorId": "LF687INT20",
+    "total": 436,
+    "active": 386,
+    "inactive": 50
+  },
+  {
+    "sno": 4,
+    "plantKey": "PLANT-04",
+    "plantName": "Foxconn - Sriperumbudur",
+    "supervisorName": "Barathi Balu",
+    "supervisorId": "LF56883INT26",
+    "total": 436,
+    "active": 211,
+    "inactive": 225
+  },
+  {
+    "sno": 5,
+    "plantKey": "PLANT-05",
+    "plantName": "Pegatron - Mahindra City",
+    "supervisorName": "Renganathan Muthusamy M",
+    "supervisorId": "LF44956INT24",
+    "total": 1889,
+    "active": 0,
+    "inactive": 1889
+  },
+  {
+    "sno": 6,
+    "plantKey": "PLANT-06",
+    "plantName": "Tata Electronics Jasmine - Krishnagiri",
+    "supervisorName": "K J Abhinash",
+    "supervisorId": "LTAF40879INT23",
+    "total": 108,
+    "active": 29,
+    "inactive": 79
+  },
+  {
+    "sno": 7,
+    "plantKey": "PLANT-07",
+    "plantName": "Tata Electronics MG - Krishnagiri",
+    "supervisorName": "Stenogin Jose B",
+    "supervisorId": "LTAF40360INT23",
+    "total": 1653,
+    "active": 651,
+    "inactive": 1002
+  },
+  {
+    "sno": 8,
+    "plantKey": "PLANT-08",
+    "plantName": "L&T SB - Chennai",
+    "supervisorName": "Aravind D",
+    "supervisorId": "LTAF39756INT23",
+    "total": 82,
+    "active": 71,
+    "inactive": 11
+  },
+  {
+    "sno": 9,
+    "plantKey": "PLANT-09",
+    "plantName": "L&T SB New - Chennai",
+    "supervisorName": "Aravind D",
+    "supervisorId": "LTAF39756INT23",
+    "total": 44,
+    "active": 42,
+    "inactive": 2
+  },
+  {
+    "sno": 10,
+    "plantKey": "PLANT-10",
+    "plantName": "Bonfiglioli IDC - Chennai",
+    "supervisorName": "No Supervisor Assigned",
+    "supervisorId": "UNASSIGNED-10",
+    "total": 17,
+    "active": 13,
+    "inactive": 4
+  },
+  {
+    "sno": 11,
+    "plantKey": "PLANT-11",
+    "plantName": "Bonfiglioli - Chennai",
+    "supervisorName": "No Supervisor Assigned",
+    "supervisorId": "UNASSIGNED-11",
+    "total": 51,
+    "active": 35,
+    "inactive": 16
+  },
+  {
+    "sno": 12,
+    "plantKey": "PLANT-12",
+    "plantName": "Gates Unita - Sriperumbudur",
+    "supervisorName": "No Supervisor Assigned",
+    "supervisorId": "UNASSIGNED-12",
+    "total": 93,
+    "active": 81,
+    "inactive": 12
+  },
+  {
+    "sno": 13,
+    "plantKey": "PLANT-13",
+    "plantName": "Tata Hitachi - Dharwad",
+    "supervisorName": "Santosh Shirur M",
+    "supervisorId": "LTAF1058INT22",
+    "total": 7,
+    "active": 0,
+    "inactive": 7
+  },
+  {
+    "sno": 14,
+    "plantKey": "PLANT-14",
+    "plantName": "PSA - Chennai",
+    "supervisorName": "Vikram M",
+    "supervisorId": "LF664INT19",
+    "total": 98,
+    "active": 78,
+    "inactive": 20
+  },
+  {
+    "sno": 15,
+    "plantKey": "PLANT-15",
+    "plantName": "NDPL - New Delhi",
+    "supervisorName": "Ankit Goyal",
+    "supervisorId": "LF54162INT26",
+    "total": 90,
+    "active": 79,
+    "inactive": 11
+  },
+  {
+    "sno": 16,
+    "plantKey": "PLANT-16",
+    "plantName": "ITC Staff - Pudukkottai",
+    "supervisorName": "Murugaiya Mariyappan",
+    "supervisorId": "LTAF38988INT23",
+    "total": 23,
+    "active": 19,
+    "inactive": 4
+  },
+  {
+    "sno": 17,
+    "plantKey": "PLANT-17",
+    "plantName": "Yazaki Farukhnagar - Farukhnagar",
+    "supervisorName": "Hitesh Kumar",
+    "supervisorId": "LF54164INT26",
+    "total": 347,
+    "active": 58,
+    "inactive": 289
+  },
+  {
+    "sno": 18,
+    "plantKey": "PLANT-18",
+    "plantName": "Yazaki Bangalore - Bangalore",
+    "supervisorName": "Cholappa",
+    "supervisorId": "LF45132INT24",
+    "total": 690,
+    "active": 127,
+    "inactive": 563
+  },
+  {
+    "sno": 19,
+    "plantKey": "PLANT-19",
+    "plantName": "Yazaki Bhiwadi - Bhiwadi",
+    "supervisorName": "Rajesh Kumar",
+    "supervisorId": "LF984INT22",
+    "total": 554,
+    "active": 132,
+    "inactive": 422
+  },
+  {
+    "sno": 20,
+    "plantKey": "PLANT-20",
+    "plantName": "AL Vijayawada - Krishna",
+    "supervisorName": "No Supervisor Assigned",
+    "supervisorId": "UNASSIGNED-20",
+    "total": 48,
+    "active": 32,
+    "inactive": 16
+  },
+  {
+    "sno": 21,
+    "plantKey": "PLANT-21",
+    "plantName": "AL Lucknow - Lucknow",
+    "supervisorName": "Shivam Pal",
+    "supervisorId": "LF54057INT26",
+    "total": 15,
+    "active": 13,
+    "inactive": 2
+  },
+  {
+    "sno": 22,
+    "plantKey": "PLANT-22",
+    "plantName": "AL Ennore (Layam) - Ennore",
+    "supervisorName": "Sreejith Sukumaran",
+    "supervisorId": "LF49566INT25",
+    "total": 284,
+    "active": 179,
+    "inactive": 105
+  },
+  {
+    "sno": 23,
+    "plantKey": "PLANT-23",
+    "plantName": "AL Ennore (Radram) - Ennore",
+    "supervisorName": "Sreejith Sukumaran",
+    "supervisorId": "LF49566INT25",
+    "total": 188,
+    "active": 72,
+    "inactive": 116
+  },
+  {
+    "sno": 24,
+    "plantKey": "PLANT-24",
+    "plantName": "TMSS - Punjab (Chandigarh)",
+    "supervisorName": "Varsha Jain",
+    "supervisorId": "LTAF1088INT22",
+    "total": 11,
+    "active": 9,
+    "inactive": 2
+  },
+  {
+    "sno": 25,
+    "plantKey": "PLANT-25",
+    "plantName": "TMSS - Assam (Guwahati)",
+    "supervisorName": "Varsha Jain",
+    "supervisorId": "LTAF1088INT22",
+    "total": 9,
+    "active": 8,
+    "inactive": 1
+  },
+  {
+    "sno": 26,
+    "plantKey": "PLANT-26",
+    "plantName": "TMSS - Delhi",
+    "supervisorName": "Varsha Jain",
+    "supervisorId": "LTAF1088INT22",
+    "total": 20,
+    "active": 16,
+    "inactive": 4
+  },
+  {
+    "sno": 27,
+    "plantKey": "PLANT-27",
+    "plantName": "TMSS - Karnataka (Whitefield, Bidadi, Kengeri)",
+    "supervisorName": "Varsha Jain",
+    "supervisorId": "LTAF1088INT22",
+    "total": 29,
+    "active": 21,
+    "inactive": 8
+  },
+  {
+    "sno": 28,
+    "plantKey": "PLANT-28",
+    "plantName": "TKM - Bangalore",
+    "supervisorName": "Tarun Kumar C",
+    "supervisorId": "LTAF41666INT24",
+    "total": 1086,
+    "active": 393,
+    "inactive": 693
+  },
+  {
+    "sno": 29,
+    "plantKey": "PLANT-29",
+    "plantName": "TKS - Bidadi & Bangalore",
+    "supervisorName": "Varsha Jain",
+    "supervisorId": "LTAF1088INT22",
+    "total": 33,
+    "active": 27,
+    "inactive": 6
+  },
+  {
+    "sno": 30,
+    "plantKey": "PLANT-30",
+    "plantName": "TKS Automotive - Bangalore",
+    "supervisorName": "Varsha Jain",
+    "supervisorId": "LTAF1088INT22",
+    "total": 9,
+    "active": 8,
+    "inactive": 1
+  },
+  {
+    "sno": 31,
+    "plantKey": "PLANT-31",
+    "plantName": "TKAP - Bangalore",
+    "supervisorName": "Varsha Jain",
+    "supervisorId": "LTAF1088INT22",
+    "total": 56,
+    "active": 23,
+    "inactive": 33
+  },
+  {
+    "sno": 32,
+    "plantKey": "PLANT-32",
+    "plantName": "Pricol - Pune",
+    "supervisorName": "Ravikumar Madhur",
+    "supervisorId": "LF626INT19",
+    "total": 14,
+    "active": 9,
+    "inactive": 5
+  },
+  {
+    "sno": 33,
+    "plantKey": "PLANT-33",
+    "plantName": "Yamaha Music - Kancheepuram",
+    "supervisorName": "Venkatesh Ranganathan",
+    "supervisorId": "LF569INT18",
+    "total": 387,
+    "active": 198,
+    "inactive": 189
+  },
+  {
+    "sno": 34,
+    "plantKey": "PLANT-34",
+    "plantName": "Switch Mobility - Chennai",
+    "supervisorName": "Aravind D",
+    "supervisorId": "LTAF39756INT23",
+    "total": 85,
+    "active": 61,
+    "inactive": 24
+  },
+  {
+    "sno": 35,
+    "plantKey": "PLANT-35",
+    "plantName": "Switch Mobility - Delhi",
+    "supervisorName": "Aravind D",
+    "supervisorId": "LTAF39756INT23",
+    "total": 1,
+    "active": 1,
+    "inactive": 0
+  },
+  {
+    "sno": 36,
+    "plantKey": "PLANT-36",
+    "plantName": "Switch Mobility - Hosur",
+    "supervisorName": "Aravind D",
+    "supervisorId": "LTAF39756INT23",
+    "total": 67,
+    "active": 15,
+    "inactive": 52
+  },
+  {
+    "sno": 37,
+    "plantKey": "PLANT-37",
+    "plantName": "TPNODL - Berhampur",
+    "supervisorName": "Ankit Goyal",
+    "supervisorId": "LF54162INT26",
+    "total": 44,
+    "active": 36,
+    "inactive": 8
+  },
+  {
+    "sno": 38,
+    "plantKey": "PLANT-38",
+    "plantName": "Mate Bangalore - Ramanagara",
+    "supervisorName": "Chandrakanth S Maharajannavar",
+    "supervisorId": "LTAF37527INT23",
+    "total": 3,
+    "active": 2,
+    "inactive": 1
+  },
+  {
+    "sno": 39,
+    "plantKey": "PLANT-39",
+    "plantName": "Tata Motors Dharwad - Dharwad",
+    "supervisorName": "Santosh Shirur M",
+    "supervisorId": "LTAF1058INT22",
+    "total": 127,
+    "active": 92,
+    "inactive": 35
+  },
+  {
+    "sno": 40,
+    "plantKey": "PLANT-40",
+    "plantName": "TMBSL Executive - Dharwad",
+    "supervisorName": "Gurumoorthi Savanoor",
+    "supervisorId": "LTAF41491INT23",
+    "total": 104,
+    "active": 70,
+    "inactive": 34
+  },
+  {
+    "sno": 41,
+    "plantKey": "PLANT-41",
+    "plantName": "Daimler - Oragadam",
+    "supervisorName": "Vinoth",
+    "supervisorId": "LF54109INT26",
+    "total": 55,
+    "active": 36,
+    "inactive": 19
+  },
+  {
+    "sno": 42,
+    "plantKey": "PLANT-42",
+    "plantName": "Internal - Pan India",
+    "supervisorName": "No Supervisor Assigned",
+    "supervisorId": "UNASSIGNED-42",
+    "total": 546,
+    "active": 207,
+    "inactive": 339
+  },
+  {
+    "sno": 43,
+    "plantKey": "PLANT-43",
+    "plantName": "AL Mulla International Exchange Co. - Mumbai",
+    "supervisorName": "No Supervisor Assigned",
+    "supervisorId": "UNASSIGNED-43",
+    "total": 117,
+    "active": 74,
+    "inactive": 43
+  },
+  {
+    "sno": 44,
+    "plantKey": "PLANT-44",
+    "plantName": "Al Mulla - Mumbai",
+    "supervisorName": "No Supervisor Assigned",
+    "supervisorId": "UNASSIGNED-44",
+    "total": 2,
+    "active": 2,
+    "inactive": 0
+  },
+  {
+    "sno": 45,
+    "plantKey": "PLANT-45",
+    "plantName": "Al Mulla Modern Exchange Co. - Mumbai",
+    "supervisorName": "No Supervisor Assigned",
+    "supervisorId": "UNASSIGNED-45",
+    "total": 8,
+    "active": 6,
+    "inactive": 2
+  },
+  {
+    "sno": 46,
+    "plantKey": "PLANT-46",
+    "plantName": "Yazaki Ranjangaon P3 - Ranjangaon",
+    "supervisorName": "Machhindra Makaram Rathod",
+    "supervisorId": "LF45490INT24",
+    "total": 858,
+    "active": 253,
+    "inactive": 605
+  },
+  {
+    "sno": 47,
+    "plantKey": "PLANT-47",
+    "plantName": "Yazaki Ranjangaon P2 - Ranjangaon",
+    "supervisorName": "Amar Chavhan",
+    "supervisorId": "LF54783INT26",
+    "total": 541,
+    "active": 187,
+    "inactive": 354
+  },
+  {
+    "sno": 48,
+    "plantKey": "PLANT-48",
+    "plantName": "AL Pantnagar (Layam) - Pantnagar",
+    "supervisorName": "Jitendra Kumar",
+    "supervisorId": "LTAF37099INT23",
+    "total": 1367,
+    "active": 144,
+    "inactive": 1223
+  },
+  {
+    "sno": 49,
+    "plantKey": "PLANT-49",
+    "plantName": "AL Pantnagar (Radram) - Pantnagar",
+    "supervisorName": "Jitendra Kumar",
+    "supervisorId": "LTAF37099INT23",
+    "total": 997,
+    "active": 276,
+    "inactive": 721
+  },
+  {
+    "sno": 50,
+    "plantKey": "PLANT-50",
+    "plantName": "Yazaki Bhayala - Bhayla",
+    "supervisorName": "Umar",
+    "supervisorId": "LF54492INT26",
+    "total": 265,
+    "active": 136,
+    "inactive": 129
+  },
+  {
+    "sno": 51,
+    "plantKey": "PLANT-51",
+    "plantName": "Yazaki Wagholi - Wagholi",
+    "supervisorName": "Yogesh Ravindra Nikumbh",
+    "supervisorId": "LF54609INT26",
+    "total": 386,
+    "active": 194,
+    "inactive": 192
+  },
+  {
+    "sno": 52,
+    "plantKey": "PLANT-52",
+    "plantName": "TML Pantnagar - Pantnagar",
+    "supervisorName": "No Supervisor Assigned",
+    "supervisorId": "UNASSIGNED-52",
+    "total": 80,
+    "active": 70,
+    "inactive": 10
+  },
+  {
+    "sno": 53,
+    "plantKey": "PLANT-53",
+    "plantName": "TML Pune - Pune",
+    "supervisorName": "No Supervisor Assigned",
+    "supervisorId": "UNASSIGNED-53",
+    "total": 95,
+    "active": 75,
+    "inactive": 20
+  },
+  {
+    "sno": 54,
+    "plantKey": "PLANT-54",
+    "plantName": "Yazaki Hosur - Hosur",
+    "supervisorName": "Sridar B S",
+    "supervisorId": "LF49897INT25",
+    "total": 996,
+    "active": 400,
+    "inactive": 596
+  },
+  {
+    "sno": 55,
+    "plantKey": "PLANT-55",
+    "plantName": "Bosch Home Comfort India Limited - Regular - Mehsana",
+    "supervisorName": "Jigarkumar Kantilal Parmar",
+    "supervisorId": "LF45034INT24",
+    "total": 248,
+    "active": 126,
+    "inactive": 122
+  },
+  {
+    "sno": 56,
+    "plantKey": "PLANT-56",
+    "plantName": "Bosch Home Comfort India Limited - Fire - Mehsana",
+    "supervisorName": "Jigarkumar Kantilal Parmar",
+    "supervisorId": "LF45034INT24",
+    "total": 32,
+    "active": 25,
+    "inactive": 7
+  },
+  {
+    "sno": 57,
+    "plantKey": "PLANT-57",
+    "plantName": "Bosch Home Comfort India Limited - Kadi - Mehsana",
+    "supervisorName": "Jigarkumar Kantilal Parmar",
+    "supervisorId": "LF45034INT24",
+    "total": 3,
+    "active": 2,
+    "inactive": 1
+  },
+  {
+    "sno": 58,
+    "plantKey": "PLANT-58",
+    "plantName": "Bosch Home Comfort India Limited - North - Mehsana",
+    "supervisorName": "Jigarkumar Kantilal Parmar",
+    "supervisorId": "LF45034INT24",
+    "total": 8,
+    "active": 7,
+    "inactive": 1
+  },
+  {
+    "sno": 59,
+    "plantKey": "PLANT-59",
+    "plantName": "Bosch Home Comfort India Limited - South and West - Mehsana",
+    "supervisorName": "Jigarkumar Kantilal Parmar",
+    "supervisorId": "LF45034INT24",
+    "total": 4,
+    "active": 4,
+    "inactive": 0
+  },
+  {
+    "sno": 60,
+    "plantKey": "PLANT-60",
+    "plantName": "Yazaki Chennai - Chengalpattu",
+    "supervisorName": "Rajesh Kumar R",
+    "supervisorId": "LF940INT22",
+    "total": 725,
+    "active": 451,
+    "inactive": 274
+  },
+  {
+    "sno": 61,
+    "plantKey": "PLANT-61",
+    "plantName": "AL Hosur - Hosur",
+    "supervisorName": "Sumithran S S",
+    "supervisorId": "LFS7278ALH16",
+    "total": 1110,
+    "active": 624,
+    "inactive": 486
+  },
+  {
+    "sno": 62,
+    "plantKey": "PLANT-62",
+    "plantName": "AL VBCL (Vishwa Buses and Coaches Ltd) - Alwar",
+    "supervisorName": "Sameer Jangid",
+    "supervisorId": "LF51894INT25",
+    "total": 14,
+    "active": 11,
+    "inactive": 3
+  },
+  {
+    "sno": 63,
+    "plantKey": "PLANT-63",
+    "plantName": "AL Alwar (Ashok Leyland Ltd) - Alwar",
+    "supervisorName": "Sameer Jangid",
+    "supervisorId": "LF51894INT25",
+    "total": 136,
+    "active": 136,
+    "inactive": 0
+  },
+  {
+    "sno": 64,
+    "plantKey": "PLANT-64",
+    "plantName": "TMBSL Lucknow - Lucknow",
+    "supervisorName": "Shivam Pal",
+    "supervisorId": "LF54057INT26",
+    "total": 320,
+    "active": 102,
+    "inactive": 218
+  },
+  {
+    "sno": 65,
+    "plantKey": "PLANT-65",
+    "plantName": "TMBSL Dharwad (Bypass) - Dharwad",
+    "supervisorName": "Romil Gurav",
+    "supervisorId": "LF49293INT25",
+    "total": 76,
+    "active": 66,
+    "inactive": 10
+  },
+  {
+    "sno": 66,
+    "plantKey": "PLANT-66",
+    "plantName": "TMBSL Dharwad (Panelling) - Dharwad",
+    "supervisorName": "Romil Gurav",
+    "supervisorId": "LF49293INT25",
+    "total": 82,
+    "active": 66,
+    "inactive": 16
+  },
+  {
+    "sno": 67,
+    "plantKey": "PLANT-67",
+    "plantName": "TMBSL Dharwad (Stores Logistic) - Dharwad",
+    "supervisorName": "Romil Gurav",
+    "supervisorId": "LF49293INT25",
+    "total": 251,
+    "active": 209,
+    "inactive": 42
+  },
+  {
+    "sno": 68,
+    "plantKey": "PLANT-68",
+    "plantName": "TMBSL Dharwad (Welder G3) - Dharwad",
+    "supervisorName": "Romil Gurav",
+    "supervisorId": "LF49293INT25",
+    "total": 377,
+    "active": 302,
+    "inactive": 75
+  },
+  {
+    "sno": 69,
+    "plantKey": "PLANT-69",
+    "plantName": "ITC - Pudukkottai",
+    "supervisorName": "Murugaiya Mariyappan",
+    "supervisorId": "LTAF38988INT23",
+    "total": 777,
+    "active": 464,
+    "inactive": 313
+  },
+  {
+    "sno": 70,
+    "plantKey": "PLANT-70",
+    "plantName": "Yazaki Pantnagar - Pantnagar",
+    "supervisorName": "Biresh Chandra Pathak",
+    "supervisorId": "LTAF37355INT23",
+    "total": 343,
+    "active": 214,
+    "inactive": 129
+  },
+  {
+    "sno": 71,
+    "plantKey": "PLANT-71",
+    "plantName": "Virya Technologies - Bommasandra",
+    "supervisorName": "Varsha Jain",
+    "supervisorId": "LTAF1088INT22",
+    "total": 4,
+    "active": 1,
+    "inactive": 3
+  },
+  {
+    "sno": 72,
+    "plantKey": "PLANT-72",
+    "plantName": "Yazaki Jalisana - Jalisana",
+    "supervisorName": "Zala Yogirajsinh Punbha",
+    "supervisorId": "LF55088INT26",
+    "total": 320,
+    "active": 102,
+    "inactive": 218
+  }
+]
