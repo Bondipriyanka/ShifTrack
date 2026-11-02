@@ -1830,7 +1830,8 @@ const requestHandler = async (req, res) => {
   // Add CORS headers so mobile app can connect
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, HEAD');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -3645,6 +3646,12 @@ if (pathname === '/api/zinghr/employee-master' && req.method === 'GET') {
   }
 
   // API Endpoints
+  if ((url === '/api/ping' || pathname === '/api/ping') && (req.method === 'GET' || req.method === 'HEAD')) {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', server: 'ShifTrack API Gateway', time: Date.now() }));
+    return;
+  }
+
   if (url === '/api/roster' && req.method === 'GET') {
     const db = readDB();
     res.writeHead(200, { 'Content-Type': 'application/json' });

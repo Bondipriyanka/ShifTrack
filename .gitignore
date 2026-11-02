@@ -1,0 +1,7 @@
+node_modules/
+android/app/build/
+android/.gradle/
+.gradle/
+*.apk
+__pycache__/
+*.log

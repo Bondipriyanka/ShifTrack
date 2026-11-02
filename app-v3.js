@@ -2054,6 +2054,27 @@ function handleLanguageChange(event) {
 
 function playAudioViaWebAudio(url, isCancelled) {
   return new Promise((resolve, reject) => {
+    const playWithHtml5 = () => {
+      try {
+        const a = new Audio(url);
+        a.crossOrigin = "anonymous";
+        appState.globalTtsAudio = a;
+        a.onended = () => resolve();
+        a.onerror = (e) => reject(e);
+        const p = a.play();
+        if (p && typeof p.then === 'function') {
+          p.then(resolve).catch(err => {
+            console.warn("HTML5 audio play blocked:", err);
+            reject(err);
+          });
+        } else {
+          resolve();
+        }
+      } catch(err) {
+        reject(err);
+      }
+    };
+
     try {
       if (isCancelled && isCancelled()) {
         return reject(new Error("Cancelled"));
@@ -2061,7 +2082,8 @@ function playAudioViaWebAudio(url, isCancelled) {
 
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       if (!AudioContextClass) {
-        return reject(new Error("Web Audio API not supported"));
+        playWithHtml5();
+        return;
       }
       
       if (!appState.audioContext || appState.audioContext.state === "closed") {
@@ -2069,7 +2091,7 @@ function playAudioViaWebAudio(url, isCancelled) {
       }
       const audioCtx = appState.audioContext;
       if (audioCtx.state === "suspended") {
-        audioCtx.resume();
+        audioCtx.resume().catch(() => {});
       }
       
       fetch(url)
@@ -2088,22 +2110,20 @@ function playAudioViaWebAudio(url, isCancelled) {
           source.buffer = audioBuffer;
           source.connect(audioCtx.destination);
           
-          // Save active source node reference to stop it if fallback is triggered
           appState.activeSourceNode = source;
-          
           source.onended = () => {
             if (appState.activeSourceNode === source) {
               appState.activeSourceNode = null;
             }
           };
           source.start(0);
-          resolve(); // Resolve immediately when playback starts to clear timeout
+          resolve();
         })
         .catch(err => {
-          reject(err);
+          playWithHtml5();
         });
     } catch (e) {
-      reject(e);
+      playWithHtml5();
     }
   });
 }
@@ -2122,14 +2142,13 @@ function speakVoiceMessage(textKey, fallbackText) {
   appState.lastGlobalVoiceSpokenTime = now;
   appState.lastVoiceSpokenKey = textKey;
   appState.lastVoiceSpokenTime = now;
-  // Stop Web Audio API playback instantly if active to prevent overlapping voices
+
   if (appState.activeSourceNode) {
     try {
       appState.activeSourceNode.stop();
       appState.activeSourceNode = null;
     } catch (e) {}
   }
-  // Clear HTML5 audio callbacks and stop audio to prevent double voices
   const activeAudio = appState.globalTtsAudio;
   if (activeAudio) {
     activeAudio.onplaying = null;
@@ -2141,7 +2160,7 @@ function speakVoiceMessage(textKey, fallbackText) {
   }
 
   const currentLang = appState.language || 'en';
-  const text = TRANSLATIONS[currentLang][textKey] || fallbackText;
+  const text = (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][textKey]) || fallbackText;
   
   const langCodesShort = {
     en: 'en',
@@ -2152,78 +2171,33 @@ function speakVoiceMessage(textKey, fallbackText) {
   };
   
   const langCode = langCodesShort[currentLang] || 'en';
-  
-  const isMobile = (
-    window.location.protocol === 'file:' || 
-    window.location.protocol === 'capacitor:' || 
-    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-  );
+  const ttsUrl = getApiUrl(`/api/tts?lang=${langCode}&text=${encodeURIComponent(text)}`);
 
-  // Try high-quality online TTS fallback if online
-  if (navigator.onLine && !appState.isOffline) {
-    try {
-      console.log(`TTS (Online): Speaking "${text}" in ${currentLang}`);
-      
-      let ttsUrl;
-      if (isMobile) {
-        ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${langCode}&client=tw-ob&q=${encodeURIComponent(text)}`;
-      } else {
-        ttsUrl = getApiUrl(`/api/tts?lang=${langCode}&text=${encodeURIComponent(text)}`);
-      }
-      
-      let fallbackTriggered = false;
-      let timeoutId = null;
+  console.log(`[Voice Engine] Playing: "${text}" via ${ttsUrl}`);
 
-      const triggerFallback = (reason) => {
-        if (!fallbackTriggered) {
-          fallbackTriggered = true;
-          if (timeoutId) clearTimeout(timeoutId);
-          console.warn(`TTS Fallback triggered due to: ${reason}`);
-          
-          if (appState.activeSourceNode) {
-            try {
-              appState.activeSourceNode.stop();
-              appState.activeSourceNode = null;
-            } catch (e) {}
-          }
-          
-          const audio = appState.globalTtsAudio;
-          if (audio) {
-            audio.onplaying = null;
-            audio.onerror = null;
-            try {
-              audio.pause();
-              audio.src = "";
-            } catch (e) {}
-          }
-          
-          speakLocalVoice(text, currentLang);
-        }
-      };
+  let fallbackTriggered = false;
+  let timeoutId = null;
 
-      // Fast 800ms timeout for instant fallback if online TTS is slow
-      timeoutId = setTimeout(() => {
-        triggerFallback("timeout");
-      }, 800);
-      
-      // Try Web Audio API first
-      playAudioViaWebAudio(ttsUrl, () => fallbackTriggered)
-        .then(() => {
-          if (fallbackTriggered) return;
-          if (timeoutId) clearTimeout(timeoutId);
-        })
-        .catch(err => {
-          if (fallbackTriggered) return;
-          triggerFallback("webaudio_failed");
-        });
-      return;
-    } catch (e) {
-      console.warn("Online TTS failed, falling back to local speech synthesis:", e);
+  const triggerFallback = (reason) => {
+    if (!fallbackTriggered) {
+      fallbackTriggered = true;
+      if (timeoutId) clearTimeout(timeoutId);
+      console.warn(`TTS Fallback triggered due to: ${reason}`);
+      speakLocalVoice(text, currentLang);
     }
-  }
+  };
+
+  timeoutId = setTimeout(() => {
+    triggerFallback("timeout");
+  }, 2500);
   
-  // Offline fallback
-  speakLocalVoice(text, currentLang);
+  playAudioViaWebAudio(ttsUrl, () => fallbackTriggered)
+    .then(() => {
+      if (timeoutId) clearTimeout(timeoutId);
+    })
+    .catch(err => {
+      triggerFallback("playback_error");
+    });
 }
 
 function speakLocalVoice(text, lang) {
@@ -6319,7 +6293,7 @@ function showCheckinRequiredCard(emp) {
   const nameEl = document.getElementById("verif-name");
   if (nameEl) nameEl.innerText = emp.name || emp.employeeName || "Employee";
   const statusEl = document.getElementById("verif-status");
-  if (statusEl) statusEl.innerText = "Check-in required before checkout.";
+  if (statusEl) statusEl.innerText = getTranslation("checkin_required", "Check-in required before checkout.");
   const timeEl = document.getElementById("verif-time");
   if (timeEl) timeEl.innerText = new Date().toLocaleTimeString();
   const locLabel = document.getElementById("verif-loc");
@@ -6379,7 +6353,7 @@ function showAlreadyCheckedOutCard(emp) {
   const nameEl = document.getElementById("verif-name");
   if (nameEl) nameEl.innerText = emp.name || emp.employeeName || "Employee";
   const statusEl = document.getElementById("verif-status");
-  if (statusEl) statusEl.innerText = "Employee already checked out.";
+  if (statusEl) statusEl.innerText = getTranslation("already_checked_out", "Already checked out for today.");
   const timeEl = document.getElementById("verif-time");
   if (timeEl) timeEl.innerText = new Date().toLocaleTimeString();
   const locLabel = document.getElementById("verif-loc");
@@ -6442,7 +6416,7 @@ function showAlreadyMarkedCard(emp) {
   const nameEl = document.getElementById("verif-name");
   if (nameEl) nameEl.innerText = emp.name || emp.employeeName || "Employee";
   const statusEl = document.getElementById("verif-status");
-  if (statusEl) statusEl.innerText = "Employee is already checked in.";
+  if (statusEl) statusEl.innerText = getTranslation("already_marked", "Attendance already marked for today.");
   const timeEl = document.getElementById("verif-time");
   if (timeEl) timeEl.innerText = new Date().toLocaleTimeString();
   const locLabel = document.getElementById("verif-loc");
@@ -6700,16 +6674,16 @@ function recordAttendanceSuccess(emp, timestamp) {
   const statusEl = document.getElementById("verif-status");
   if (statusEl) {
     if (isCheckoutMode) {
-      statusEl.innerText = "Access Approved: Check-Out Marked";
+      statusEl.innerText = getTranslation("checkout_marked", "Access Approved: Check-Out Marked");
     } else if (!isFirstCheckInToday) {
-      statusEl.innerText = "Access Approved: Re-entry Check-In Marked";
+      statusEl.innerText = getTranslation("attendance_marked", "Access Approved: Re-entry Check-In Marked");
     } else if (isLate) {
       const hrs = Math.floor(delayMinutes / 60);
       const mins = delayMinutes % 60;
       const delayStr = hrs > 0 ? `+${hrs}h ${mins}m` : `+${mins}m`;
       statusEl.innerHTML = `<span style="color:#b91c1c; font-weight:700;">⚠️ Access Approved: Late Check-In Marked (${delayStr})</span>`;
     } else {
-      statusEl.innerText = `Access Approved: Check-In Marked`;
+      statusEl.innerText = getTranslation("attendance_marked", "Access Approved: Check-In Marked");
     }
   }
 
@@ -8322,7 +8296,9 @@ function renderEmployeeMasterTable() {
   tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; padding: 30px; color: #64748b;">Loading ZingHR Employee Master database...</td></tr>`;
 
   const supScope = getActiveSupervisorScope();
-  let url = new URL('/api/zinghr/employee-master', (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : 'http://localhost:2000');
+  const baseOrigin = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http')) ? window.location.origin : 'http://localhost:2000';
+  const masterEndpoint = getApiUrl('/api/zinghr/employee-master');
+  let url = new URL(masterEndpoint, baseOrigin);
   url.searchParams.set('page', page);
   url.searchParams.set('limit', limit);
   
@@ -9640,40 +9616,30 @@ function formatServerUrl(rawHost) {
 }
 
 function isNativeMobileEnvironment() {
+  if (typeof window !== 'undefined' && window.Capacitor) {
+    if (typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) return true;
+    if (window.Capacitor.platform === 'android' || window.Capacitor.platform === 'ios') return true;
+  }
   const loc = (typeof window !== 'undefined' && window.location) ? window.location : null;
   if (!loc) return false;
-
-  const isCapacitorNative = !!(
-    (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())
-  );
-
-  if (isCapacitorNative || loc.protocol === 'file:' || loc.protocol === 'capacitor:') {
-    return true;
-  }
-
-  // Browsers running on localhost or 127.0.0.1 should use the local backend, not a hardcoded LAN IP.
-  if (loc.hostname === 'localhost' || loc.hostname === '127.0.0.1' || loc.hostname === '0.0.0.0') {
-    return false;
-  }
-
-  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+  if (loc.protocol === 'capacitor:' || loc.protocol === 'file:') return true;
+  return false;
 }
 
 function getApiUrl(endpoint) {
   if (!endpoint || typeof endpoint !== 'string') return endpoint;
   if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) return endpoint;
-
+  const path = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
+  if (isNativeMobileEnvironment()) {
+    const configuredHost = localStorage.getItem('backend_server_ip') || '192.168.31.55:2000';
+    return formatServerUrl(configuredHost) + path;
+  }
   const loc = (typeof window !== 'undefined' && window.location) ? window.location : null;
   if (loc && loc.origin && loc.origin.startsWith('http')) {
-    return loc.origin + endpoint;
+    return loc.origin + path;
   }
-
-  if (!isNativeMobileEnvironment()) {
-    return endpoint;
-  }
-
-  const configuredHost = localStorage.getItem("backend_server_ip") || "http://127.0.0.1:2000";
-  return formatServerUrl(configuredHost) + endpoint;
+  const fallbackHost = localStorage.getItem('backend_server_ip') || 'http://127.0.0.1:2000';
+  return formatServerUrl(fallbackHost) + path;
 }
 
 // Bulk Spreadsheet Roster Importer (JSON or CSV parsing)
@@ -10535,7 +10501,7 @@ function openEmployeeProfileModal(empKey) {
   if (emp) {
     populateModal(emp);
   } else {
-    fetch(`/api/zinghr/employee/${cleanId}`)
+    fetch(getApiUrl(`/api/zinghr/employee/${cleanId}`))
       .then(res => res.json())
       .then(fetchedEmp => {
         populateModal(fetchedEmp);
@@ -11424,7 +11390,7 @@ function initSettingsDrawer() {
       linkStatus.style.color = "var(--color-warning)";
     }
     
-    const targetUrl = formatServerUrl(ip) + '/api/roster';
+    const targetUrl = formatServerUrl(ip) + '/api/ping';
     fetch(targetUrl, { mode: 'cors' })
       .then(res => {
         if (res.ok) {
