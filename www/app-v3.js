@@ -9631,7 +9631,7 @@ function getApiUrl(endpoint) {
   if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) return endpoint;
   const path = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
   if (isNativeMobileEnvironment()) {
-    const configuredHost = localStorage.getItem('backend_server_ip') || '192.168.31.55:2000';
+    const configuredHost = localStorage.getItem('backend_server_ip') || 'https://shiftrack-2mvo.onrender.com';
     return formatServerUrl(configuredHost) + path;
   }
   const loc = (typeof window !== 'undefined' && window.location) ? window.location : null;
@@ -11202,7 +11202,7 @@ function initSettingsDrawer() {
   const openButtons = ["mobile-settings-btn", "mobile-scan-settings-btn", "mobile-reg-settings-btn", "mobile-logs-settings-btn", "mobile-zinghr-settings-btn"];
   
   // Set initial settings values
-  const currentIp = localStorage.getItem("backend_server_ip") || "192.168.31.55:2000";
+  const currentIp = localStorage.getItem("backend_server_ip") || "https://shiftrack-2mvo.onrender.com";
   if (ipInput) ipInput.value = currentIp;
   if (continuousScanCheck) continuousScanCheck.checked = appState.isContinuousScan;
   if (rosterRuleCheck) rosterRuleCheck.checked = appState.isShiftRosterEnforced;
@@ -11211,7 +11211,7 @@ function initSettingsDrawer() {
     const btn = document.getElementById(id);
     if (btn) {
       btn.addEventListener("click", () => {
-        const freshIp = localStorage.getItem("backend_server_ip") || "192.168.31.55:2000";
+        const freshIp = localStorage.getItem("backend_server_ip") || "https://shiftrack-2mvo.onrender.com";
         if (ipInput) ipInput.value = freshIp;
         if (continuousScanCheck) continuousScanCheck.checked = appState.isContinuousScan;
         if (rosterRuleCheck) rosterRuleCheck.checked = appState.isShiftRosterEnforced;
@@ -11523,7 +11523,7 @@ function startBackgroundSyncLoop() {
     // Skip background sync during active camera scanning to avoid UI thread lag
     if (appState.isScanningMode) return;
     
-    const serverIp = localStorage.getItem("backend_server_ip") || "192.168.31.55:2000";
+    const serverIp = localStorage.getItem("backend_server_ip") || "https://shiftrack-2mvo.onrender.com";
     try {
       const ping = await fetch(getApiUrl('/api/roster'), { mode: 'cors' });
       if (ping.ok) {
