@@ -5286,14 +5286,14 @@ function beginCheckoutScan() {
 function capturePresenceFrame() {
   if (appState.capturedMobileSnapBase64) {
     const snap = appState.capturedMobileSnapBase64;
-    return snap;
+    return { image: snap, skinRatio: 0.2, isHandCovered: false, personDetected: true };
   }
   const video = document.getElementById("camera-stream");
   if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
     // Fallback for laptop simulator when webcam is blocked by Chrome over HTTP
     if (appState.isSimulatedCamera || (typeof window !== 'undefined' && !window.Capacitor && appState.isScanningMode)) {
       const demoEmp = (typeof employeeDatabase !== 'undefined' && (employeeDatabase['LFDummy01'] || employeeDatabase['LFDUMMY01'])) || null;
-      if (demoEmp && demoEmp.avatar) return demoEmp.avatar;
+      if (demoEmp && demoEmp.avatar) return { image: demoEmp.avatar, skinRatio: 0.25, isHandCovered: false, personDetected: true };
     }
     return null;
   }
@@ -5311,7 +5311,57 @@ function capturePresenceFrame() {
   context.translate(canvas.width, 0);
   context.scale(-1, 1);
   context.drawImage(video, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL("image/jpeg", 0.75);
+
+  let skinPixels = 0;
+  let edgeSkinPixels = 0;
+  let centerSkinPixels = 0;
+
+  try {
+    const imgData = context.getImageData(0, 0, width, height);
+    const data = imgData.data;
+    const totalSampled = (width * height) / 4;
+    const midX1 = width * 0.25;
+    const midX2 = width * 0.75;
+    const midY1 = height * 0.25;
+    const midY2 = height * 0.75;
+
+    for (let y = 0; y < height; y += 2) {
+      for (let x = 0; x < width; x += 2) {
+        const idx = (y * width + x) * 4;
+        const r = data[idx];
+        const g = data[idx + 1];
+        const b = data[idx + 2];
+        // Human skin tone heuristic
+        if (r > 95 && g > 40 && b > 20 && (Math.max(r, g, b) - Math.min(r, g, b) > 15) && Math.abs(r - g) > 15 && r > g && r > b) {
+          skinPixels++;
+          if (x >= midX1 && x <= midX2 && y >= midY1 && y <= midY2) {
+            centerSkinPixels++;
+          }
+          if (x < width * 0.15 || x > width * 0.85 || y < height * 0.15 || y > height * 0.85) {
+            edgeSkinPixels++;
+          }
+        }
+      }
+    }
+
+    const skinRatio = skinPixels / totalSampled;
+    // A hand or object covering the lens causes dense cluster with spread fingers or near-edge occlusion
+    const isHandCovered = (skinRatio > 0.10 && (edgeSkinPixels / (skinPixels || 1) > 0.40 || (centerSkinPixels / (skinPixels || 1) > 0.70 && skinRatio > 0.35)));
+
+    return {
+      image: canvas.toDataURL("image/jpeg", 0.75),
+      skinRatio: parseFloat(skinRatio.toFixed(3)),
+      isHandCovered: isHandCovered,
+      personDetected: skinRatio > 0.04
+    };
+  } catch (e) {
+    return {
+      image: canvas.toDataURL("image/jpeg", 0.75),
+      skinRatio: 0.15,
+      isHandCovered: false,
+      personDetected: true
+    };
+  }
 }
 
 function showScanProgress(remainingSec, name) {
@@ -5384,13 +5434,15 @@ async function runPresenceGatedScan() {
 
   const scanSessionId = appState.scanSessionId;
   const scanDirection = appState.currentDirection;
-  const image = capturePresenceFrame();
-  if (!image) {
+  const frameData = capturePresenceFrame();
+  if (!frameData) {
     if (appState.isScanningMode && !appState.cooldownActive) {
       appState.checkoutScanTimer = setTimeout(runPresenceGatedScan, 100);
     }
     return;
   }
+
+  const payloadBody = (typeof frameData === 'object' && frameData !== null) ? frameData : { image: frameData };
 
   appState.presenceScanInFlight = true;
   const abortController = new AbortController();
@@ -5400,7 +5452,7 @@ async function runPresenceGatedScan() {
     const scanResponse = await fetch(getApiUrl("/api/biometric/scan"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image }),
+      body: JSON.stringify(payloadBody),
       signal: abortController.signal
     });
 
@@ -5450,8 +5502,11 @@ async function runPresenceGatedScan() {
       logTerminal("INFO", "Gate Camera: Person in frame. Scanning face for 2 seconds...");
     }
 
-    // Resolve employee if matched in this frame
-    if (scan.match && (scan.employeeId || scan.name)) {
+    // If hand is covering face or server flagged FACE_BLURRED:
+    if (payloadBody.isHandCovered || scan.reason === "FACE_BLURRED") {
+      appState.steadyScanBestEmp = null;
+      appState.steadyScanMatchCount = 0;
+    } else if (scan.match && (scan.employeeId || scan.name)) {
       let scanEmpId = scan.employeeId || "LFDummy01";
       if (scanEmpId === "EMP-5715" || scanEmpId === "EMP5715" || scanEmpId === "emp-custom-1783924912102" || scanEmpId === "LYAM-9021" || (scan.name && (scan.name.includes("Priya") || scan.name.includes("Priyanka")))) {
         scanEmpId = "LFDummy01";
@@ -5554,8 +5609,9 @@ async function runPresenceGatedScan() {
     }
 
     // B. Face blur, covered, or unrecognized after 2 full seconds
-    logTerminal("WARN", "⚠️ Face not recognized or unclear after 2 seconds.");
-    handleVerificationResult(false, "FACE_NOT_RECOGNIZED");
+    logTerminal("WARN", "⚠️ Face not recognized or unclear after 2 seconds. Triggering manual attendance override.");
+    handleVerificationResult(false, (payloadBody.isHandCovered || scan.reason === "FACE_BLURRED") ? "FACE_BLURRED" : "FACE_NOT_RECOGNIZED");
+    showManualAttendanceOption();
     return;
   } catch (error) {
     logTerminal("WARN", `Biometric scan error: ${error.message}`);
@@ -10888,26 +10944,49 @@ function renderDayPunchTimeline(dateStr, emp) {
 
   // Calculate Net Work Duration across In-Out intervals
   let totalWorkedMs = 0;
-  let currentInTime = null;
+  let isCurrentlyInside = false;
 
-  dayLogs.forEach((log) => {
-    const isOut = (log.direction === 'Check-Out' || String(log.inOutFlag) === '2' || (log.direction || '').toLowerCase().includes('out'));
-    const t = new Date(log.timestamp).getTime();
-
-    if (!isOut) {
-      currentInTime = t;
-    } else if (isOut && currentInTime) {
-      const durMs = Math.max(0, t - currentInTime);
-      totalWorkedMs += durMs;
-      currentInTime = null;
+  if (dayLogs.length > 0) {
+    const firstPunch = dayLogs[0];
+    const firstPunchTime = new Date(firstPunch.timestamp).getTime();
+    let lastOutPunch = null;
+    for (let i = dayLogs.length - 1; i >= 0; i--) {
+      const l = dayLogs[i];
+      if (l.direction === 'Check-Out' || String(l.inOutFlag) === '2' || (l.direction || '').toLowerCase().includes('out')) {
+        lastOutPunch = l;
+        break;
+      }
     }
-  });
 
-  // If still currently punched IN (e.g. today during shift)
-  if (currentInTime && isToday) {
-    const nowMs = Date.now();
-    const durMs = Math.max(0, nowMs - currentInTime);
-    totalWorkedMs += durMs;
+    if (lastOutPunch) {
+      const lastPunchTime = new Date(lastOutPunch.timestamp).getTime();
+      const grossSpanMs = Math.max(0, lastPunchTime - firstPunchTime);
+      let totalBreakMs = 0;
+      let lastOutTimeTemp = null;
+      dayLogs.forEach(l => {
+        const isOut = (l.direction === 'Check-Out' || String(l.inOutFlag) === '2' || (l.direction || '').toLowerCase().includes('out'));
+        const t = new Date(l.timestamp).getTime();
+        if (isNaN(t)) return;
+        if (isOut) {
+          lastOutTimeTemp = t;
+        } else if (!isOut && lastOutTimeTemp !== null) {
+          if (t > lastOutTimeTemp) {
+            totalBreakMs += (t - lastOutTimeTemp);
+          }
+          lastOutTimeTemp = null;
+        }
+      });
+      totalWorkedMs = Math.max(0, grossSpanMs - totalBreakMs);
+    } else {
+      if (isToday) {
+        totalWorkedMs = Math.max(0, Date.now() - firstPunchTime);
+      } else {
+        totalWorkedMs = 0;
+      }
+    }
+
+    const lastLog = dayLogs[dayLogs.length - 1];
+    isCurrentlyInside = !(lastLog.direction === 'Check-Out' || String(lastLog.inOutFlag) === '2' || (lastLog.direction || '').toLowerCase().includes('out'));
   }
 
   const totalMinutes = Math.round(totalWorkedMs / 60000);
@@ -10928,10 +11007,10 @@ function renderDayPunchTimeline(dateStr, emp) {
       break;
     }
   }
-  const firstInFormatted = firstPunch ? new Date(firstPunch.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '--';
+  const firstInFormatted = firstPunch ? new Date(firstPunch.timestamp).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }) : '--';
   const lastOutFormatted = lastOutPunch 
-    ? new Date(lastOutPunch.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) 
-    : (isToday && currentInTime ? 'In Office' : '--');
+    ? new Date(lastOutPunch.timestamp).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }) 
+    : (isToday && isCurrentlyInside ? 'In Office' : '--');
 
   if (inEl) inEl.textContent = firstInFormatted;
   if (outEl) outEl.textContent = lastOutFormatted;
