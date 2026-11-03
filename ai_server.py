@@ -536,6 +536,7 @@ def register_biometrics(payload: RegisterPayload):
     return {"success": True, "vector_length": int(emb.shape[1])}
 
 @app.get("/api/biometric/status")
+@app.post("/api/biometric/status")
 def get_status():
     return {
         "status": "online",

@@ -135,11 +135,23 @@ function ensureAIServerRunning() {
     const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
     aiProcess = spawn(pythonCmd, ['ai_server.py'], {
       cwd: __dirname,
-      stdio: 'ignore',
+      stdio: ['ignore', 'pipe', 'pipe'],
       detached: false
     });
-    aiProcess.on('error', () => { aiProcess = null; });
-    aiProcess.on('exit', () => { aiProcess = null; });
+    if (aiProcess.stdout) {
+      aiProcess.stdout.on('data', d => console.log(`[AI Server]: ${d.toString().trim()}`));
+    }
+    if (aiProcess.stderr) {
+      aiProcess.stderr.on('data', d => console.error(`[AI Server Error]: ${d.toString().trim()}`));
+    }
+    aiProcess.on('error', (err) => { 
+      console.error('[AI Server Spawn Error]:', err.message);
+      aiProcess = null; 
+    });
+    aiProcess.on('exit', (code) => { 
+      console.warn(`[AI Server] Exited with code ${code}`);
+      aiProcess = null; 
+    });
   } catch (err) {
     aiProcess = null;
   }

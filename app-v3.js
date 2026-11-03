@@ -5286,14 +5286,13 @@ function beginCheckoutScan() {
 function capturePresenceFrame() {
   if (appState.capturedMobileSnapBase64) {
     const snap = appState.capturedMobileSnapBase64;
-    return { image: snap, skinRatio: 0.2, isHandCovered: false, personDetected: true };
+    return { image: snap };
   }
   const video = document.getElementById("camera-stream");
   if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
-    // Fallback for laptop simulator when webcam is blocked by Chrome over HTTP
     if (appState.isSimulatedCamera || (typeof window !== 'undefined' && !window.Capacitor && appState.isScanningMode)) {
       const demoEmp = (typeof employeeDatabase !== 'undefined' && (employeeDatabase['LFDummy01'] || employeeDatabase['LFDUMMY01'])) || null;
-      if (demoEmp && demoEmp.avatar) return { image: demoEmp.avatar, skinRatio: 0.25, isHandCovered: false, personDetected: true };
+      if (demoEmp && demoEmp.avatar) return { image: demoEmp.avatar };
     }
     return null;
   }
@@ -5311,57 +5310,7 @@ function capturePresenceFrame() {
   context.translate(canvas.width, 0);
   context.scale(-1, 1);
   context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-  let skinPixels = 0;
-  let edgeSkinPixels = 0;
-  let centerSkinPixels = 0;
-
-  try {
-    const imgData = context.getImageData(0, 0, width, height);
-    const data = imgData.data;
-    const totalSampled = (width * height) / 4;
-    const midX1 = width * 0.25;
-    const midX2 = width * 0.75;
-    const midY1 = height * 0.25;
-    const midY2 = height * 0.75;
-
-    for (let y = 0; y < height; y += 2) {
-      for (let x = 0; x < width; x += 2) {
-        const idx = (y * width + x) * 4;
-        const r = data[idx];
-        const g = data[idx + 1];
-        const b = data[idx + 2];
-        // Human skin tone heuristic
-        if (r > 95 && g > 40 && b > 20 && (Math.max(r, g, b) - Math.min(r, g, b) > 15) && Math.abs(r - g) > 15 && r > g && r > b) {
-          skinPixels++;
-          if (x >= midX1 && x <= midX2 && y >= midY1 && y <= midY2) {
-            centerSkinPixels++;
-          }
-          if (x < width * 0.15 || x > width * 0.85 || y < height * 0.15 || y > height * 0.85) {
-            edgeSkinPixels++;
-          }
-        }
-      }
-    }
-
-    const skinRatio = skinPixels / totalSampled;
-    // A hand or object covering the lens causes dense cluster with spread fingers or near-edge occlusion
-    const isHandCovered = (skinRatio > 0.10 && (edgeSkinPixels / (skinPixels || 1) > 0.40 || (centerSkinPixels / (skinPixels || 1) > 0.70 && skinRatio > 0.35)));
-
-    return {
-      image: canvas.toDataURL("image/jpeg", 0.75),
-      skinRatio: parseFloat(skinRatio.toFixed(3)),
-      isHandCovered: isHandCovered,
-      personDetected: skinRatio > 0.04
-    };
-  } catch (e) {
-    return {
-      image: canvas.toDataURL("image/jpeg", 0.75),
-      skinRatio: 0.15,
-      isHandCovered: false,
-      personDetected: true
-    };
-  }
+  return { image: canvas.toDataURL("image/jpeg", 0.75) };
 }
 
 function showScanProgress(remainingSec, name) {
