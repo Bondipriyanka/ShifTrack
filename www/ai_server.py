@@ -91,8 +91,15 @@ def init_models():
     # Full-body detector gates face inference on human presence.
     person_detector = cv2.CascadeClassifier(PERSON_CASCADE_PATH)
     if person_detector.empty():
-        raise RuntimeError("Could not load the person detection cascade.")
+        print("Warning: Could not load the person detection cascade.")
     print("Models loaded successfully.")
+
+# Initialize models eagerly on module import
+try:
+    if os.path.exists(YUNET_PATH) and os.path.exists(SFACE_PATH):
+        init_models()
+except Exception as _e:
+    print(f"Eager init notice: {_e}")
 
 def decode_base64_image(base64_str: str) -> np.ndarray:
     """Decodes a base64 encoded image string into an OpenCV image matrix."""
@@ -300,6 +307,12 @@ def load_roster_embeddings():
     except Exception as e:
         print(f"Error loading database embeddings: {e}")
 
+# Pre-load roster face embeddings immediately so scans never encounter an uninitialized cache
+try:
+    load_roster_embeddings()
+except Exception as _re_err:
+    print(f"Eager roster embeddings load notice: {_re_err}")
+
 
 
 class ScanPayload(BaseModel):
@@ -456,6 +469,10 @@ def scan_biometrics(payload: ScanPayload):
         return {"success": True, "match": False, "reason": "SPOOF_FAILED"}
         
     # 3. Vector Embeddings Cosine Matching
+    if len(roster_embeddings) == 0:
+        print("Embeddings cache empty during scan. Reloading roster embeddings...")
+        load_roster_embeddings()
+
     best_match_key = None
     max_cosine = -1.0
     
