@@ -5440,9 +5440,7 @@ async function runPresenceGatedScan() {
     // A person IS present in front of camera!
     appState.lastPersonSeenTime = now;
 
-    // -------------------------------------------------------------
-    // Condition 2: 2-SECOND SCAN WINDOW
-    // -------------------------------------------------------------
+    // Condition 2: Start 2-Second Scan Window
     if (!appState.steadyScanStartTime) {
       appState.steadyScanStartTime = now;
       appState.steadyScanBestEmp = null;
@@ -5451,11 +5449,8 @@ async function runPresenceGatedScan() {
       logTerminal("INFO", "Gate Camera: Person in frame. Scanning face for 2 seconds...");
     }
 
-    // If hand is covering face or server flagged FACE_BLURRED:
-    if (payloadBody.isHandCovered || scan.reason === "FACE_BLURRED") {
-      appState.steadyScanBestEmp = null;
-      appState.steadyScanMatchCount = 0;
-    } else if (scan.match && (scan.employeeId || scan.name)) {
+    // Process matched candidate in this frame
+    if (scan.match && (scan.employeeId || scan.name)) {
       let scanEmpId = scan.employeeId || "LFDummy01";
       if (scanEmpId === "EMP-5715" || scanEmpId === "EMP5715" || scanEmpId === "emp-custom-1783924912102" || scanEmpId === "LYAM-9021" || (scan.name && (scan.name.includes("Priya") || scan.name.includes("Priyanka")))) {
         scanEmpId = "LFDummy01";
@@ -5488,26 +5483,17 @@ async function runPresenceGatedScan() {
       appState.steadyScanMatchCount = (appState.steadyScanMatchCount || 0) + 1;
     }
 
-    // Check if 2.0-second total scan window has elapsed (calibrated with frame/network latency for exact 2.0s wall-clock mark)
     const elapsed = now - appState.steadyScanStartTime;
-    if (elapsed < 1600) {
-      showScanProgress();
-      return; // Still in 2-second scan window
-    }
-
-    // -------------------------------------------------------------
-    // Condition 3: 2.0 SECONDS COMPLETE -> DISPLAY CARD & VOICE!
-    // -------------------------------------------------------------
-    hideScanProgress();
-    const matchedEmp = appState.steadyScanBestEmp;
     const matchCount = appState.steadyScanMatchCount || 0;
+    const matchedEmp = appState.steadyScanBestEmp;
 
-    appState.steadyScanStartTime = 0;
-    appState.steadyScanBestEmp = null;
-    appState.steadyScanMatchCount = 0;
+    // Condition 3: Fast and accurate match trigger (~1.5s - 2.0s confirmed)
+    if (matchedEmp && (matchCount >= 2 || (matchCount >= 1 && elapsed >= 1200))) {
+      hideScanProgress();
+      appState.steadyScanStartTime = 0;
+      appState.steadyScanBestEmp = null;
+      appState.steadyScanMatchCount = 0;
 
-    // A. Face verified
-    if (matchedEmp && matchCount >= 1) {
       // 1. Strict Plant Location Matching Check
       const locEl = document.getElementById("location-select");
       if (locEl && locEl.value) appState.selectedLocation = locEl.value;
@@ -5557,9 +5543,20 @@ async function runPresenceGatedScan() {
       return;
     }
 
-    // B. Face blur, covered, or unrecognized after 2 full seconds
+    // Keep scanning if within 2.0 second window
+    if (elapsed < 2000) {
+      showScanProgress();
+      return;
+    }
+
+    // 2.0 full seconds elapsed without a verified face (covered, blurred, or unknown)
+    hideScanProgress();
+    appState.steadyScanStartTime = 0;
+    appState.steadyScanBestEmp = null;
+    appState.steadyScanMatchCount = 0;
+
     logTerminal("WARN", "⚠️ Face not recognized or unclear after 2 seconds. Triggering manual attendance override.");
-    handleVerificationResult(false, (payloadBody.isHandCovered || scan.reason === "FACE_BLURRED") ? "FACE_BLURRED" : "FACE_NOT_RECOGNIZED");
+    handleVerificationResult(false, scan.reason === "FACE_BLURRED" ? "FACE_BLURRED" : "FACE_NOT_RECOGNIZED");
     showManualAttendanceOption();
     return;
   } catch (error) {
