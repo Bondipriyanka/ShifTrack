@@ -5289,7 +5289,14 @@ function capturePresenceFrame() {
     return snap;
   }
   const video = document.getElementById("camera-stream");
-  if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return null;
+  if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+    // Fallback for laptop simulator when webcam is blocked by Chrome over HTTP
+    if (appState.isSimulatedCamera || (typeof window !== 'undefined' && !window.Capacitor && appState.isScanningMode)) {
+      const demoEmp = (typeof employeeDatabase !== 'undefined' && (employeeDatabase['LFDummy01'] || employeeDatabase['LFDUMMY01'])) || null;
+      if (demoEmp && demoEmp.avatar) return demoEmp.avatar;
+    }
+    return null;
+  }
   const canvas = document.createElement("canvas");
   const maxDim = 320;
   let width = video.videoWidth;
@@ -9631,7 +9638,7 @@ function getApiUrl(endpoint) {
   if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) return endpoint;
   const path = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
   if (isNativeMobileEnvironment()) {
-    const configuredHost = localStorage.getItem('backend_server_ip') || '192.168.31.55:2000';
+    const configuredHost = localStorage.getItem('backend_server_ip') || 'http://13.210.115.48';
     return formatServerUrl(configuredHost) + path;
   }
   const loc = (typeof window !== 'undefined' && window.location) ? window.location : null;
@@ -10494,6 +10501,19 @@ function openEmployeeProfileModal(empKey) {
     renderModalCalendar(data);
     renderDayPunchTimeline(selectedDate, data);
 
+    // Auto-fetch latest live logs from server so Punch-In & Punch-Out are 100% real-time in dossier modal
+    fetch(getApiUrl('/api/logs'))
+      .then(r => r.json())
+      .then(liveLogs => {
+        const allLogs = Array.isArray(liveLogs) ? liveLogs : (liveLogs?.logs || []);
+        if (allLogs.length > 0) {
+          window.adminLogs = allLogs;
+          if (typeof appState !== 'undefined') appState.attendanceLogs = allLogs;
+          renderDayPunchTimeline(selectedDate, window.currentModalEmployeeObj || data);
+        }
+      })
+      .catch(() => {});
+
     modal.classList.remove("hidden");
     modal.style.display = "flex";
   };
@@ -11202,7 +11222,7 @@ function initSettingsDrawer() {
   const openButtons = ["mobile-settings-btn", "mobile-scan-settings-btn", "mobile-reg-settings-btn", "mobile-logs-settings-btn", "mobile-zinghr-settings-btn"];
   
   // Set initial settings values
-  const currentIp = localStorage.getItem("backend_server_ip") || "192.168.31.55:2000";
+  const currentIp = localStorage.getItem('backend_server_ip') || 'http://13.210.115.48';
   if (ipInput) ipInput.value = currentIp;
   if (continuousScanCheck) continuousScanCheck.checked = appState.isContinuousScan;
   if (rosterRuleCheck) rosterRuleCheck.checked = appState.isShiftRosterEnforced;
@@ -11211,7 +11231,7 @@ function initSettingsDrawer() {
     const btn = document.getElementById(id);
     if (btn) {
       btn.addEventListener("click", () => {
-        const freshIp = localStorage.getItem("backend_server_ip") || "192.168.31.55:2000";
+        const freshIp = localStorage.getItem('backend_server_ip') || 'http://13.210.115.48';
         if (ipInput) ipInput.value = freshIp;
         if (continuousScanCheck) continuousScanCheck.checked = appState.isContinuousScan;
         if (rosterRuleCheck) rosterRuleCheck.checked = appState.isShiftRosterEnforced;
@@ -11523,7 +11543,7 @@ function startBackgroundSyncLoop() {
     // Skip background sync during active camera scanning to avoid UI thread lag
     if (appState.isScanningMode) return;
     
-    const serverIp = localStorage.getItem("backend_server_ip") || "192.168.31.55:2000";
+    const serverIp = localStorage.getItem('backend_server_ip') || 'http://13.210.115.48';
     try {
       const ping = await fetch(getApiUrl('/api/roster'), { mode: 'cors' });
       if (ping.ok) {
@@ -14047,7 +14067,7 @@ window.syncMobileWithServer = async function() {
   const btn = document.getElementById("mobile-global-sync-btn");
   if (btn) btn.style.transform = "rotate(360deg)";
   try {
-    const activeHost = localStorage.getItem("backend_server_ip") || "192.168.31.55:2000";
+    const activeHost = localStorage.getItem('backend_server_ip') || 'http://13.210.115.48';
     console.log("[Sync] Syncing mobile app with server:", activeHost);
     
     // 1. Refresh today's attendance records
