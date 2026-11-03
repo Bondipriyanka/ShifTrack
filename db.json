@@ -17328,6 +17328,37 @@
   },
   "logs": [
     {
+      "empId": "LFDUMMY01",
+      "empIdentification": "LFDUMMY01",
+      "employeeName": "Priyanka",
+      "name": "Priyanka",
+      "location": "Tata Electronics MG - Krishnagiri",
+      "swipeLocation": "Tata Electronics MG - Krishnagiri",
+      "client": "TATA ELECTRONICS PRIVATE LIMITED",
+      "entity": "Layam Flexi Solutions Pvt. Ltd.",
+      "department": "Human Resources",
+      "designation": "Associate",
+      "shift": "General Shift (09:00 - 18:00) (09:00 - 18:00)",
+      "shiftRule": "General Shift (09:00 - 18:00)",
+      "shiftStatus": "Late Login",
+      "isLate": true,
+      "lateMinutes": 134,
+      "lateDuration": "+2h 14m",
+      "direction": "Check-In",
+      "inOutFlag": "1",
+      "timestamp": "2026-11-03T05:44:57.938Z",
+      "swipeDateTime": "2026-11-03 05:44:57",
+      "verified": true,
+      "verificationType": "Face Recognition",
+      "remarks": "Late Login (+2h 14m) [Roster Violation]",
+      "source": "ShifTrack",
+      "swipeReceiveDateTime": "2026-11-03 11:14:57",
+      "terminalId": "Tata Electronics MG - Krishnagiri",
+      "attendanceRuleGroup": "General Shift (09:00 - 18:00)",
+      "uniqueId": "1793684698234_LFDUMMY01",
+      "syncStatus": "Staged"
+    },
+    {
       "empId": "LFDummy01",
       "empIdentification": "LFDummy01",
       "employeeName": "Priyanka",
@@ -1044825,7 +1044856,8 @@
         "2026-10-28",
         "2026-10-29",
         "2026-10-30",
-        "2026-11-02"
+        "2026-11-02",
+        "2026-11-03"
       ]
     },
     "LF55556MM26": {
@@ -1137678,6 +1137710,37 @@
     "swipePermission": "SSWP"
   },
   "attendance_logs": [
+    {
+      "empId": "LFDUMMY01",
+      "empIdentification": "LFDUMMY01",
+      "employeeName": "Priyanka",
+      "name": "Priyanka",
+      "location": "Tata Electronics MG - Krishnagiri",
+      "swipeLocation": "Tata Electronics MG - Krishnagiri",
+      "client": "TATA ELECTRONICS PRIVATE LIMITED",
+      "entity": "Layam Flexi Solutions Pvt. Ltd.",
+      "department": "Human Resources",
+      "designation": "Associate",
+      "shift": "General Shift (09:00 - 18:00) (09:00 - 18:00)",
+      "shiftRule": "General Shift (09:00 - 18:00)",
+      "shiftStatus": "Late Login",
+      "isLate": true,
+      "lateMinutes": 134,
+      "lateDuration": "+2h 14m",
+      "direction": "Check-In",
+      "inOutFlag": "1",
+      "timestamp": "2026-11-03T05:44:57.938Z",
+      "swipeDateTime": "2026-11-03 05:44:57",
+      "verified": true,
+      "verificationType": "Face Recognition",
+      "remarks": "Late Login (+2h 14m) [Roster Violation]",
+      "source": "ShifTrack",
+      "swipeReceiveDateTime": "2026-11-03 11:14:57",
+      "terminalId": "Tata Electronics MG - Krishnagiri",
+      "attendanceRuleGroup": "General Shift (09:00 - 18:00)",
+      "uniqueId": "1793684698234_LFDUMMY01",
+      "syncStatus": "Staged"
+    },
     {
       "empId": "LFDummy01",
       "empIdentification": "LFDummy01",
@@ -2259956,7 +2260019,7 @@
       "description": "Computes extra working hours exceeding standard 8.0 / 9.0 hour shifts for payroll processing.",
       "category": "Payroll & Overtime",
       "frequency": "Weekly / Monthly",
-      "pushedToMobile": true,
+      "pushedToMobile": false,
       "columns": [
         "Employee ID",
         "Name",
@@ -2259965,7 +2260028,7 @@
         "Overtime (OT) Hours",
         "Supervisor Approved"
       ],
-      "lastGenerated": "2026-11-02T15:26:51.425Z"
+      "lastGenerated": "2026-11-03T05:53:35.276Z"
     },
     {
       "id": "REP-005",
@@ -2260113,6 +2260176,16 @@
     }
   ],
   "email_logs": [
+    {
+      "id": "EML-699175",
+      "ruleKey": "shift_compliance_violation",
+      "ruleName": "Shift Compliance & Late Punch Alert",
+      "recipient": "compliance@layam.com",
+      "subject": "[Compliance Alert] Shift Roster Violation: Priyanka at Tata Electronics MG - Krishnagiri",
+      "snippet": "[Compliance Alert] Shift Roster Violation: Priyanka at Tata Electronics MG - Krishnagiri",
+      "status": "DELIVERED",
+      "timestamp": "2026-11-03T05:44:59.175Z"
+    },
     {
       "id": "EML-627804",
       "ruleKey": "shift_compliance_violation",
