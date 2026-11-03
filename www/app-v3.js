@@ -9631,7 +9631,7 @@ function getApiUrl(endpoint) {
   if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) return endpoint;
   const path = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
   if (isNativeMobileEnvironment()) {
-    const configuredHost = localStorage.getItem('backend_server_ip') || 'https://shiftrack-2mvo.onrender.com';
+    const configuredHost = localStorage.getItem('backend_server_ip') || '192.168.31.55:2000';
     return formatServerUrl(configuredHost) + path;
   }
   const loc = (typeof window !== 'undefined' && window.location) ? window.location : null;
@@ -11202,7 +11202,7 @@ function initSettingsDrawer() {
   const openButtons = ["mobile-settings-btn", "mobile-scan-settings-btn", "mobile-reg-settings-btn", "mobile-logs-settings-btn", "mobile-zinghr-settings-btn"];
   
   // Set initial settings values
-  const currentIp = localStorage.getItem("backend_server_ip") || "https://shiftrack-2mvo.onrender.com";
+  const currentIp = localStorage.getItem("backend_server_ip") || "192.168.31.55:2000";
   if (ipInput) ipInput.value = currentIp;
   if (continuousScanCheck) continuousScanCheck.checked = appState.isContinuousScan;
   if (rosterRuleCheck) rosterRuleCheck.checked = appState.isShiftRosterEnforced;
@@ -11211,7 +11211,7 @@ function initSettingsDrawer() {
     const btn = document.getElementById(id);
     if (btn) {
       btn.addEventListener("click", () => {
-        const freshIp = localStorage.getItem("backend_server_ip") || "https://shiftrack-2mvo.onrender.com";
+        const freshIp = localStorage.getItem("backend_server_ip") || "192.168.31.55:2000";
         if (ipInput) ipInput.value = freshIp;
         if (continuousScanCheck) continuousScanCheck.checked = appState.isContinuousScan;
         if (rosterRuleCheck) rosterRuleCheck.checked = appState.isShiftRosterEnforced;
@@ -11523,7 +11523,7 @@ function startBackgroundSyncLoop() {
     // Skip background sync during active camera scanning to avoid UI thread lag
     if (appState.isScanningMode) return;
     
-    const serverIp = localStorage.getItem("backend_server_ip") || "https://shiftrack-2mvo.onrender.com";
+    const serverIp = localStorage.getItem("backend_server_ip") || "192.168.31.55:2000";
     try {
       const ping = await fetch(getApiUrl('/api/roster'), { mode: 'cors' });
       if (ping.ok) {
@@ -14030,3 +14030,48 @@ if (document.readyState === "loading") {
 
 
 
+
+window.setQuickServerHost = function(host) {
+  const ipInput = document.getElementById("settings-ip-input");
+  if (ipInput) ipInput.value = host;
+  localStorage.setItem("backend_server_ip", host);
+  if (typeof testServerConnection === 'function') {
+    testServerConnection(host, true);
+  }
+  if (typeof syncMobileWithServer === 'function') {
+    syncMobileWithServer();
+  }
+};
+
+window.syncMobileWithServer = async function() {
+  const btn = document.getElementById("mobile-global-sync-btn");
+  if (btn) btn.style.transform = "rotate(360deg)";
+  try {
+    const activeHost = localStorage.getItem("backend_server_ip") || "192.168.31.55:2000";
+    console.log("[Sync] Syncing mobile app with server:", activeHost);
+    
+    // 1. Refresh today's attendance records
+    if (typeof loadMobileAttendanceRecords === 'function') {
+      const dp = document.getElementById("mobile-att-date-picker");
+      const d = (dp && dp.value) ? dp.value : new Date().toISOString().split('T')[0];
+      await loadMobileAttendanceRecords(d);
+    }
+    // 2. Refresh published reports
+    if (typeof loadMobilePublishedReportsList === 'function') {
+      await loadMobilePublishedReportsList();
+    }
+    // 3. Refresh live ZingHR master counts
+    if (typeof fetchZingHRMaster === 'function') {
+      await fetchZingHRMaster();
+    }
+    // 4. Test connection & update status badge
+    if (typeof testServerConnection === 'function') {
+      testServerConnection(activeHost, true);
+    }
+    logTerminal("SUCCESS", "Mobile synced with server successfully.");
+  } catch(e) {
+    console.warn("[Sync] Sync warning:", e);
+  } finally {
+    setTimeout(() => { if (btn) btn.style.transform = "none"; }, 600);
+  }
+};

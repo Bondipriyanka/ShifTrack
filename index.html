@@ -759,6 +759,9 @@
                     <option value="kn" style="background: var(--bg-card); color: var(--color-text-primary);">KN</option>
                   </select>
                   <div class="app-network-pill" id="app-network-status" data-i18n="online">ONLINE</div>
+                  <button id="mobile-global-sync-btn" onclick="syncMobileWithServer()" style="background:#eff6ff; border:1px solid #bfdbfe; color:#2563eb; border-radius:50%; width:26px; height:26px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:transform 0.5s ease; padding:0;" title="Sync with Laptop Server">
+                    <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:2.5;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                  </button>
                   <button id="mobile-scan-settings-btn" onclick="openSettingsDrawer()" style="background:transparent; border:none; color:#0f172a; cursor:pointer; padding:4px; display:flex; align-items:center; justify-content:center;" title="Open Settings Console">
                     <svg class="svg-icon" viewBox="0 0 24 24" style="width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                   </button>
@@ -1577,6 +1580,10 @@
                 <div class="select-group" style="margin-bottom:12px;">
                   <label for="settings-ip-input" style="font-size:0.8rem; color:#475569; display:block; margin-bottom:4px; font-weight:600;">Backend Server Host IP</label>
                   <input type="text" id="settings-ip-input" placeholder="e.g. 192.168.1.8:2000" style="width:100%; box-sizing:border-box; padding:8px 10px; background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:6px; color:#0f172a; font-size:0.9rem;">
+                  <div style="display:flex; gap:6px; margin-top:6px;">
+                    <button type="button" onclick="setQuickServerHost('192.168.31.55:2000')" style="flex:1; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:4px; padding:6px 4px; font-size:0.68rem; font-weight:700; color:#0f172a; cursor:pointer;">💻 Sync with Laptop</button>
+                    <button type="button" onclick="setQuickServerHost('https://shiftrack-2mvo.onrender.com')" style="flex:1; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:4px; padding:6px 4px; font-size:0.68rem; font-weight:700; color:#15803d; cursor:pointer;">☁️ Cloud Server</button>
+                  </div>
                   <small style="color:#64748b; font-size:0.65rem; margin-top:4px; display:block;">Enter your computer's local network IP address (run <code>ipconfig</code> in Command Prompt to find it).</small>
                 </div>
                 
