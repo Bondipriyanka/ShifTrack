@@ -31,10 +31,11 @@ YUNET_URL = "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection
 SFACE_URL = "https://github.com/opencv/opencv_zoo/raw/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx"
 PERSON_CASCADE_URL = "https://raw.githubusercontent.com/opencv/opencv/4.x/data/haarcascades/haarcascade_fullbody.xml"
 
-YUNET_PATH = "face_detection_yunet_2023mar.onnx"
-SFACE_PATH = "face_recognition_sface_2021dec.onnx"
-PERSON_CASCADE_PATH = "haarcascade_fullbody.xml"
-DB_FILE = "db.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+YUNET_PATH = os.path.join(BASE_DIR, "face_detection_yunet_2023mar.onnx")
+SFACE_PATH = os.path.join(BASE_DIR, "face_recognition_sface_2021dec.onnx")
+PERSON_CASCADE_PATH = os.path.join(BASE_DIR, "haarcascade_fullbody.xml")
+DB_FILE = os.environ.get("DB_FILE", os.path.join(BASE_DIR, "db.json"))
 
 cached_db_data = None
 cached_db_mtime = 0
@@ -212,7 +213,7 @@ def calculate_confidence(cosine_score: float) -> float:
     else:
         return 72.0 + ((cosine_score - 0.363) / (0.85 - 0.363)) * 23.0
 
-EMB_CACHE_FILE = "roster_embeddings_cache.npz"
+EMB_CACHE_FILE = os.path.join(BASE_DIR, "roster_embeddings_cache.npz")
 
 def load_cached_embeddings():
     global roster_embeddings
@@ -570,5 +571,5 @@ def reload_embeddings():
 
 if __name__ == "__main__":
     import uvicorn
-    print("Starting LYAM Biometrics AI Engine on http://127.0.0.1:8000 ...")
-    uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")
+    print("Starting LYAM Biometrics AI Engine on http://0.0.0.0:8000 ...")
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
