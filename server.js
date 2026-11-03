@@ -310,7 +310,7 @@ function postToAIServer(endpoint, payload, callback) {
       'Content-Type': 'application/json',
       'Content-Length': Buffer.byteLength(data)
     },
-    timeout: 1500
+    timeout: 5000
   };
 
   const aiReq = http.request(options, (aiRes) => {
@@ -3837,60 +3837,14 @@ if (pathname === '/api/zinghr/employee-master' && req.method === 'GET') {
         // If Python AI Server is unreachable or timed out
         if (err || !aiResponse) {
           ensureAIServerRunning();
-
-          const isHand = Boolean(payload.isHandCovered);
-          const hasPerson = Boolean(payload.personDetected || (payload.skinRatio && payload.skinRatio > 0.04));
-
-          if (isHand) {
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({
-              success: true,
-              match: false,
-              personDetected: true,
-              faceDetected: false,
-              reason: 'FACE_BLURRED',
-              confidence: 0
-            }));
-            return;
-          }
-
-          if (!hasPerson && (!payload.image || payload.image.length < 500)) {
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({
-              success: true,
-              match: false,
-              personDetected: false,
-              faceDetected: false,
-              reason: 'NO_PERSON',
-              confidence: 0
-            }));
-            return;
-          }
-
-          // Real live face in front of camera
-          const demoEmp = currentDb.employees?.['LFDummy01'] || currentDb.roster?.['emp-custom-1783924912102'] || {
-            employeeCode: 'LFDummy01',
-            employeeName: 'Priyanka',
-            name: 'Priyanka',
-            role: 'Executive HR',
-            client: 'Tata Electronics Private Limited',
-            location: 'Tata Electronics MG - Krishnagiri'
-          };
-
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({
             success: true,
-            match: true,
-            faceDetected: true,
+            match: false,
             personDetected: true,
-            employeeId: demoEmp.employeeCode || demoEmp.id || 'LFDummy01',
-            name: demoEmp.name || demoEmp.employeeName || 'Priyanka',
-            role: demoEmp.role || demoEmp.designation || 'Executive HR',
-            client: demoEmp.client || 'Tata Electronics Private Limited',
-            location: demoEmp.location || demoEmp.plantLocation || 'Tata Electronics MG - Krishnagiri',
-            confidence: 99.4,
-            isLive: true,
-            reason: 'VERIFIED'
+            faceDetected: false,
+            reason: 'FACE_BLURRED',
+            confidence: 0
           }));
           return;
         }
@@ -4465,7 +4419,7 @@ if (pathname === '/api/zinghr/employee-master' && req.method === 'GET') {
   // Database System Status & Health Metrics
   if (url === '/api/db-status' && req.method === 'GET') {
     const db = readDB();
-    const stats = db.zinghr_stats || { totalRecords: 27873, activeCount: 10590, separatedCount: 17280, fnfInitiated: 3, pending: 3, letterPending: 825 };
+    const stats = db.zinghr_stats || { totalRecords: 28800, activeCount: 10934, separatedCount: 17863, fnfInitiated: 3, pending: 3, letterPending: 274 };
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       pgConnected: isPgConnected,
@@ -4473,12 +4427,12 @@ if (pathname === '/api/zinghr/employee-master' && req.method === 'GET') {
       rosterCount: Object.keys(db.roster || {}).length,
       zinghrEmployeeCount: Object.keys(db.zinghr || {}).length,
       totalLogsCount: (db.logs || []).length,
-      totalRecords: stats.totalRecords || 27873,
-      activeCount: stats.activeCount || 10590,
-      separatedCount: stats.separatedCount || 17280,
+      totalRecords: stats.totalRecords || 28800,
+      activeCount: stats.activeCount || 10934,
+      separatedCount: stats.separatedCount || 17863,
       fnfInitiated: stats.fnfInitiated || 3,
       pending: stats.pending || 3,
-      letterPending: stats.letterPending || 825,
+      letterPending: stats.letterPending || 274,
       zinghr_stats: stats
     }));
     return;
@@ -4535,71 +4489,57 @@ if (pathname === '/api/zinghr/employee-master' && req.method === 'GET') {
         if (token) {
           try {
             const empUrl = 'https://mservices.zinghr.com/etl/api/v2/Employee/GetEmployeeDetails';
-            // 1. Fetch total count from ZingHR
-            try {
-              const empRes = await fetch(empUrl, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ "PageSize": 1, "PageNumber": 1 }),
-                signal: AbortSignal.timeout(10000)
-              });
-              if (empRes.ok) {
-                const resData = await empRes.json();
-                if (resData.data?.totalEmployeeCount) {
-                  liveTotalFromApi = parseInt(resData.data.totalEmployeeCount, 10);
-                  console.log(`[ZingHR Live Sync] Live totalEmployeeCount reported by ZingHR: ${liveTotalFromApi}`);
-                }
-              }
-            } catch(totErr) {
-              console.warn("[ZingHR Live Sync] Total count error:", totErr.message);
-            }
-
-            // 2. Fetch live Active count directly from ZingHR
-            try {
-              const actRes = await fetch(empUrl, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ "PageSize": 1, "PageNumber": 1, "EmploymentStatus": "Active" }),
-                signal: AbortSignal.timeout(10000)
-              });
-              if (actRes.ok) {
-                const actData = await actRes.json();
-                if (actData.data?.totalEmployeeCount) {
-                  liveActiveFromApi = parseInt(actData.data.totalEmployeeCount, 10);
-                  console.log(`[ZingHR Live Sync] Live activeCount reported by ZingHR: ${liveActiveFromApi}`);
-                }
-              }
-            } catch(actErr) {
-              console.warn("[ZingHR Live Sync] Active count error:", actErr.message);
-            }
-
-            // 3. Fetch live Inactive count directly from ZingHR
-            try {
-              const inactRes = await fetch(empUrl, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ "PageSize": 1, "PageNumber": 1, "EmploymentStatus": "Inactive" }),
-                signal: AbortSignal.timeout(10000)
-              });
-              if (inactRes.ok) {
-                const inactData = await inactRes.json();
-                if (inactData.data?.totalEmployeeCount) {
-                  liveInactiveFromApi = parseInt(inactData.data.totalEmployeeCount, 10);
-                  console.log(`[ZingHR Live Sync] Live inactiveCount reported by ZingHR: ${liveInactiveFromApi}`);
-                }
-              }
-            } catch(inactErr) {
-              console.warn("[ZingHR Live Sync] Inactive count error:", inactErr.message);
-            }
+            // Fetch total, active, and inactive counts in parallel with short timeout for responsive UI
+            await Promise.allSettled([
+              (async () => {
+                try {
+                  const empRes = await fetch(empUrl, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ "PageSize": 1, "PageNumber": 1 }),
+                    signal: AbortSignal.timeout(3500)
+                  });
+                  if (empRes.ok) {
+                    const resData = await empRes.json();
+                    if (resData.data?.totalEmployeeCount) {
+                      liveTotalFromApi = parseInt(resData.data.totalEmployeeCount, 10);
+                    }
+                  }
+                } catch(e) {}
+              })(),
+              (async () => {
+                try {
+                  const actRes = await fetch(empUrl, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ "PageSize": 1, "PageNumber": 1, "EmploymentStatus": "Active" }),
+                    signal: AbortSignal.timeout(3500)
+                  });
+                  if (actRes.ok) {
+                    const actData = await actRes.json();
+                    if (actData.data?.totalEmployeeCount) {
+                      liveActiveFromApi = parseInt(actData.data.totalEmployeeCount, 10);
+                    }
+                  }
+                } catch(e) {}
+              })(),
+              (async () => {
+                try {
+                  const inactRes = await fetch(empUrl, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ "PageSize": 1, "PageNumber": 1, "EmploymentStatus": "Inactive" }),
+                    signal: AbortSignal.timeout(3500)
+                  });
+                  if (inactRes.ok) {
+                    const inactData = await inactRes.json();
+                    if (inactData.data?.totalEmployeeCount) {
+                      liveInactiveFromApi = parseInt(inactData.data.totalEmployeeCount, 10);
+                    }
+                  }
+                } catch(e) {}
+              })()
+            ]);
 
             // 2. Fetch recent delta changes from ZingHR (last 14 days window)
             const padZ = (n) => String(n).padStart(2, '0');

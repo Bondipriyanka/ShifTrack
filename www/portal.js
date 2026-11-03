@@ -732,25 +732,28 @@ async function refreshData() {
   if (refreshBtn) refreshBtn.textContent = "⚡ Refreshing...";
 
   try {
+    // 1. Fetch general DB statistics first for instant KPI render
+    try {
+      const statusRes = await fetch("/api/db-status");
+      if (statusRes.ok) {
+        dbStatusData = await statusRes.json();
+        renderKPIs();
+      }
+    } catch (e) {}
+
     const selectedDate = document.getElementById("portal-date-picker") ? document.getElementById("portal-date-picker").value : new Date().toISOString().split("T")[0];
 
-    // 1. Fetch ZingHR reports (Filtered to active employees where Date of Leaving is NULL)
+    // 2. Fetch ZingHR reports (Filtered to active employees where Date of Leaving is NULL)
     const reportRes = await fetch("/api/zinghr/report");
     if (reportRes.ok) {
       const rawData = await reportRes.json();
       zinghrReportData = Array.isArray(rawData) ? rawData : (rawData.data || []);
     }
 
-    // 2. Fetch logs data
+    // 3. Fetch logs data
     const logsRes = await fetch("/api/logs");
     if (logsRes.ok) {
       allLogsData = await logsRes.json();
-    }
-
-    // 3. Fetch general DB statistics
-    const statusRes = await fetch("/api/db-status");
-    if (statusRes.ok) {
-      dbStatusData = await statusRes.json();
     }
 
     // 4. Fetch Daily Attendance Register (Muster Roll)
@@ -926,9 +929,9 @@ function renderKpiCards() {
   const activeList = getActiveEmployees(scopedEmployees);
   const inactiveList = getInactiveEmployees(scopedEmployees);
 
-  let totalWorkforce = isUnfiltered ? (dbStatusData.totalRecords || 27873) : scopedEmployees.length;
-  let activeWorkforce = isUnfiltered ? (dbStatusData.activeCount || 10590) : activeList.length;
-  let inactiveWorkforce = isUnfiltered ? (dbStatusData.separatedCount || 17280) : inactiveList.length;
+  let totalWorkforce = isUnfiltered ? (dbStatusData.totalRecords || 28800) : scopedEmployees.length;
+  let activeWorkforce = isUnfiltered ? (dbStatusData.activeCount || 10934) : activeList.length;
+  let inactiveWorkforce = isUnfiltered ? (dbStatusData.separatedCount || 17863) : inactiveList.length;
 
   // Biometric registration counts in current scope
   const registeredCount = scopedEmployees.filter(emp => emp.isGateRegistered).length;
@@ -1037,9 +1040,9 @@ function renderEmployeeAuditList() {
   const inactiveList = getInactiveEmployees(scoped);
 
   // Dynamic tab counts for current scope
-  const totalCount = isUnfiltered ? (dbStatusData.totalRecords || 27873) : scoped.length;
-  const activeCount = isUnfiltered ? (dbStatusData.activeCount || 10590) : activeList.length;
-  const inactiveCount = isUnfiltered ? (dbStatusData.separatedCount || 17280) : inactiveList.length;
+  const totalCount = isUnfiltered ? (dbStatusData.totalRecords || 28800) : scoped.length;
+  const activeCount = isUnfiltered ? (dbStatusData.activeCount || 10934) : activeList.length;
+  const inactiveCount = isUnfiltered ? (dbStatusData.separatedCount || 17863) : inactiveList.length;
   const registeredCount = scoped.filter(e => e.isGateRegistered).length;
   const unregisteredCount = Math.max(0, activeCount - registeredCount);
 
@@ -1292,9 +1295,9 @@ function renderAttendanceBoard() {
 
   // Calculate dynamic scoped attendance counts
   const isUnfiltered = (entityFilter === 'all' && clientFilter === 'all' && locationFilter === 'all');
-  const totalRosterCount = isUnfiltered ? (dbStatusData.totalRecords || 27873) : scoped.length;
-  const activeStaffCount = isUnfiltered ? (dbStatusData.activeCount || 10590) : scoped.filter(e => !e.dateOfLeaving && e.status !== 'Inactive' && e.status !== 'Resigned').length;
-  const inactiveStaffCount = isUnfiltered ? (dbStatusData.separatedCount || 17280) : (totalRosterCount - activeStaffCount);
+  const totalRosterCount = isUnfiltered ? (dbStatusData.totalRecords || 28800) : scoped.length;
+  const activeStaffCount = isUnfiltered ? (dbStatusData.activeCount || 10934) : scoped.filter(e => !e.dateOfLeaving && e.status !== 'Inactive' && e.status !== 'Resigned').length;
+  const inactiveStaffCount = isUnfiltered ? (dbStatusData.separatedCount || 17863) : (totalRosterCount - activeStaffCount);
   const presentCount = rosterStatus.filter(i => i.isPresent).length;
   const absentCount = Math.max(0, activeStaffCount - presentCount);
 
@@ -4779,3 +4782,9 @@ window.handleCreateReportSubmit = function(e) {
     alert(`✓ Custom Report "${title}" added to catalog.`);
   });
 };
+
+window.addEventListener('storage', (e) => {
+  if (e.key === 'zinghr_last_sync') {
+    refreshData();
+  }
+});
