@@ -3760,39 +3760,18 @@ if (pathname === '/api/zinghr/employee-master' && req.method === 'GET') {
       postToAIServer('/api/biometric/scan', payload, (err, aiResponse) => {
         const currentDb = dbCache || readDB();
 
-        // Cloud / Standalone Fallback when Python AI is offline (e.g. on Render Cloud)
+        // If Python AI Server is unreachable, fail safely without false positives
         if (err || !aiResponse) {
-          if (payload && payload.image && payload.image.length > 500) {
-            const empList = Object.values(currentDb.employees || currentDb.roster || currentDb.zinghr || {});
-            let matched = currentDb.employees?.['LFDummy01'] || currentDb.employees?.['LFDUMMY01'] || empList.find(e => (e.name||'').toLowerCase().includes('priya')) || empList[0];
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({
-              success: true,
-              match: true,
-              personDetected: true,
-              faceDetected: true,
-              employeeId: matched ? (matched.employeeCode || matched.empCode || matched.id || 'LFDummy01') : 'LFDummy01',
-              name: matched ? (matched.name || matched.employeeName || 'Priyanka') : 'Priyanka',
-              role: matched ? (matched.role || matched.designation || 'Executive HR') : 'Executive HR',
-              client: matched ? (matched.client || 'Tata Electronics Private Limited') : 'Tata Electronics Private Limited',
-              location: matched ? (matched.location || 'Tata Electronics MG - Krishnagiri') : 'Tata Electronics MG - Krishnagiri',
-              confidence: 99.4,
-              isLive: true,
-              reason: 'VERIFIED'
-            }));
-            return;
-          } else {
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({
-              success: true,
-              match: false,
-              personDetected: false,
-              faceDetected: false,
-              reason: 'NO_PERSON',
-              confidence: 0
-            }));
-            return;
-          }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            success: true,
+            match: false,
+            personDetected: false,
+            faceDetected: false,
+            reason: 'NO_FACE_DETECTED',
+            confidence: 0
+          }));
+          return;
         }
         
         // 1. If NO PERSON or NO FACE in frame (idle empty room, wall, background)
