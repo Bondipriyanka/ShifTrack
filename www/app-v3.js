@@ -10904,35 +10904,37 @@ function renderDayPunchTimeline(dateStr, emp) {
       }
     }
 
-    if (lastOutPunch) {
-      const lastPunchTime = new Date(lastOutPunch.timestamp).getTime();
-      const grossSpanMs = Math.max(0, lastPunchTime - firstPunchTime);
-      let totalBreakMs = 0;
-      let lastOutTimeTemp = null;
-      dayLogs.forEach(l => {
-        const isOut = (l.direction === 'Check-Out' || String(l.inOutFlag) === '2' || (l.direction || '').toLowerCase().includes('out'));
-        const t = new Date(l.timestamp).getTime();
-        if (isNaN(t)) return;
-        if (isOut) {
-          lastOutTimeTemp = t;
-        } else if (!isOut && lastOutTimeTemp !== null) {
-          if (t > lastOutTimeTemp) {
-            totalBreakMs += (t - lastOutTimeTemp);
-          }
-          lastOutTimeTemp = null;
+    // Compute accurate net worked duration by summing all completed IN-to-OUT sessions
+    let currentInTime = null;
+    totalWorkedMs = 0;
+    dayLogs.forEach(l => {
+      const isOut = (l.direction === 'Check-Out' || String(l.inOutFlag) === '2' || (l.direction || '').toLowerCase().includes('out'));
+      const t = new Date(l.timestamp || l.swipeDateTime).getTime();
+      if (isNaN(t)) return;
+      if (!isOut && currentInTime === null) {
+        currentInTime = t;
+      } else if (isOut && currentInTime !== null) {
+        if (t > currentInTime) {
+          totalWorkedMs += (t - currentInTime);
         }
-      });
-      totalWorkedMs = Math.max(0, grossSpanMs - totalBreakMs);
-    } else {
-      if (isToday) {
-        totalWorkedMs = Math.max(0, Date.now() - firstPunchTime);
-      } else {
-        totalWorkedMs = 0;
+        currentInTime = null;
       }
-    }
+    });
 
     const lastLog = dayLogs[dayLogs.length - 1];
     isCurrentlyInside = !(lastLog.direction === 'Check-Out' || String(lastLog.inOutFlag) === '2' || (lastLog.direction || '').toLowerCase().includes('out'));
+
+    // If currently inside today, add current active work session from last check-in to right now
+    if (currentInTime !== null && isToday && isCurrentlyInside) {
+      totalWorkedMs += Math.max(0, Date.now() - currentInTime);
+    } else if (totalWorkedMs === 0 && dayLogs.length > 0) {
+      // Fallback: at least first punch to last punch
+      const firstT = new Date(dayLogs[0].timestamp || dayLogs[0].swipeDateTime).getTime();
+      const lastT = new Date(lastLog.timestamp || lastLog.swipeDateTime).getTime();
+      if (!isNaN(firstT) && !isNaN(lastT) && lastT > firstT) {
+        totalWorkedMs = lastT - firstT;
+      }
+    }
   }
 
   const totalMinutes = Math.round(totalWorkedMs / 60000);
@@ -11570,7 +11572,7 @@ function startBackgroundSyncLoop() {
     
     const serverIp = localStorage.getItem('backend_server_ip') || 'http://13.210.115.48';
     try {
-      const ping = await fetch(getApiUrl('/api/roster'), { mode: 'cors' });
+      const ping = await fetch(getApiUrl('/api/ping'), { mode: 'cors' });
       if (ping.ok) {
         // Update network indicator
         const statusPill = document.getElementById("app-network-status");
