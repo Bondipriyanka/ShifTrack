@@ -5300,7 +5300,7 @@ function capturePresenceFrame() {
   }
   const video = document.getElementById("camera-stream");
   if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
-    if (appState.isSimulatedCamera || (typeof window !== 'undefined' && !window.Capacitor && appState.isScanningMode)) {
+    if (appState.isSimulatedCamera) {
       const demoEmp = (typeof employeeDatabase !== 'undefined' && (employeeDatabase['LFDummy01'] || employeeDatabase['LFDUMMY01'])) || null;
       if (demoEmp && demoEmp.avatar) return { image: demoEmp.avatar };
     }
@@ -5495,8 +5495,8 @@ async function runPresenceGatedScan() {
     const matchCount = appState.steadyScanMatchCount || 0;
     const matchedEmp = appState.steadyScanBestEmp;
 
-    // Condition 3: Fast and accurate match trigger (~1.5s - 2.0s confirmed)
-    if (matchedEmp && (matchCount >= 2 || (matchCount >= 1 && elapsed >= 1200))) {
+    // Condition 3: Full 2.0-second scan window completed with verified face
+    if (matchedEmp && elapsed >= 2000 && matchCount >= 1) {
       hideScanProgress();
       appState.steadyScanStartTime = 0;
       appState.steadyScanBestEmp = null;
@@ -11501,10 +11501,15 @@ function initSettingsDrawer() {
     }
     if (!targetHost) targetHost = currentOrigin;
 
+    const pingT0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
     const targetUrl = formatServerUrl(targetHost) + '/api/ping';
     fetch(targetUrl, { mode: 'cors' })
       .then(res => {
         if (res.ok) {
+          const pingMs = Math.max(1, Math.round(((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - pingT0));
+          const latencyEl = document.getElementById("portal-api-latency");
+          if (latencyEl) latencyEl.innerText = `${pingMs}ms`;
+
           if (linkStatus) {
             linkStatus.innerText = "ONLINE";
             linkStatus.style.color = "#22c55e";
@@ -11635,8 +11640,13 @@ function startBackgroundSyncLoop() {
     if (appState.isScanningMode) return;
     
     try {
+      const pingT0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
       const ping = await fetch(getApiUrl('/api/ping'), { mode: 'cors' });
       if (ping.ok) {
+        const pingMs = Math.max(1, Math.round(((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - pingT0));
+        const latencyEl = document.getElementById("portal-api-latency");
+        if (latencyEl) latencyEl.innerText = `${pingMs}ms`;
+
         // Update network indicator
         const statusPill = document.getElementById("app-network-status");
         if (statusPill) {
