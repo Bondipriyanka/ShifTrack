@@ -12,10 +12,10 @@ git fetch origin main
 git reset --hard origin/main
 git clean -fd
 
-echo "[2/4] Installing Python AI libraries (OpenCV, FastAPI, Uvicorn)..."
+echo "[2/4] Installing system dependencies & port-forwarding..."
 sudo apt-get update -y > /dev/null 2>&1 || true
-sudo apt-get install -y python3-pip python3-opencv python3-numpy python3-uvicorn python3-fastapi python3-pydantic > /dev/null 2>&1 || true
-python3 -m pip install fastapi uvicorn opencv-python-headless numpy pydantic --break-system-packages > /dev/null 2>&1 || true
+sudo apt-get install -y libgl1 libglib2.0-0 python3-pip python3-opencv python3-numpy > /dev/null 2>&1 || true
+sudo iptables -t nat -C PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 2000 2>/dev/null || sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 2000 2>/dev/null || true
 
 echo "[3/4] Launching Web Server and AI Biometrics Engine in PM2..."
 pm2 delete all > /dev/null 2>&1 || true
@@ -42,6 +42,11 @@ except Exception as e:
     echo ">> AI server is loading face models, waiting... ($i/8)"
     sleep 2
 done
+
+if [[ "$STATUS" != ONLINE* ]]; then
+    echo ">> Notice: AI server process diagnostic output:"
+    pm2 logs shiftrack-ai --lines 15 --nostream || true
+fi
 
 echo "=================================================="
 echo " SUCCESS: ShifTrack Cloud is 100% LIVE and Ready! "

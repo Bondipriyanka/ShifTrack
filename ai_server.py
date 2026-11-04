@@ -270,13 +270,13 @@ def load_roster_embeddings():
         employees = db_data.get("employees", {})
         processed_count = 0
         
-        # Merge sources so both roster and employees are indexed
+        # Fast candidate index: Only include roster and entries that actually have face photos or gate snaps
         all_candidates = {}
         if isinstance(roster, dict):
             all_candidates.update(roster)
         if isinstance(employees, dict):
             for k, v in employees.items():
-                if k not in all_candidates or (v.get("gatePhotos") and len(v.get("gatePhotos", [])) > 0):
+                if (v.get("gatePhotos") and len(v.get("gatePhotos", [])) > 0) or (isinstance(v.get("avatar"), str) and v.get("avatar").startswith("data:image")) or k.startswith("emp-custom-") or k == "LFDummy01":
                     all_candidates[k] = v
         
         for key, emp in all_candidates.items():
@@ -652,9 +652,9 @@ def run_builtin_server(host="0.0.0.0", port=8000):
             pass
 
     init_models()
-    load_roster_embeddings()
     server_address = (host, port)
     httpd = ThreadingHTTPServer(server_address, BiometricHTTPHandler)
+    load_roster_embeddings()
     print(f"LYAM Biometrics Standalone AI Engine listening on http://{host}:{port} ...")
     try:
         httpd.serve_forever()
