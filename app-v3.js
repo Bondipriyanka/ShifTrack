@@ -2183,9 +2183,18 @@ function speakVoiceMessage(textKey, fallbackText) {
   
   const langCode = langCodesShort[currentLang] || 'en';
 
-  // Fast, instant native device voice on mobile APK or modern browsers
-  // Completely eliminates network audio downloads and 2.5s playback freezes
-  if (isNativeMobileEnvironment() || (typeof window !== 'undefined' && window.speechSynthesis)) {
+  // 1. Android Native OS Text-to-Speech (hardware speaker engine on Android phone)
+  if (typeof window !== 'undefined' && window.AndroidNativeTTS && typeof window.AndroidNativeTTS.speak === 'function') {
+    try {
+      window.AndroidNativeTTS.speak(text);
+      return;
+    } catch(err) {
+      console.warn("AndroidNativeTTS error, falling back:", err);
+    }
+  }
+
+  // 2. Desktop Chrome / Browser SpeechSynthesis
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
     speakLocalVoice(text, currentLang);
     return;
   }
