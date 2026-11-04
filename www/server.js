@@ -1205,16 +1205,16 @@ function generateAttendanceRegister(dateStr, locationFilter = 'all', options = {
   const totalPages = Math.max(1, Math.ceil(fullRecords.length / limit));
   const start = (page - 1) * limit;
 
-  // Streamlined payload optimization: Avoid serializing 11MB of raw absent data that freezes single-threaded cloud servers
+  // Full records for any plant or scoped view (e.g. all 613 staff in Tata Electronics MG - Krishnagiri)
   let paginated;
-  if (options.format === 'all') {
+  if (options.format === 'all' || isScoped || locationFilter !== 'all' || fullRecords.length <= 2000) {
     paginated = fullRecords;
   } else if (options.page || options.limit) {
     paginated = fullRecords.slice(start, start + limit);
   } else {
-    // Return all punched/present employees plus top 200 roster entries (covers all active UI viewing without lag)
+    // For company-wide view (>2000 records without scope), return all punched + top 1000 absent
     const punched = fullRecords.filter(r => r.attendanceStatus !== 'A');
-    const absent = fullRecords.filter(r => r.attendanceStatus === 'A').slice(0, 200);
+    const absent = fullRecords.filter(r => r.attendanceStatus === 'A').slice(0, 1000);
     paginated = [...punched, ...absent];
   }
 
