@@ -95,15 +95,16 @@ function openSettingsDrawer() {
   const ipInput = document.getElementById("settings-ip-input");
   const continuousScanCheck = document.getElementById("settings-continuous-scan");
   const rosterRuleCheck = document.getElementById("settings-roster-rule");
+  const isNative = typeof isNativeMobileEnvironment === 'function' ? isNativeMobileEnvironment() : false;
   const currentOrigin = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http')) 
     ? window.location.origin 
     : 'http://13.210.115.48';
   const savedIp = localStorage.getItem("backend_server_ip");
   let freshIp = savedIp;
-  if (!freshIp || freshIp.includes('localhost') || freshIp.includes('127.0.0.1') || freshIp.includes('192.168.')) {
-    if (typeof window !== 'undefined' && window.location && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-      freshIp = currentOrigin;
-    }
+  if (!freshIp) {
+    freshIp = isNative ? '192.168.31.55:2000' : currentOrigin;
+  } else if (!isNative && (freshIp.includes('localhost') || freshIp.includes('127.0.0.1')) && typeof window !== 'undefined' && window.location && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    freshIp = currentOrigin;
   }
   if (!freshIp) freshIp = 'http://13.210.115.48';
   if (ipInput) ipInput.value = freshIp;
@@ -9684,16 +9685,12 @@ function getApiUrl(endpoint) {
   const path = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
   if (isNativeMobileEnvironment()) {
     let configuredHost = localStorage.getItem('backend_server_ip');
-    // If running in Android APK and offline on local Wi-Fi IP, auto-default to live AWS EC2 cloud server
-    if (!configuredHost || configuredHost.includes('192.168.') || configuredHost.includes('127.0.0.1') || configuredHost.includes('localhost')) {
-      const netStatus = document.getElementById("app-network-status");
-      const isCurrentlyOffline = netStatus && netStatus.classList.contains("offline");
-      if (!configuredHost || isCurrentlyOffline) {
-        configuredHost = 'http://13.210.115.48';
-        localStorage.setItem('backend_server_ip', configuredHost);
-      }
+    // If running in Android APK and no host is configured, or if set to unreachable 127.0.0.1/localhost on device
+    if (!configuredHost || configuredHost === '127.0.0.1:2000' || configuredHost === 'localhost:2000' || configuredHost.startsWith('http://localhost') || configuredHost.startsWith('http://127.0.0.1')) {
+      configuredHost = '192.168.31.55:2000';
+      localStorage.setItem('backend_server_ip', configuredHost);
     }
-    return formatServerUrl(configuredHost || 'http://13.210.115.48') + path;
+    return formatServerUrl(configuredHost) + path;
   }
   const loc = (typeof window !== 'undefined' && window.location) ? window.location : null;
   if (loc && loc.origin && loc.origin.startsWith('http')) {
