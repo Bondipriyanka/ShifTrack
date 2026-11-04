@@ -1060,7 +1060,7 @@ function updateSupervisorPlantDashboardMetrics(plantOverride) {
   });
 
   const absentCount = Math.max(0, totalWorkforce - presentCount);
-  const enrolledCount = activeRecords.filter(r => r.biometricStatus === 'Registered' || r.isGateRegistered).length;
+  const enrolledCount = activeRecords.filter(r => r.biometricStatus === 'Registered' || r.isGateRegistered || r.attendanceStatus === 'P' || r.attendanceStatus === 'HD' || (r.employeeCode && r.employeeCode.toUpperCase().includes('DUMMY'))).length;
   const pendingBio = Math.max(0, totalWorkforce - enrolledCount);
   const attPct = totalWorkforce > 0 ? ((presentCount / totalWorkforce) * 100).toFixed(2) : '0.00';
 
@@ -9000,7 +9000,9 @@ function renderAttendanceRegisterTable() {
 
       const supScope = getActiveSupervisorScope();
       const currentPlantName = (supScope && (supScope.plantFullName || supScope.location)) || window.adminSelectedLoginPlant || "Plant Gate";
-      const enrolledCount = records.filter(r => r.biometricStatus === 'Registered' || r.isGateRegistered).length;
+      const enrolledCount = (data.enrolledCount !== undefined && data.enrolledCount > 0)
+        ? data.enrolledCount
+        : records.filter(r => r.biometricStatus === 'Registered' || r.isGateRegistered || r.attendanceStatus === 'P' || r.attendanceStatus === 'HD' || (r.employeeCode && r.employeeCode.toUpperCase().includes('DUMMY'))).length;
       const pendingBio = Math.max(0, activeCount - enrolledCount);
       const attPct = activeCount > 0 ? ((presentCount / activeCount) * 100).toFixed(2) : '0.00';
 

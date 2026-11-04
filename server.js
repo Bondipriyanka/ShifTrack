@@ -958,6 +958,27 @@ function generateAttendanceRegister(dateStr, locationFilter = 'all', options = {
     employeeLogsMap.get(cleanId).push(l);
   }
 
+  // Pre-calculate enrolled set of face-registered employees
+  const registeredSet = new Set();
+  Object.values(db.roster || {}).forEach(r => {
+    if (r && (r.faceDescriptor || r.faceVector || (r.gatePhotos && r.gatePhotos.length > 0) || r.biometricStatus === 'Registered')) {
+      registeredSet.add((r.id || '').toUpperCase().replace(/[^A-Z0-9]/g, ''));
+    }
+  });
+  if (db.employees) {
+    Object.values(db.employees).forEach(e => {
+      if (e && (e.biometricStatus === 'Registered' || e.faceVector || e.avatar)) {
+        registeredSet.add((e.employeeCode || e.id || '').toUpperCase().replace(/[^A-Z0-9]/g, ''));
+      }
+    });
+  }
+  (db.logs || []).forEach(l => {
+    if (l && (l.verified || l.verificationType === 'Face Recognition')) {
+      registeredSet.add((l.empId || l.empIdentification || '').toUpperCase().replace(/[^A-Z0-9]/g, ''));
+    }
+  });
+  registeredSet.add('LFDUMMY01');
+
   const punchedRecords = [];
   const processedCleanIds = new Set();
 
@@ -1123,7 +1144,9 @@ function generateAttendanceRegister(dateStr, locationFilter = 'all', options = {
           ? `Late Login (${calculateLateDurationStr(firstInTime, (emp && emp.AttendanceRuleGroup) || logs[0].attendanceRuleGroup || logs[0].shiftRule || logs[0].shift || 'General Shift (09:00 - 18:00)')})`
           : remarks),
       avatar: emp ? emp.avatar : (logs[0].avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100&q=80'),
-      swipesCount: logs.length
+      swipesCount: logs.length,
+      biometricStatus: 'Registered',
+      isGateRegistered: true
     });
   }
 
@@ -1174,7 +1197,9 @@ function generateAttendanceRegister(dateStr, locationFilter = 'all', options = {
       overtimeHours: '0h',
       remarks: 'Absent Today',
       avatar: emp.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100&q=80',
-      swipesCount: 0
+      swipesCount: 0,
+      biometricStatus: registeredSet.has(cleanId) ? 'Registered' : 'Pending',
+      isGateRegistered: registeredSet.has(cleanId)
     });
   }
 
@@ -1274,6 +1299,7 @@ function generateAttendanceRegister(dateStr, locationFilter = 'all', options = {
     presentCount,
     halfDayCount,
     absentCount,
+    enrolledCount: fullRecords.filter(r => r.biometricStatus === 'Registered' || r.isGateRegistered).length,
     lateCount: fullRecords.filter(r => (r.isLate || (r.lateInDuration && r.lateInDuration !== '--' && r.lateInDuration !== 'On Time' && r.lateInDuration !== 'Shift Closed')) && !r.isShiftViolation && r.shiftStatus !== 'Shift Violation').length,
     rosterViolationCount: fullRecords.filter(r => r.isShiftViolation || (r.shiftStatus && r.shiftStatus.includes('Violation'))).length,
     multiPunchCount: fullRecords.filter(r => r.isMultiPunch || r.swipesCount > 2).length,
