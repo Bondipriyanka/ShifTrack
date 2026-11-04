@@ -2144,7 +2144,8 @@ function speakVoiceMessage(textKey, fallbackText) {
   const isPriorityKey = [
     'attendance_marked', 'checkout_marked', 'already_marked', 
     'already_checked_out', 'checkin_required', 'wrong_shift', 
-    'plant_mismatch', 'wrong_plant', 'spoof_failed', 'camera_started', 'checkout_camera_started', 'camera_stopped', 'checkout_camera_stopped'
+    'plant_mismatch', 'wrong_plant', 'spoof_failed', 'camera_started', 'checkout_camera_started', 'camera_stopped', 'checkout_camera_stopped',
+    'late_login', 'reentry_marked'
   ].includes(textKey);
 
   if (!isPriorityKey && (now - (appState.lastGlobalVoiceSpokenTime || 0) < 2000)) {
@@ -5445,7 +5446,7 @@ async function runPresenceGatedScan() {
     // -------------------------------------------------------------
     if (scan.reason === "NO_PERSON" || (!scan.personDetected && !scan.faceDetected && !scan.match)) {
       const timeSinceLastPerson = now - (appState.lastPersonSeenTime || 0);
-      if (timeSinceLastPerson > 1000) {
+      if (timeSinceLastPerson > 2500) {
         appState.steadyScanStartTime = 0;
         appState.steadyScanBestEmp = null;
         appState.steadyScanMatchCount = 0;
@@ -6219,19 +6220,19 @@ function validateEmployeeShift(emp, punchTimestamp = null) {
   }
 
   // 4. General Shift (09:00 - 18:00)
-  if (currentMin < shift.earlyStartMin) {
+  if (currentMin < 8 * 60) {
     return {
       valid: false,
       shiftName: shift.name,
       reason: `Shift Roster Violation: Access Denied. Too early for General Shift (starts at 09:00).`
     };
   }
-  // At or after 14:00 (2:00 PM), Shift B (14:00 - 22:00) starts! Initial General Shift check-in is closed!
-  if (currentMin >= 14 * 60) {
+  // Allow check-in throughout the working day up to shift end window (19:00)
+  if (currentMin >= 19 * 60) {
     return {
       valid: false,
       shiftName: shift.name,
-      reason: `Shift Roster Violation: Access Denied. General Shift check-in closed. Another shift (Shift B) started at 14:00.`
+      reason: `Shift Roster Violation: Access Denied. General Shift ended at 18:00.`
     };
   }
 
@@ -6279,8 +6280,10 @@ function getEmployeeTodayStatus(emp) {
 
   let lastDirection = null;
   let lastPunchTime = 0;
-  if (todayLogs.length > 0) {
-    const lastLog = todayLogs[todayLogs.length - 1];
+  // Strictly filter out denied or audit attempts; only count approved punches
+  const validApprovedLogs = todayLogs.filter(l => !l.isViolationAudit && !l.isShiftViolation && l.direction !== 'Access-Denied' && l.accessGranted !== false);
+  if (validApprovedLogs.length > 0) {
+    const lastLog = validApprovedLogs[validApprovedLogs.length - 1];
     const isOut = (lastLog.direction === 'Check-Out' || String(lastLog.inOutFlag) === '2');
     lastDirection = isOut ? 'Check-Out' : 'Check-In';
     lastPunchTime = new Date(lastLog.timestamp || lastLog.swipeDateTime || 0).getTime();
@@ -6293,11 +6296,11 @@ function getEmployeeTodayStatus(emp) {
   const isCurrentlyInside = (lastDirection === 'Check-In');
 
   return {
-    checkedIn: todayLogs.length > 0,
+    checkedIn: validApprovedLogs.length > 0,
     checkedOut: lastDirection === 'Check-Out',
     isCurrentlyInside: isCurrentlyInside,
     lastDirection: lastDirection,
-    punchesCount: todayLogs.length,
+    punchesCount: validApprovedLogs.length,
     lastPunchTime: lastPunchTime
   };
 }
@@ -6575,8 +6578,8 @@ function showWrongShiftError(emp, shiftName, reason) {
     isLate: false,
     lateMinutes: 0,
     lateDuration: 'Cross-Shift / Shift Closed',
-    direction: 'Check-In',
-    inOutFlag: '1',
+    direction: 'Access-Denied',
+    inOutFlag: '0',
     timestamp: now.toISOString(),
     swipeDateTime: now.toISOString().replace('T', ' ').substring(0, 19),
     verified: false,
@@ -6761,7 +6764,7 @@ function recordAttendanceSuccess(emp, timestamp) {
   } else if (!isFirstCheckInToday) {
     speakVoiceMessage("reentry_marked", "Re-entry attendance marked successfully. Welcome back.");
   } else if (isLate) {
-    speakVoiceMessage("late_login", "Late check-in marked. Shift roster violation logged.");
+    speakVoiceMessage("late_login", "Late check-in marked successfully. Have a nice day.");
   } else {
     speakVoiceMessage("attendance_marked", "Attendance marked successfully. Have a nice day.");
   }
@@ -6799,7 +6802,7 @@ function recordAttendanceSuccess(emp, timestamp) {
     swipeDateTime: new Date(timestamp || now).toISOString().replace('T', ' ').substring(0, 19),
     verified: true,
     verificationType: 'Face Recognition',
-    remarks: isCheckout ? 'Check-Out' : (isLate ? `Late Login (+${Math.floor(delayMinutes / 60)}h ${delayMinutes % 60}m) [Roster Violation]` : (isFirstCheckInToday ? 'On-Time Check-In' : 'On-Time (Re-entry)')),
+    remarks: isCheckout ? 'Check-Out' : (isLate ? `Late Login (+${Math.floor(delayMinutes / 60)}h ${delayMinutes % 60}m)` : (isFirstCheckInToday ? 'On-Time Check-In' : 'On-Time (Re-entry)')),
     source: 'ShifTrack'
   };
 

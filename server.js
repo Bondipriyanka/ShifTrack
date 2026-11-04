@@ -83,7 +83,7 @@ function checkShiftRosterViolationServer(timeStr, shiftName) {
     isShiftViolation = true;
   } else if (shiftType === 'night' && (punchMin < 21 * 60 + 15 && punchMin >= 6 * 60)) {
     isShiftViolation = true;
-  } else if (shiftType === 'general' && (punchMin < 8 * 60 + 15 || punchMin >= 14 * 60)) {
+  } else if (shiftType === 'general' && (punchMin < 8 * 60 || punchMin >= 19 * 60)) {
     isShiftViolation = true;
   }
 
