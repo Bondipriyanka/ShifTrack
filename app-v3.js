@@ -95,7 +95,17 @@ function openSettingsDrawer() {
   const ipInput = document.getElementById("settings-ip-input");
   const continuousScanCheck = document.getElementById("settings-continuous-scan");
   const rosterRuleCheck = document.getElementById("settings-roster-rule");
-  const freshIp = localStorage.getItem("backend_server_ip") || (window.location.host || "127.0.0.1:2000");
+  const currentOrigin = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http')) 
+    ? window.location.origin 
+    : 'http://13.210.115.48';
+  const savedIp = localStorage.getItem("backend_server_ip");
+  let freshIp = savedIp;
+  if (!freshIp || freshIp.includes('localhost') || freshIp.includes('127.0.0.1') || freshIp.includes('192.168.')) {
+    if (typeof window !== 'undefined' && window.location && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      freshIp = currentOrigin;
+    }
+  }
+  if (!freshIp) freshIp = 'http://13.210.115.48';
   if (ipInput) ipInput.value = freshIp;
   if (continuousScanCheck) continuousScanCheck.checked = !!appState.isContinuousScan;
   if (rosterRuleCheck) rosterRuleCheck.checked = !!appState.isShiftRosterEnforced;
@@ -5307,8 +5317,6 @@ function capturePresenceFrame() {
   canvas.width = width;
   canvas.height = height;
   const context = canvas.getContext("2d");
-  context.translate(canvas.width, 0);
-  context.scale(-1, 1);
   context.drawImage(video, 0, 0, canvas.width, canvas.height);
   return { image: canvas.toDataURL("image/jpeg", 0.75) };
 }
@@ -9470,13 +9478,25 @@ function saveLocalStorage() {
     employeeDatabase = {};
   }
 
-  localStorage.setItem("attendance_poc_logs", JSON.stringify(appState.attendanceLogs));
-  localStorage.setItem("attendance_poc_queue", JSON.stringify(appState.syncQueue));
-  localStorage.setItem("attendance_poc_counters", JSON.stringify(appState.counters));
-  localStorage.setItem("attendance_poc_roster", JSON.stringify(employeeDatabase));
-  localStorage.setItem("attendance_poc_settings_continuous", appState.isContinuousScan ? "true" : "false");
-  localStorage.setItem("attendance_poc_settings_roster", appState.isShiftRosterEnforced ? "true" : "false");
-  localStorage.setItem("attendance_poc_settings_lang", appState.language || "en");
+  try {
+    localStorage.setItem("attendance_poc_logs", JSON.stringify(appState.attendanceLogs.slice(0, 100)));
+    localStorage.setItem("attendance_poc_queue", JSON.stringify(appState.syncQueue));
+    localStorage.setItem("attendance_poc_counters", JSON.stringify(appState.counters));
+    
+    // Only cache custom or enrolled faces (not 11,800 records which exceeds the 5MB browser quota)
+    const customEmps = {};
+    Object.keys(employeeDatabase).forEach(k => {
+      if (k.startsWith('emp-custom-') || (employeeDatabase[k] && (employeeDatabase[k].avatar || employeeDatabase[k].gatePhotos))) {
+        customEmps[k] = employeeDatabase[k];
+      }
+    });
+    localStorage.setItem("attendance_poc_roster", JSON.stringify(customEmps));
+    localStorage.setItem("attendance_poc_settings_continuous", appState.isContinuousScan ? "true" : "false");
+    localStorage.setItem("attendance_poc_settings_roster", appState.isShiftRosterEnforced ? "true" : "false");
+    localStorage.setItem("attendance_poc_settings_lang", appState.language || "en");
+  } catch (storageErr) {
+    console.warn("localStorage quota or write safely guarded:", storageErr);
+  }
   
   // Dynamic Mobile view sync
   renderMobileLogs();
@@ -9632,7 +9652,12 @@ async function loadDatabaseFromServer() {
 }
 
 function formatServerUrl(rawHost) {
-  if (!rawHost) return "http://localhost:2000";
+  if (!rawHost) {
+    if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http')) {
+      return window.location.origin;
+    }
+    return "http://13.210.115.48";
+  }
   let clean = rawHost.trim().replace(/\/+$/, "");
   if (clean.startsWith("http://") || clean.startsWith("https://")) {
     return clean;
@@ -11464,7 +11489,19 @@ function initSettingsDrawer() {
       linkStatus.style.color = "var(--color-warning)";
     }
     
-    const targetUrl = formatServerUrl(ip) + '/api/ping';
+    let targetHost = ip;
+    const currentOrigin = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http'))
+      ? window.location.origin
+      : 'http://13.210.115.48';
+      
+    if (!targetHost || targetHost.includes('localhost') || targetHost.includes('127.0.0.1') || targetHost.includes('192.168.')) {
+      if (typeof window !== 'undefined' && window.location && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        targetHost = currentOrigin;
+      }
+    }
+    if (!targetHost) targetHost = currentOrigin;
+
+    const targetUrl = formatServerUrl(targetHost) + '/api/ping';
     fetch(targetUrl, { mode: 'cors' })
       .then(res => {
         if (res.ok) {
@@ -11589,7 +11626,7 @@ function initCreateZingHRDrawer() {
   }
 }
 
-// Background network synchronization loop (Runs every 30 seconds)
+// Background network heartbeat & offline queue sync loop (Runs every 10 seconds)
 function startBackgroundSyncLoop() {
   setInterval(async () => {
     // If the device is hard-toggled to offline mode in the UI, do not sync
@@ -11597,7 +11634,6 @@ function startBackgroundSyncLoop() {
     // Skip background sync during active camera scanning to avoid UI thread lag
     if (appState.isScanningMode) return;
     
-    const serverIp = localStorage.getItem('backend_server_ip') || 'http://13.210.115.48';
     try {
       const ping = await fetch(getApiUrl('/api/ping'), { mode: 'cors' });
       if (ping.ok) {
@@ -11608,33 +11644,12 @@ function startBackgroundSyncLoop() {
           statusPill.classList.remove("offline");
         }
         
-        // Sync roster from server database
-        const rosterRes = await fetch(getApiUrl('/api/roster'));
-        if (rosterRes.ok) {
-          const rosterData = await rosterRes.json();
-          // Merge local custom registrations that haven't synced yet
-          Object.keys(employeeDatabase).forEach(key => {
-            if (key.startsWith('emp-custom-') && !rosterData[key]) {
-              rosterData[key] = employeeDatabase[key];
-              // Try to post this missing candidate to server in the background
-              fetch(getApiUrl('/api/roster'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: key, employee: employeeDatabase[key] })
-              }).catch(() => {});
-            }
-          });
-          
-          employeeDatabase = rosterData;
-          saveLocalStorage();
-          renderRoster();
-          calculateEmployeeHashes();
-        }
-        
         // Automatically sync any offline check-ins in queue
-        if (appState.syncQueue.length > 0) {
+        if (appState.syncQueue && appState.syncQueue.length > 0) {
           forceSyncOfflineQueue();
         }
+      } else {
+        throw new Error("Ping failed");
       }
     } catch (err) {
       // Server unreachable, update status indicator
