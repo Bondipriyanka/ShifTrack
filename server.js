@@ -4137,13 +4137,13 @@ if (pathname === '/api/zinghr/employee-master' && req.method === 'GET') {
     return;
   }
 
-  if (url === '/api/logs' && req.method === 'GET') {
+  if ((pathname === '/api/logs' || url === '/api/logs') && req.method === 'GET') {
     const db = readDB();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(db.logs));
     return;
   }
-  if (url === '/api/logs' && req.method === 'POST') {
+  if ((pathname === '/api/logs' || url === '/api/logs') && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', () => {
@@ -4517,7 +4517,7 @@ if (pathname === '/api/zinghr/employee-master' && req.method === 'GET') {
     return;
   }
 
-  if (url === '/api/sync-logs' && req.method === 'POST') {
+  if ((pathname === '/api/sync-logs' || url === '/api/sync-logs') && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', () => {

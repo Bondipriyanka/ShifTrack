@@ -6822,7 +6822,7 @@ function recordAttendanceSuccess(emp, timestamp) {
     let data = null;
     try { data = text ? JSON.parse(text) : {}; } catch (err) { data = { success: false, message: text || 'Server response was not valid JSON.' }; }
 
-    if (!res.ok || data?.success === false) {
+    if (!res.ok || (data?.success === false && data?.error !== 'ALREADY_MARKED_CHECKIN' && data?.error !== 'ALREADY_MARKED_CHECKOUT' && data?.error !== 'ALREADY_MARKED')) {
       const message = data?.message || `Server rejected ${record.direction || 'attendance'} log.`;
       throw new Error(message);
     }
@@ -9676,7 +9676,7 @@ function formatServerUrl(rawHost) {
     if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http')) {
       return window.location.origin;
     }
-    return "http://13.210.115.48";
+    return "http://192.168.31.55:2000";
   }
   let clean = rawHost.trim().replace(/\/+$/, "");
   if (clean.startsWith("http://") || clean.startsWith("https://")) {
@@ -9704,8 +9704,8 @@ function getApiUrl(endpoint) {
   const path = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
   if (isNativeMobileEnvironment()) {
     let configuredHost = localStorage.getItem('backend_server_ip');
-    // If running in Android APK and no host is configured, or if set to unreachable 127.0.0.1/localhost on device
-    if (!configuredHost || configuredHost === '127.0.0.1:2000' || configuredHost === 'localhost:2000' || configuredHost.startsWith('http://localhost') || configuredHost.startsWith('http://127.0.0.1')) {
+    // If running in Android APK and no host is configured, or set to dead cloud/localhost
+    if (!configuredHost || configuredHost === '127.0.0.1:2000' || configuredHost === 'localhost:2000' || configuredHost.startsWith('http://localhost') || configuredHost.startsWith('http://127.0.0.1') || configuredHost.includes('13.210.115.48')) {
       configuredHost = '192.168.31.55:2000';
       localStorage.setItem('backend_server_ip', configuredHost);
     }
@@ -14176,7 +14176,11 @@ window.syncMobileWithServer = async function() {
   const btn = document.getElementById("mobile-global-sync-btn");
   if (btn) btn.style.transform = "rotate(360deg)";
   try {
-    const activeHost = localStorage.getItem('backend_server_ip') || 'http://13.210.115.48';
+    let activeHost = localStorage.getItem('backend_server_ip');
+    if (!activeHost || activeHost.includes('13.210.115.48') || activeHost.includes('localhost') || activeHost.includes('127.0.0.1')) {
+      activeHost = 'http://192.168.31.55:2000';
+      localStorage.setItem('backend_server_ip', activeHost);
+    }
     console.log("[Sync] Syncing mobile app with server:", activeHost);
     
     // 1. Refresh today's attendance records
