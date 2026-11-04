@@ -5180,10 +5180,10 @@ function showPlantMismatchError(emp) {
   updateDashboardStats();
   saveLocalStorage();
 
-    // Full 4.0s card display + 2.0s cooldown before next scan
+  // 2.0s card display + 1.0s cooldown (3.0s total wait time)
   clearAllScanTimers();
   appState.cardDismissTimer = setTimeout(() => {
-    if (viewport) viewport.classList.remove("success");
+    if (viewport) viewport.classList.remove("success", "error");
     if (card) card.classList.remove("active");
     appState.isScanInProgress = false;
     appState.checkoutScanActive = false;
@@ -5194,10 +5194,9 @@ function showPlantMismatchError(emp) {
     }
     appState.lastCardDismissedAt = Date.now();
     appState.cardCooldownTimer = setTimeout(() => {
-      appState.cooldownActive = false;
-      logTerminal("INFO", "Scanner ready for next employee.");
-    }, 2000);
-  }, 4000);
+      endCooldownAndResumeScan();
+    }, 1000);
+  }, 2000);
 }
 
 function showCheckoutReady(emp) {
@@ -6014,7 +6013,7 @@ function handleVerificationResult(isSuccess, failureReason, emp = null) {
     updateDashboardStats();
     saveLocalStorage();
 
-    // Reset indicator and restore ready state after 2.0s display and 3.0s wait time
+    // Reset indicator and restore ready state after 2.0s display and 1.0s wait time (3.0s total wait time)
     setTimeout(() => {
       if (viewport) viewport.classList.remove("error");
       if (card) card.classList.remove("active");
@@ -6023,7 +6022,7 @@ function handleVerificationResult(isSuccess, failureReason, emp = null) {
       }
       setTimeout(() => {
         endCooldownAndResumeScan();
-      }, 3000);
+      }, 1000);
     }, 2000);
   }
 }
@@ -6376,7 +6375,7 @@ function showCheckinRequiredCard(emp) {
     if (card) card.classList.remove("active");
     setTimeout(() => {
       endCooldownAndResumeScan();
-    }, 3000);
+    }, 1000);
   }, 2000);
 }
 
@@ -6441,7 +6440,7 @@ function showAlreadyCheckedOutCard(emp) {
     if (card) card.classList.remove("active");
     setTimeout(() => {
       endCooldownAndResumeScan();
-    }, 3000);
+    }, 1000);
   }, 2000);
 }
 
@@ -6499,7 +6498,7 @@ function showAlreadyMarkedCard(emp) {
     if (card) card.classList.remove("active");
     setTimeout(() => {
       endCooldownAndResumeScan();
-    }, 3000);
+    }, 1000);
   }, 2000);
 }
 
@@ -6610,7 +6609,7 @@ function showWrongShiftError(emp, shiftName, reason) {
     if (card) card.classList.remove("active");
     setTimeout(() => {
       endCooldownAndResumeScan();
-    }, 3000);
+    }, 1000);
   }, 2000);
 }
 
@@ -6902,12 +6901,12 @@ function recordAttendanceSuccess(emp, timestamp) {
       }
     }
 
-    logTerminal("INFO", "Card displayed for 2.0s. Scanner cooling down for 3.0s before next scan...");
+    logTerminal("INFO", "Card displayed for 2.0s. Scanner cooling down for 1.0s (3.0s total wait time)...");
 
-    // 2. Cooldown wait time: 3.0 seconds before scanner is ready for the next scan
+    // 2. Cooldown wait time: 1.0 second after card dismiss (3.0s total wait time from punch)
     setTimeout(() => {
       endCooldownAndResumeScan();
-    }, 3000);
+    }, 1000);
   }, 2000);
 }
 
