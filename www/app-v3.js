@@ -11481,6 +11481,7 @@ function initSettingsDrawer() {
   }
   
   function testServerConnection(ip, updateGlobalStatus = false) {
+    const linkStatus = document.getElementById("settings-link-status");
     if (linkStatus) {
       linkStatus.innerText = "TESTING PING...";
       linkStatus.style.color = "var(--color-warning)";
@@ -11491,51 +11492,64 @@ function initSettingsDrawer() {
       ? window.location.origin
       : 'http://13.210.115.48';
       
-    if (!targetHost || targetHost.includes('localhost') || targetHost.includes('127.0.0.1') || targetHost.includes('192.168.')) {
-      if (typeof window !== 'undefined' && window.location && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        targetHost = currentOrigin;
-      }
-    }
     if (!targetHost) targetHost = currentOrigin;
 
     const pingT0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
     const targetUrl = formatServerUrl(targetHost) + '/api/ping';
-    fetch(targetUrl, { mode: 'cors' })
-      .then(res => {
-        if (res.ok) {
-          const pingMs = Math.max(1, Math.round(((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - pingT0));
-          const latencyEl = document.getElementById("portal-api-latency");
-          if (latencyEl) latencyEl.innerText = `${pingMs}ms`;
 
-          if (linkStatus) {
-            linkStatus.innerText = "ONLINE";
-            linkStatus.style.color = "#22c55e";
-          }
-          if (updateGlobalStatus) {
-            const statusPill = document.getElementById("app-network-status");
-            if (statusPill) {
-              statusPill.innerText = "ONLINE";
-              statusPill.classList.remove("offline");
-            }
-          }
-        } else {
-          throw new Error("Bad response");
-        }
-      })
-      .catch(err => {
+    const checkSuccess = (res) => {
+      if (res && res.ok) {
+        const pingMs = Math.max(1, Math.round(((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - pingT0));
+        const latencyEl = document.getElementById("portal-api-latency");
+        if (latencyEl) latencyEl.innerText = `${pingMs}ms`;
+
         if (linkStatus) {
-          linkStatus.innerText = "OFFLINE / UNREACHABLE";
-          linkStatus.style.color = "#ef4444";
+          linkStatus.innerText = `ONLINE (${pingMs}ms)`;
+          linkStatus.style.color = "#22c55e";
         }
         if (updateGlobalStatus) {
           const statusPill = document.getElementById("app-network-status");
           if (statusPill) {
-            statusPill.innerText = "OFFLINE";
-            statusPill.classList.add("offline");
+            statusPill.innerText = "ONLINE";
+            statusPill.classList.remove("offline");
           }
         }
+        return true;
+      }
+      return false;
+    };
+
+    const tryFallback = () => {
+      if (currentOrigin && targetUrl !== (currentOrigin + '/api/ping')) {
+        return fetch(currentOrigin + '/api/ping', { mode: 'cors' })
+          .then(res => {
+            if (!checkSuccess(res)) throw new Error("Fallback failed");
+          });
+      }
+      throw new Error("Bad response");
+    };
+
+    fetch(targetUrl, { mode: 'cors' })
+      .then(res => {
+        if (!checkSuccess(res)) return tryFallback();
+      })
+      .catch(err => {
+        return tryFallback().catch(() => {
+          if (linkStatus) {
+            linkStatus.innerText = "OFFLINE / UNREACHABLE";
+            linkStatus.style.color = "#ef4444";
+          }
+          if (updateGlobalStatus) {
+            const statusPill = document.getElementById("app-network-status");
+            if (statusPill) {
+              statusPill.innerText = "OFFLINE";
+              statusPill.classList.add("offline");
+            }
+          }
+        });
       });
   }
+  window.testServerConnection = testServerConnection;
 }
 
 function initCreateZingHRDrawer() {

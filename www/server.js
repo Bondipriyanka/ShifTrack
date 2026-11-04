@@ -331,8 +331,11 @@ function getEmployeeMasterList() {
   }));
 }
 
+const attendanceRegisterCache = new Map();
+
 function writeDB(data) {
   try {
+    attendanceRegisterCache.clear();
     dbCache = data;
     lastDbRead = Date.now();
     fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf8');
@@ -908,6 +911,12 @@ function resolveStandardPlantSite(emp, defaultPlant = '') {
 }
 
 function generateAttendanceRegister(dateStr, locationFilter = 'all', options = {}) {
+  const cacheKey = `${dateStr}::${locationFilter}::${options.entity || ''}::${options.client || ''}::${options.status || ''}::${options.q || ''}::${options.page || ''}::${options.limit || ''}::${options.format || ''}::${options.plantKey || ''}`;
+  const cached = attendanceRegisterCache.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp < 15000)) {
+    return cached.data;
+  }
+
   const db = readDB();
   const allEmployees = getEmployeeMasterList();
 
@@ -1253,7 +1262,7 @@ function generateAttendanceRegister(dateStr, locationFilter = 'all', options = {
   const locationBreakdown = Array.from(locationMap.values()).sort((a, b) => (b.present - a.present) || (b.total - a.total));
   const entityBreakdown = Array.from(entityMap.values()).sort((a, b) => (b.present - a.present) || (b.total - a.total));
 
-  return {
+  const result = {
     success: true,
     date: dateStr,
     location: locationFilter,
@@ -1279,6 +1288,8 @@ function generateAttendanceRegister(dateStr, locationFilter = 'all', options = {
     entityBreakdown,
     records: paginated
   };
+  attendanceRegisterCache.set(cacheKey, { timestamp: Date.now(), data: result });
+  return result;
 }
 
 function getSupervisorsList(db) {
@@ -2013,9 +2024,9 @@ const requestHandler = async (req, res) => {
   console.log(`[HTTP Server] Request: ${req.method} ${req.url}`);
   // Add CORS headers so mobile app can connect
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, HEAD');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Access-Control-Allow-Private-Network', 'true');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
