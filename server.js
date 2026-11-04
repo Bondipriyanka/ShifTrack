@@ -967,7 +967,7 @@ function generateAttendanceRegister(dateStr, locationFilter = 'all', options = {
   });
   if (db.employees) {
     Object.values(db.employees).forEach(e => {
-      if (e && (e.biometricStatus === 'Registered' || e.faceVector || e.avatar)) {
+      if (e && (e.biometricStatus === 'Registered' || e.faceVector)) {
         registeredSet.add((e.employeeCode || e.id || '').toUpperCase().replace(/[^A-Z0-9]/g, ''));
       }
     });

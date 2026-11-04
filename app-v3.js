@@ -6148,10 +6148,11 @@ function validateEmployeeShift(emp, punchTimestamp = null) {
     return { valid: true, shiftName: shift.name, shift: shift };
   }
 
-  // If this is a Re-entry during the day (already checked in earlier and returning from break/lunch), allow!
+  // If this is a Re-entry during the day (already checked in earlier and returning from break/lunch/overtime), allow!
   if (typeof getEmployeeTodayStatus === 'function') {
     const todaySt = getEmployeeTodayStatus(emp);
-    if (todaySt.punchesCount > 0 && !todaySt.isCurrentlyInside) {
+    const hasPriorCheckIn = todaySt.punchesCount > 0 || todaySt.checkedIn || emp.attendanceStatus === 'P' || emp.attendanceStatus === 'HD' || emp.checkedIn;
+    if (hasPriorCheckIn && !todaySt.isCurrentlyInside) {
       return { valid: true, shiftName: shift.name, shift: shift, isReentry: true };
     }
   }
@@ -6219,23 +6220,23 @@ function validateEmployeeShift(emp, punchTimestamp = null) {
   }
 
   // 4. General Shift (09:00 - 18:00)
-  if (currentMin < 8 * 60) {
+  if (currentMin < 7 * 60 + 30) {
     return {
       valid: false,
       shiftName: shift.name,
       reason: `Shift Roster Violation: Access Denied. Too early for General Shift (starts at 09:00).`
     };
   }
-  // Allow check-in throughout the working day up to shift end window (19:00)
-  if (currentMin >= 19 * 60) {
+  // Allow check-in, late entry, and overtime re-entries throughout the working day and evening up to 23:30
+  if (currentMin >= 23 * 60 + 30) {
     return {
       valid: false,
       shiftName: shift.name,
-      reason: `Shift Roster Violation: Access Denied. General Shift ended at 18:00.`
+      reason: `Shift Roster Violation: Access Denied. General Shift ended at 18:00. Shift C / Night Shift is active.`
     };
   }
 
-  return { valid: true, shiftName: shift.name, shift: shift };
+  return { valid: true, shiftName: shift.name, shift: shift, isOvertime: currentMin >= 18 * 60 };
 }
 
 
@@ -6244,10 +6245,17 @@ function getEmployeeTodayStatus(emp) {
   if (!cleanEmpId) return { checkedIn: false, checkedOut: false, isCurrentlyInside: false, punchesCount: 0, lastDirection: null, lastPunchTime: 0 };
   const todayStr = new Date().toISOString().split('T')[0];
 
+  let localStoredLogs = null;
+  try {
+    const raw = (typeof localStorage !== 'undefined') && localStorage.getItem("attendance_poc_logs");
+    if (raw) localStoredLogs = JSON.parse(raw);
+  } catch (e) {}
+
   const logSources = [
     typeof appState !== 'undefined' && appState.attendanceLogs,
     typeof window !== 'undefined' && window.adminLogs,
-    typeof allLogsData !== 'undefined' ? allLogsData : null
+    typeof allLogsData !== 'undefined' ? allLogsData : null,
+    localStoredLogs
   ];
 
   const rawLogs = [];
@@ -10627,10 +10635,17 @@ function getEmployeePresentDates(emp) {
   }
 
   // 2. From logs in memory (appState.attendanceLogs, window.adminLogs)
+  let localStoredLogs = null;
+  try {
+    const raw = (typeof localStorage !== 'undefined') && localStorage.getItem("attendance_poc_logs");
+    if (raw) localStoredLogs = JSON.parse(raw);
+  } catch (e) {}
+
   const logSources = [
     typeof appState !== 'undefined' && appState.attendanceLogs,
     typeof window !== 'undefined' && window.adminLogs,
-    typeof allLogsData !== 'undefined' ? allLogsData : null
+    typeof allLogsData !== 'undefined' ? allLogsData : null,
+    localStoredLogs
   ];
   for (const logs of logSources) {
     if (Array.isArray(logs)) {
@@ -10689,10 +10704,17 @@ function getEmployeeMultiPunchDates(emp) {
   const multiDates = new Set();
   const cleanId = String(emp.id || emp.employeeCode || emp.empCode || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
+  let localStoredLogs = null;
+  try {
+    const raw = (typeof localStorage !== 'undefined') && localStorage.getItem("attendance_poc_logs");
+    if (raw) localStoredLogs = JSON.parse(raw);
+  } catch (e) {}
+
   const logSources = [
     typeof appState !== 'undefined' && appState.attendanceLogs,
     typeof window !== 'undefined' && window.adminLogs,
-    typeof allLogsData !== 'undefined' ? allLogsData : null
+    typeof allLogsData !== 'undefined' ? allLogsData : null,
+    localStoredLogs
   ];
   
   const rawEmpLogs = [];
@@ -10869,10 +10891,17 @@ function renderDayPunchTimeline(dateStr, emp) {
   }
 
   // 1. Collect all real logs for dateStr
+  let localStoredLogs = null;
+  try {
+    const raw = (typeof localStorage !== 'undefined') && localStorage.getItem("attendance_poc_logs");
+    if (raw) localStoredLogs = JSON.parse(raw);
+  } catch (e) {}
+
   const logSources = [
     typeof appState !== 'undefined' && appState.attendanceLogs,
     typeof window !== 'undefined' && window.adminLogs,
-    typeof allLogsData !== 'undefined' ? allLogsData : null
+    typeof allLogsData !== 'undefined' ? allLogsData : null,
+    localStoredLogs
   ];
   let rawLogs = [];
   for (const logs of logSources) {
