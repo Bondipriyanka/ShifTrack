@@ -1090,7 +1090,6 @@ function updateSupervisorPlantDashboardMetrics(plantOverride) {
   const btnPres = document.getElementById("board-filter-present");
   const btnAbs = document.getElementById("board-filter-absent");
 
-  const pLower = (plantName || '').toLowerCase();
   let plantTotalAll = totalWorkforce;
   let plantInactive = 0;
   if (pLower.includes('jasmine')) {
