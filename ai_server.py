@@ -4,27 +4,45 @@ import json
 import base64
 import numpy as np
 import cv2
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from fastapi.middleware.cors import CORSMiddleware
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    init_models()
-    load_roster_embeddings()
-    yield
+try:
+    from fastapi import FastAPI, HTTPException
+    from pydantic import BaseModel
+    from fastapi.middleware.cors import CORSMiddleware
+    from contextlib import asynccontextmanager
 
-app = FastAPI(title="LYAM Biometrics AI Engine", lifespan=lifespan)
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        init_models()
+        load_roster_embeddings()
+        yield
 
-# Enable CORS for frontend and Node server access
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    app = FastAPI(title="LYAM Biometrics AI Engine", lifespan=lifespan)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    HAS_FASTAPI = True
+except ImportError:
+    HAS_FASTAPI = False
+    class BaseModel:
+        def __init__(self, **kwargs):
+            for k, v in kwargs.items():
+                setattr(self, k, v)
+    class HTTPException(Exception):
+        def __init__(self, status_code: int, detail: str):
+            super().__init__(detail)
+            self.status_code = status_code
+            self.detail = detail
+    class DummyApp:
+        def get(self, *args, **kwargs):
+            return lambda fn: fn
+        def post(self, *args, **kwargs):
+            return lambda fn: fn
+    app = DummyApp()
 
 # Model paths and download URLs
 YUNET_URL = "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx"
@@ -569,7 +587,83 @@ def reload_embeddings():
     load_roster_embeddings()
     return {"success": True, "cached_profiles": len(roster_embeddings)}
 
+def run_builtin_server(host="0.0.0.0", port=8000):
+    from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+
+    class BiometricHTTPHandler(BaseHTTPRequestHandler):
+        def _set_headers(self, status_code=200):
+            self.send_response(status_code)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+            self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+            self.end_headers()
+
+        def do_OPTIONS(self):
+            self._set_headers(204)
+
+        def do_GET(self):
+            if self.path.startswith('/api/biometric/status') or self.path == '/':
+                res = get_status()
+                self._set_headers(200)
+                self.wfile.write(json.dumps(res).encode('utf-8'))
+            else:
+                self._set_headers(404)
+                self.wfile.write(json.dumps({"detail": "Not Found"}).encode('utf-8'))
+
+        def do_POST(self):
+            content_length = int(self.headers.get('Content-Length', 0))
+            body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+            payload_dict = {}
+            if body_bytes:
+                try:
+                    payload_dict = json.loads(body_bytes.decode('utf-8'))
+                except Exception:
+                    pass
+
+            if self.path.startswith('/api/biometric/status'):
+                res = get_status()
+                self._set_headers(200)
+                self.wfile.write(json.dumps(res).encode('utf-8'))
+            elif self.path.startswith('/api/biometric/scan'):
+                img_data = payload_dict.get('image', '')
+                res = scan_biometrics(ScanPayload(image=img_data))
+                self._set_headers(200)
+                self.wfile.write(json.dumps(res).encode('utf-8'))
+            elif self.path.startswith('/api/biometric/register'):
+                res = register_biometrics(RegisterPayload(key=payload_dict.get('key', ''), avatar=payload_dict.get('avatar', '')))
+                self._set_headers(200)
+                self.wfile.write(json.dumps(res).encode('utf-8'))
+            elif self.path.startswith('/api/biometric/detect-person'):
+                img_data = payload_dict.get('image', '')
+                res = detect_person(PresencePayload(image=img_data))
+                self._set_headers(200)
+                self.wfile.write(json.dumps(res).encode('utf-8'))
+            elif self.path.startswith('/api/biometric/reload'):
+                load_roster_embeddings()
+                res = {"success": True, "cached_profiles": len(roster_embeddings)}
+                self._set_headers(200)
+                self.wfile.write(json.dumps(res).encode('utf-8'))
+            else:
+                self._set_headers(404)
+                self.wfile.write(json.dumps({"detail": "Not Found"}).encode('utf-8'))
+
+        def log_message(self, format, *args):
+            pass
+
+    init_models()
+    load_roster_embeddings()
+    server_address = (host, port)
+    httpd = ThreadingHTTPServer(server_address, BiometricHTTPHandler)
+    print(f"LYAM Biometrics Standalone AI Engine listening on http://{host}:{port} ...")
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        httpd.server_close()
+
 if __name__ == "__main__":
-    import uvicorn
-    print("Starting LYAM Biometrics AI Engine on http://0.0.0.0:8000 ...")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
+    # Prefer lightweight, zero-dependency ThreadingHTTPServer for guaranteed stability across platforms
+    print("Starting LYAM Biometrics Standalone AI Engine on http://0.0.0.0:8000 ...")
+    run_builtin_server(host="0.0.0.0", port=8000)

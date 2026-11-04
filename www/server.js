@@ -129,32 +129,55 @@ let isPgConnected = false;
 let pgClient = null;
 
 let aiProcess = null;
+let isProbingAI = false;
 function ensureAIServerRunning() {
-  if (aiProcess) return;
-  try {
-    const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
-    aiProcess = spawn(pythonCmd, ['ai_server.py'], {
-      cwd: __dirname,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      detached: false
-    });
-    if (aiProcess.stdout) {
-      aiProcess.stdout.on('data', d => console.log(`[AI Server]: ${d.toString().trim()}`));
+  if (aiProcess || isProbingAI) return;
+  isProbingAI = true;
+  
+  const req = http.request({
+    hostname: '127.0.0.1',
+    port: 8000,
+    path: '/api/biometric/status',
+    method: 'GET',
+    timeout: 500
+  }, (res) => {
+    isProbingAI = false;
+  });
+  
+  req.on('error', () => {
+    isProbingAI = false;
+    if (aiProcess) return;
+    try {
+      const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+      aiProcess = spawn(pythonCmd, ['ai_server.py'], {
+        cwd: __dirname,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        detached: false
+      });
+      if (aiProcess.stdout) {
+        aiProcess.stdout.on('data', d => console.log(`[AI Server]: ${d.toString().trim()}`));
+      }
+      if (aiProcess.stderr) {
+        aiProcess.stderr.on('data', d => console.error(`[AI Server Error]: ${d.toString().trim()}`));
+      }
+      aiProcess.on('error', (err) => { 
+        console.error('[AI Server Spawn Error]:', err.message);
+        aiProcess = null; 
+      });
+      aiProcess.on('exit', (code) => { 
+        console.warn(`[AI Server] Exited with code ${code}`);
+        aiProcess = null; 
+      });
+    } catch (err) {
+      aiProcess = null;
     }
-    if (aiProcess.stderr) {
-      aiProcess.stderr.on('data', d => console.error(`[AI Server Error]: ${d.toString().trim()}`));
-    }
-    aiProcess.on('error', (err) => { 
-      console.error('[AI Server Spawn Error]:', err.message);
-      aiProcess = null; 
-    });
-    aiProcess.on('exit', (code) => { 
-      console.warn(`[AI Server] Exited with code ${code}`);
-      aiProcess = null; 
-    });
-  } catch (err) {
-    aiProcess = null;
-  }
+  });
+  
+  req.on('timeout', () => {
+    req.destroy();
+  });
+  
+  req.end();
 }
 ensureAIServerRunning();
 

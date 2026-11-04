@@ -5987,15 +5987,17 @@ function handleVerificationResult(isSuccess, failureReason, emp = null) {
     updateDashboardStats();
     saveLocalStorage();
 
-    // Reset indicator and restore ready state after 3.0s display and wait time
+    // Reset indicator and restore ready state after 2.0s display and 3.0s wait time
     setTimeout(() => {
       if (viewport) viewport.classList.remove("error");
       if (card) card.classList.remove("active");
       if (!appState.checkoutScanActive) {
         appState.currentDirection = "Check-In";
       }
-      endCooldownAndResumeScan();
-    }, 3000);
+      setTimeout(() => {
+        endCooldownAndResumeScan();
+      }, 3000);
+    }, 2000);
   }
 }
 
@@ -6343,8 +6345,10 @@ function showCheckinRequiredCard(emp) {
   appState.cardDismissTimer = setTimeout(() => {
     if (viewport) viewport.classList.remove("error");
     if (card) card.classList.remove("active");
-    endCooldownAndResumeScan();
-  }, 3000);
+    setTimeout(() => {
+      endCooldownAndResumeScan();
+    }, 3000);
+  }, 2000);
 }
 
 function showAlreadyCheckedOutCard(emp) {
@@ -6406,8 +6410,10 @@ function showAlreadyCheckedOutCard(emp) {
   appState.cardDismissTimer = setTimeout(() => {
     if (viewport) viewport.classList.remove("success");
     if (card) card.classList.remove("active");
-    endCooldownAndResumeScan();
-  }, 3000);
+    setTimeout(() => {
+      endCooldownAndResumeScan();
+    }, 3000);
+  }, 2000);
 }
 
 function showAlreadyMarkedCard(emp) {
@@ -6462,8 +6468,10 @@ function showAlreadyMarkedCard(emp) {
   appState.cardDismissTimer = setTimeout(() => {
     if (viewport) viewport.classList.remove("success");
     if (card) card.classList.remove("active");
-    endCooldownAndResumeScan();
-  }, 3000);
+    setTimeout(() => {
+      endCooldownAndResumeScan();
+    }, 3000);
+  }, 2000);
 }
 
 function showWrongShiftError(emp, shiftName, reason) {
@@ -6571,8 +6579,10 @@ function showWrongShiftError(emp, shiftName, reason) {
   appState.cardDismissTimer = setTimeout(() => {
     if (viewport) viewport.classList.remove("error");
     if (card) card.classList.remove("active");
-    endCooldownAndResumeScan();
-  }, 3000);
+    setTimeout(() => {
+      endCooldownAndResumeScan();
+    }, 3000);
+  }, 2000);
 }
 
 function recordAttendanceSuccess(emp, timestamp) {
@@ -6830,7 +6840,7 @@ function recordAttendanceSuccess(emp, timestamp) {
     if (typeof renderAttendanceRegisterTable === 'function') renderAttendanceRegisterTable();
   });
 
-  // 3.0s card display and wait time before next scan
+  // 1. Display success card for 2.0 seconds
   setTimeout(() => {
     if (viewport) viewport.classList.remove("success");
     if (card) card.classList.remove("active");
@@ -6863,8 +6873,13 @@ function recordAttendanceSuccess(emp, timestamp) {
       }
     }
 
-    endCooldownAndResumeScan();
-  }, 3000);
+    logTerminal("INFO", "Card displayed for 2.0s. Scanner cooling down for 3.0s before next scan...");
+
+    // 2. Cooldown wait time: 3.0 seconds before scanner is ready for the next scan
+    setTimeout(() => {
+      endCooldownAndResumeScan();
+    }, 3000);
+  }, 2000);
 }
 
 function renderAttendanceTable() {
@@ -9115,7 +9130,10 @@ function renderAttendanceRegisterTable() {
       }).join('');
     })
     .catch(err => {
-      tbody.innerHTML = `<tr><td colspan="13" style="text-align: center; padding: 40px; color: #ef4444;">Failed to load attendance board: ${err.message}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="13" style="text-align: center; padding: 30px; color: #ef4444;">
+        Failed to load attendance board: ${err.message}<br>
+        <button onclick="renderAttendanceRegisterTable()" style="margin-top: 10px; padding: 6px 16px; background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.8rem;">🔄 Retry Loading Table</button>
+      </td></tr>`;
     });
 }
 
@@ -9640,8 +9658,17 @@ function getApiUrl(endpoint) {
   if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) return endpoint;
   const path = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
   if (isNativeMobileEnvironment()) {
-    const configuredHost = localStorage.getItem('backend_server_ip') || 'http://13.210.115.48';
-    return formatServerUrl(configuredHost) + path;
+    let configuredHost = localStorage.getItem('backend_server_ip');
+    // If running in Android APK and offline on local Wi-Fi IP, auto-default to live AWS EC2 cloud server
+    if (!configuredHost || configuredHost.includes('192.168.') || configuredHost.includes('127.0.0.1') || configuredHost.includes('localhost')) {
+      const netStatus = document.getElementById("app-network-status");
+      const isCurrentlyOffline = netStatus && netStatus.classList.contains("offline");
+      if (!configuredHost || isCurrentlyOffline) {
+        configuredHost = 'http://13.210.115.48';
+        localStorage.setItem('backend_server_ip', configuredHost);
+      }
+    }
+    return formatServerUrl(configuredHost || 'http://13.210.115.48') + path;
   }
   const loc = (typeof window !== 'undefined' && window.location) ? window.location : null;
   if (loc && loc.origin && loc.origin.startsWith('http')) {
