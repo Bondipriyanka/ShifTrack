@@ -121,6 +121,13 @@ const crypto = require('crypto');
 
 const { spawn } = require('child_process');
 
+process.on('uncaughtException', (err) => {
+  console.error('[UNCAUGHT EXCEPTION PREVENTED CRASH]:', err.message);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[UNHANDLED REJECTION PREVENTED CRASH]:', reason);
+});
+
 const PORT = process.env.PORT || 2000;
 const HTTPS_PORT = process.env.HTTPS_PORT || 3443;
 const DB_PATH = path.join(__dirname, 'db.json');
@@ -335,6 +342,13 @@ function writeDB(data) {
 }
 
 function runScanViaCLI(payload, cb) {
+  let finished = false;
+  const safeCb = (err, result) => {
+    if (finished) return;
+    finished = true;
+    cb(err, result);
+  };
+
   try {
     const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
     const cliScript = path.join(__dirname, 'scan_cli.py');
@@ -351,22 +365,29 @@ function runScanViaCLI(payload, cb) {
         const lines = out.trim().split('\n');
         const jsonLine = lines[lines.length - 1];
         const parsed = JSON.parse(jsonLine);
-        cb(null, parsed);
+        safeCb(null, parsed);
       } catch (e) {
-        cb(new Error('CLI fallback parse error: ' + e.message + ' stderr: ' + errOut));
+        safeCb(new Error('CLI fallback parse error: ' + e.message + ' stderr: ' + errOut));
       }
     });
     child.on('error', err => {
-      cb(err);
+      safeCb(err);
     });
     child.stdin.write(JSON.stringify(payload || {}));
     child.stdin.end();
   } catch (err) {
-    cb(err);
+    safeCb(err);
   }
 }
 
 function postToAIServer(endpoint, payload, callback) {
+  let finished = false;
+  const safeCallback = (err, result) => {
+    if (finished) return;
+    finished = true;
+    callback(err, result);
+  };
+
   const data = JSON.stringify(payload || {});
   const options = {
     hostname: '127.0.0.1',
@@ -377,7 +398,7 @@ function postToAIServer(endpoint, payload, callback) {
       'Content-Type': 'application/json',
       'Content-Length': Buffer.byteLength(data)
     },
-    timeout: 3000
+    timeout: 15000
   };
 
   const aiReq = http.request(options, (aiRes) => {
@@ -386,12 +407,12 @@ function postToAIServer(endpoint, payload, callback) {
     aiRes.on('end', () => {
       try {
         const parsed = JSON.parse(resData);
-        callback(null, parsed);
+        safeCallback(null, parsed);
       } catch (err) {
         if (endpoint === '/api/biometric/scan') {
-          runScanViaCLI(payload, callback);
+          runScanViaCLI(payload, safeCallback);
         } else {
-          callback(err);
+          safeCallback(err);
         }
       }
     });
@@ -400,9 +421,9 @@ function postToAIServer(endpoint, payload, callback) {
   aiReq.on('error', (err) => {
     ensureAIServerRunning();
     if (endpoint === '/api/biometric/scan') {
-      runScanViaCLI(payload, callback);
+      runScanViaCLI(payload, safeCallback);
     } else {
-      callback(err || new Error('AI Server offline or unreachable'));
+      safeCallback(err || new Error('AI Server offline or unreachable'));
     }
   });
 
@@ -410,9 +431,9 @@ function postToAIServer(endpoint, payload, callback) {
     aiReq.destroy();
     ensureAIServerRunning();
     if (endpoint === '/api/biometric/scan') {
-      runScanViaCLI(payload, callback);
+      runScanViaCLI(payload, safeCallback);
     } else {
-      callback(new Error('AI Server request timed out'));
+      safeCallback(new Error('AI Server request timed out'));
     }
   });
 
@@ -3810,6 +3831,7 @@ if (pathname === '/api/zinghr/employee-master' && req.method === 'GET') {
 
     if (pathname === '/api/debug/ai' && req.method === 'GET') {
     postToAIServer('/api/biometric/status', {}, (err, aiRes) => {
+      if (res.headersSent) return;
       if (!err && aiRes) {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
@@ -3927,6 +3949,7 @@ if (pathname === '/api/zinghr/employee-master' && req.method === 'GET') {
       try {
         const payload = JSON.parse(body);
         postToAIServer('/api/biometric/check-duplicate', payload, (err, aiResponse) => {
+          if (res.headersSent) return;
           if (err) {
             console.error("AI Server connection error:", err.message);
             res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -3953,6 +3976,7 @@ if (pathname === '/api/zinghr/employee-master' && req.method === 'GET') {
 
       // Proxy to AI Server
       postToAIServer('/api/biometric/scan', payload, (err, aiResponse) => {
+        if (res.headersSent) return;
         const currentDb = dbCache || readDB();
 
         // If Python AI Server is unreachable or timed out
@@ -4050,6 +4074,7 @@ if (pathname === '/api/zinghr/employee-master' && req.method === 'GET') {
       let payload = {};
       try { if (body) payload = JSON.parse(body); } catch(e) {}
       postToAIServer('/api/biometric/detect-person', payload, (err, aiResponse) => {
+        if (res.headersSent) return;
         if (err || !aiResponse) {
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ detected: true, presenceConfidence: 99.0, count: 1 }));
