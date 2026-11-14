@@ -3281,6 +3281,18 @@ function handleSupervisorLogin() {
     let enteredUser = userInp ? userInp.value.trim() : "";
     let enteredPin = pinInp ? pinInp.value.trim() : "";
 
+    // Require supervisor credentials when logging in manually
+    if (!enteredUser) {
+      alert("⚠️ Please enter your Supervisor ID, Official Email, or Username to log in.");
+      if (userInp) userInp.focus();
+      return;
+    }
+    if (!enteredPin) {
+      alert("⚠️ Please enter your Password / PIN.");
+      if (pinInp) pinInp.focus();
+      return;
+    }
+
     const plants = (typeof livePlantsRegistry !== 'undefined' && livePlantsRegistry.length > 0)
       ? livePlantsRegistry
       : (typeof PLANTS_REGISTRY !== 'undefined' ? PLANTS_REGISTRY : []);
@@ -12453,6 +12465,10 @@ window.submitHelpdeskTicket = async function() {
   const category = document.getElementById("ticket-category")?.value || "General";
   const subject = document.getElementById("ticket-message")?.value || "Helpdesk Request";
   
+  const currentSup = appState.currentSupervisor || (typeof getActiveSupervisorScope === 'function' ? getActiveSupervisorScope() : null);
+  const supervisorEmail = (currentSup && currentSup.email) || "";
+  const supervisorName = (currentSup && (currentSup.name || currentSup.supervisorName)) || "Plant Supervisor";
+
   try {
     const res = await fetch(getApiUrl('/api/support/ticket'), {
       method: 'POST',
@@ -12460,6 +12476,8 @@ window.submitHelpdeskTicket = async function() {
       body: JSON.stringify({
         employeeCode: empCode,
         employeeName: "Priyanka",
+        supervisorName: supervisorName,
+        supervisorEmail: supervisorEmail,
         plantLocation: appState.selectedLocation || "Krishnagiri",
         category,
         subject,
@@ -12467,7 +12485,7 @@ window.submitHelpdeskTicket = async function() {
       })
     });
     if (res.ok) {
-      alert("✓ Support ticket submitted successfully! Admin team has been notified.");
+      alert("✓ Support ticket submitted successfully! Admin team has been notified via email.");
       document.getElementById("helpdesk-modal")?.remove();
     }
   } catch(e) {
@@ -12989,14 +13007,26 @@ window.handleSupportTicketSubmit = function(e) {
   const empCode = document.getElementById("tck-empcode")?.value || "";
   const priority = document.getElementById("tck-priority")?.value || "Medium";
 
+  const currentSup = appState.currentSupervisor || (typeof getActiveSupervisorScope === 'function' ? getActiveSupervisorScope() : null);
+  const supervisorEmail = (currentSup && currentSup.email) || "";
+  const supervisorName = (currentSup && (currentSup.name || currentSup.supervisorName)) || "Plant Supervisor";
+
   fetch(getApiUrl('/api/support/ticket'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ category, subject, employeeCode: empCode, priority, plantLocation: window.adminSelectedLoginPlant || "Tata Electronics - Krishnagiri" })
+    body: JSON.stringify({
+      category,
+      subject,
+      employeeCode: empCode,
+      priority,
+      supervisorName: supervisorName,
+      supervisorEmail: supervisorEmail,
+      plantLocation: window.adminSelectedLoginPlant || "Tata Electronics - Krishnagiri"
+    })
   })
   .then(r => r.json())
   .then(d => {
-    alert("✓ Support ticket #" + (d.ticket?.id || "TCK-1001") + " created successfully! Automated email alert sent to admin@layam.com.");
+    alert("✓ Support ticket #" + (d.ticket?.id || "TCK-1001") + " created successfully! Automated email alert dispatched to operations admin.");
     closeCreateTicketModal();
     openSupportTicketsModal();
   })

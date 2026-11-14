@@ -118,6 +118,7 @@ const path = require('path');
 const url = require('url');
 const querystring = require('querystring');
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 
 const { spawn } = require('child_process');
 
@@ -1937,12 +1938,16 @@ function triggerEmailAlert(ruleKey, payload = {}, db = null) {
     return null;
   }
 
-  let recipient = payload.recipient || (rule ? rule.recipient : 'admin@layam.com');
+  let recipient = payload.recipient || (rule ? rule.recipient : 'layamteam1@gmail.com');
   let subject = payload.subject || 'ShifTrack System Notification';
   let html = payload.html || '';
 
   if (ruleKey === 'helpdesk_ticket_created') {
     const t = payload.ticket || {};
+    // Fallback to configured SMTP user or admin email
+    if (!payload.recipient) {
+      recipient = (rule && rule.recipient && rule.recipient !== 'admin@layam.com') ? rule.recipient : (db.smtp_config?.user || 'layamteam1@gmail.com');
+    }
     subject = `[Helpdesk Alert] Ticket ${t.id || 'TCK'}: ${t.subject || 'New Support Request'} (${t.priority || 'Medium'})`;
     html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #ffffff;">
@@ -1958,6 +1963,7 @@ function triggerEmailAlert(ruleKey, payload = {}, db = null) {
             <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 8px 12px; color: #64748b;"><strong>Subject / Issue:</strong></td><td style="padding: 8px 12px; font-weight: 700; color: #0f172a;">${t.subject || 'N/A'}</td></tr>
             <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 8px 12px; color: #64748b;"><strong>Category:</strong></td><td style="padding: 8px 12px;">${t.category || 'General Support'}</td></tr>
             <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 8px 12px; color: #64748b;"><strong>Plant Site:</strong></td><td style="padding: 8px 12px; font-weight: 600;">${t.plantLocation || 'Plant Gate'}</td></tr>
+            <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 8px 12px; color: #64748b;"><strong>Supervisor / Raised By:</strong></td><td style="padding: 8px 12px; font-weight: 600;">${t.supervisorName || 'Plant Supervisor'} (${t.supervisorEmail || 'Email not recorded'})</td></tr>
             <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 8px 12px; color: #64748b;"><strong>Employee Info:</strong></td><td style="padding: 8px 12px;">${t.employeeName || 'N/A'} (${t.employeeCode || 'N/A'})</td></tr>
             <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 8px 12px; color: #64748b;"><strong>Priority:</strong></td><td style="padding: 8px 12px;"><span style="background: ${t.priority==='High'?'#fee2e2':'#eff6ff'}; color: ${t.priority==='High'?'#dc2626':'#1d4ed8'}; font-weight: 700; padding: 2px 8px; border-radius: 4px;">${t.priority || 'Medium'}</span></td></tr>
             <tr><td style="padding: 8px 12px; color: #64748b;"><strong>Submission Time:</strong></td><td style="padding: 8px 12px;">${new Date().toLocaleString()}</td></tr>
@@ -1968,6 +1974,10 @@ function triggerEmailAlert(ruleKey, payload = {}, db = null) {
     `;
   } else if (ruleKey === 'helpdesk_ticket_resolved') {
     const t = payload.ticket || {};
+    // Deliver directly to the supervisor who raised the ticket if their email exists
+    if (t.supervisorEmail && t.supervisorEmail.includes('@')) {
+      recipient = t.supervisorEmail;
+    }
     subject = `[Helpdesk Resolved] Ticket ${t.id || 'TCK'} Status: ${t.status || 'Resolved'}`;
     html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #ffffff;">
@@ -2024,7 +2034,7 @@ function triggerEmailAlert(ruleKey, payload = {}, db = null) {
     recipient: recipient,
     subject: subject,
     snippet: payload.ticket?.subject || payload.supervisor?.name || payload.message || subject,
-    status: 'DELIVERED',
+    status: 'QUEUED',
     timestamp: new Date().toISOString()
   };
 
@@ -2032,18 +2042,109 @@ function triggerEmailAlert(ruleKey, payload = {}, db = null) {
   if (db.email_logs.length > 250) db.email_logs = db.email_logs.slice(0, 250);
   writeDB(db);
 
-  console.log(`[Email Engine] Alert Dispatched: [${ruleKey}] To: ${recipient} | Subject: "${subject}"`);
+  // Real SMTP Dispatch in Background (Asynchronous, Non-blocking)
+  sendRealSmtpEmail({
+    to: recipient,
+    subject: subject,
+    html: html
+  }, db).then(sendRes => {
+    if (sendRes.sent) {
+      logEntry.status = 'DELIVERED';
+      console.log(`[Email Engine] ✅ Email physically sent via SMTP to: ${recipient} | Subject: "${subject}"`);
+    } else {
+      logEntry.status = sendRes.configured ? 'FAILED' : 'SIMULATED';
+      logEntry.error = sendRes.reason;
+      console.warn(`[Email Engine] ⚠️ SMTP Notice for [${recipient}]: ${sendRes.reason}`);
+    }
+    try {
+      const currentDb = readDB();
+      const existing = (currentDb.email_logs || []).find(l => l.id === logEntry.id);
+      if (existing) {
+        existing.status = logEntry.status;
+        if (logEntry.error) existing.error = logEntry.error;
+        writeDB(currentDb);
+      }
+    } catch (_) {}
+  }).catch(err => {
+    console.error(`[Email Engine] ❌ SMTP Error sending to ${recipient}:`, err.message);
+  });
+
   return logEntry;
+}
+
+// Reusable Helper to Build SMTP Transporter
+function getMailTransporter(db) {
+  const cfg = db.smtp_config;
+  if (!cfg || !cfg.user || !cfg.pass) return null;
+  return nodemailer.createTransport({
+    host: cfg.host || 'smtp.gmail.com',
+    port: parseInt(cfg.port || 587, 10),
+    secure: cfg.secure === true || parseInt(cfg.port, 10) === 465,
+    auth: {
+      user: cfg.user,
+      pass: cfg.pass
+    },
+    tls: {
+      rejectUnauthorized: false
+    }
+  });
+}
+
+// Real SMTP Sender (supports both Async and Await)
+async function sendRealSmtpEmail({ to, subject, html, text }, db) {
+  if (!to || !to.includes('@')) {
+    return { sent: false, configured: false, reason: 'Invalid or missing recipient email address.' };
+  }
+  const transporter = getMailTransporter(db);
+  if (!transporter) {
+    return { sent: false, configured: false, reason: 'SMTP credentials not configured in db.smtp_config.' };
+  }
+
+  const fromAddress = db.smtp_config.from || `"ShifTrack Portal" <${db.smtp_config.user}>`;
+
+  try {
+    const info = await transporter.sendMail({
+      from: fromAddress,
+      to: to,
+      subject: subject,
+      text: text || subject,
+      html: html || `<p>${subject}</p>`
+    });
+    return { sent: true, configured: true, messageId: info.messageId, reason: 'Delivered successfully via SMTP' };
+  } catch (err) {
+    return { sent: false, configured: true, reason: err.message };
+  }
 }
 
 // SMTP Email Dispatch Engine for Supervisor Verification & OTPs
 async function sendSupervisorOtpEmail(toEmail, supervisorName, otp, db) {
-  console.log(`[Safe Test Mode] OTP generated for supervisor ${supervisorName} (${toEmail}): ${otp}. Live email dispatch logged to Email Engine.`);
-  return {
-    sent: true,
-    reason: 'Delivered to corporate mailbox via ShifTrack Email Gateway.',
-    configured: true
-  };
+  const subject = `Your ShifTrack Security OTP: ${otp}`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 520px; margin: auto; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #ffffff;">
+      <div style="background: linear-gradient(135deg, #1e40af, #2563eb); color: #ffffff; padding: 18px 24px;">
+        <h2 style="margin: 0; font-size: 1.15rem; font-weight: 800;">🔐 ShifTrack Security Verification</h2>
+        <p style="margin: 4px 0 0; font-size: 0.78rem; opacity: 0.9;">Site Supervisor Portal Password Reset</p>
+      </div>
+      <div style="padding: 24px; color: #0f172a;">
+        <p style="font-size: 0.92rem; margin-top: 0;">Hello <strong>${supervisorName}</strong>,</p>
+        <p style="font-size: 0.88rem; color: #475569;">You have requested a secure one-time passcode (OTP) to reset your plant supervisor password. Use the verification code below:</p>
+        <div style="text-align: center; margin: 24px 0;">
+          <span style="display: inline-block; font-size: 2rem; font-weight: 800; letter-spacing: 8px; color: #1e40af; background: #eff6ff; border: 2px dashed #93c5fd; padding: 12px 28px; border-radius: 8px;">${otp}</span>
+        </div>
+        <p style="font-size: 0.78rem; color: #64748b; margin-bottom: 0;">This code is valid for 15 minutes. If you did not request this verification, please contact your Operations Administrator immediately.</p>
+      </div>
+    </div>
+  `;
+
+  const res = await sendRealSmtpEmail({
+    to: toEmail,
+    subject: subject,
+    html: html,
+    text: `Your ShifTrack OTP is ${otp}. Valid for 15 minutes.`
+  }, db);
+
+  console.log(`[Supervisor Auth] OTP dispatch result for ${supervisorName} (${toEmail}):`, res.sent ? 'Delivered via SMTP' : res.reason);
+  return res;
 }
 
 const requestHandler = async (req, res) => {
@@ -2351,6 +2452,8 @@ const requestHandler = async (req, res) => {
           id: 'TCK-' + String(1000 + db.support_tickets.length + 1),
           employeeCode: payload.employeeCode || 'N/A',
           employeeName: payload.employeeName || 'Staff Member',
+          supervisorName: payload.supervisorName || 'Plant Supervisor',
+          supervisorEmail: payload.supervisorEmail || '',
           plantLocation: payload.plantLocation || 'Plant Gate',
           category: payload.category || 'General Issue',
           subject: payload.subject || 'Support request',
